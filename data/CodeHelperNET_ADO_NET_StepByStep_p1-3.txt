@@ -1,0 +1,219 @@
+Microsoft ADO .NET Step by Step
+by Rebecca M. Riordan ISBN: 0735612366
+Microsoft Press © 2002 (512 pages)
+
+ADO.NET Learn to use the ADO.NET model to expand on data-bound Windows and
+z Web Forms, as well as how XML and ADO.NET intermingle.
+
+Table of Contents
+
+Microsoft ADO.NET Step by Step
+
+Introduction
+
+Partl - Getting Started with ADO.NET
+
+Chapter 1 - Getting Started with ADO.NET
+
+Partll - Data Providers
+
+Chapter 2 - Creating Connections
+
+Chapter 3 - Data Commands and the DataReader
+
+Chapter 4 - The DataAdapter
+
+Chapter 5 - Transaction Processing in ADO.NET
+Part Ill - Manipulating Data
+
+Chapter 6 - The DataSet
+
+Chapter 7 - The DataTable
+
+Chapter 8 - The DataView
+
+Part IV - Using the ADO.NET Objects
+
+Chapter 9 - Editing and Updating Data
+
+Chapter 10 - ADO.NET Data-Binding in Windows Forms
+Chapter 11 - Using ADO.NET in Windows Forms
+Chapter 12 - Data-Binding in Web Forms
+Chapter 13 - Using ADO.NET in Web Forms
+
+Part V - ADO.NET and XML
+
+Chapter 14 - Using the XML Designer
+
+Chapter 15 - Reading and Writing XML
+
+Chapter 16 - Using ADO in the .NET Framework
+Index
+
+List of Tables
+
+List of Sidebars
+
+Microsoft ADO.NET Step by Step
+
+PUBLISHED BY
+
+Microsoft Press
+
+A Division of Microsoft Corporation
+One Microsoft Way
+
+Redmond, Washington 98052-6399
+
+Copyright © 2002 by Rebecca M. Riordan
+All rights reserved. No part of the contents of this book may be reproduced or transmitted
+
+in any form
+or by any means without the written permission of the publisher.
+
+
+Library of Congress Cataloging-in-Publication Data
+Riordan, Rebecca.
+
+Microsoft ADO.NET Step by Step / Rebecca M. Riordan.
+
+p. cm.
+
+Includes index.
+
+ISBN 0-7356-1236-6
+
+1. Database design. 2. Object oriented programming (Computer
+science) 3. ActiveX. I.
+
+Title.
+
+QA76.9.D26 R56 2002
+005.75'85—dce21 2001054641
+
+Printed and bound in the United States of America.
+123456789 QWE 765432
+Distributed in Canada by Penguin Books Canada Limited.
+
+A CIP catalogue record for this book is available from the British Library.
+
+Microsoft Press books are available through booksellers and distributors worldwide. For
+further information about international editions, contact your local Microsoft Corporation
+office or contact Microsoft Press International directly at fax (425) 936-7329. Visit our
+Web site at www.microsoft.com/mspress. Send comments to mspinput@microsoft.com.
+
+Activex, IntelliSense, Internet Explorer, Microsoft, Microsoft Press, the .NET logo, Visual
+Basic, Visual C#, and Visual Studio are either registered trademarks or trademarks of
+Microsoft Corporation in the United States and/or other countries. Other product and
+company names mentioned herein may be the trademarks of their respective owners.
+
+The example companies, organizations, products, domain names, e-mail addresses,
+logos, people, places, and events depicted herein are fictitious. No association with any
+real company, organization, product, domain name, e-mail address, logo, person, place,
+or event is intended or should be inferred.
+
+Acquisitions Editor: Danielle Bird
+
+Project Editor: Rebecca McKay
+
+Body Part No. X08-05018
+
+To my very dear friend, Stephen Jeffries
+
+About the Author
+
+Rebecca M. Riordan
+
+With almost 20 years’ experience in software design, Rebecca M. Riordan has earned
+an international reputation as an analyst, systems architect, and designer of database
+and work -support systems.
+
+She works as an independent consultant, providing systems design and consulting
+expertise to an international client base. In 1998, she was awarded MVP status by
+Microsoft in recognition of her work in Internet newsgroups. Microsoft ADO.NET Step by
+Step is her third book for Microsoft Press.
+
+Rebecca currently resides in New Mexico. She can be reached at
+
+rebeccar@attglobal.net.
+
+Introduction
+
+Overview
+
+ADO.NET is the data access component of Microsoft's new .NET Framework. Microsoft
+bills ADO.NET as “an evolutionary improvement” over previous versions of ADO, a claim
+that has been hotly debated since its announcement. It is certainly true that the
+ADO.NET object model bears very little relationship to earlier versions of ADO.
+
+
+In fact, whether you decide to love it or hate it, one fact about the .NET Framework
+seems undeniable: it levels the playing ground. Whether you’ve been at this computer
+game longer than you care to talk about or you’re still sorting out your heaps and stacks,
+learning the .NET Framework will require a major investment. We’re al/ beginners now.
+So welcome to Microsoft ADO.NET Step by Step. Through the exercises in this book, |
+will introduce you to the ADO.NET object model, and you'll learn how to use that model
+in developing data-bound Windows Forms and Web Forms. In later topics, we'll look at
+how ADO.NET interacts with XML and how to access older versions of ADO from the
+-NET environment.
+
+Since we’re all beginners, an exhaustive treatment would be, well, exhausting, so this
+book is necessarily limited in scope. My goal is to provide you with an understanding of
+the ADO.NET objects—what they are and how they work together. So fair warning: this
+book will not make you an expert in ADO.NET. (How | wish it were that simple!)
+
+What this book will give you is a road map, a fundamental understanding of the
+environment, from which you will be able to build expertise. You'll know what you need to
+do to start building data applications. The rest will come with time and experience. This
+book is a place to start.
+
+Although I’ve pointed out language differences where they might be confusing, in order
+to keep the book within manageable proportions I’ve assumed that you are already
+familiar with Visual Basic .NET or Visual C# .NET. If you’re completely new to the .NET
+environment, you might want to start with Microsoft Visual Basic .NET Step by Step by
+Michael Halvorson (Microsoft Press, 2002) or Microsoft Visual C# .NET Step by Step by
+John Sharp and Jon Jagger (Microsoft Press, 2002), depending on your language of
+choice.
+
+The exercises that include programming are provided in both Microsoft Visual Basic and
+Microsoft C#. The two versions are identical (except for the difference between the
+languages), so simply choose the exercise in the language of your choice and skip the
+other version.
+
+Conventions and Features in This Book
+
+You'll save time by understanding, before you start the lessons, how this book displays
+instructions, keys to press, and so on. In addition, the book provides helpful features that
+you might want to use.
+
+" Numbered lists of steps (1, 2, and so on) indicate hands-on exercises. A
+rounded bullet indicates an exercise that has only one step.
+
+" Text that you are to type appears in bold.
+
+" Terms are displayed in italic the first time they are defined.
+
+" A plus sign (+) between two key names means that you must press those
+
+keys at the same time. For example, “Press Alt+Tab” means that you hold down
+the Alt key while you press Tab.
+
+" Notes labeled “tip” provide additional information or alternative methods for a
+step.
+
+" Notes labeled “important” alert you to essential information that you should
+check before continuing with the lesson.
+
+" Notes labeled “ADO” point out similarities and differences between ADO and
+ADO.NET.
+
+" Notes labeled “Roadmap” refer to places where topics are discussed in depth.
+
+" You can learn special techniques, background information, or features related
+
+to the information being discussed by reading the shaded sidebars that appear
+throughout the lessons. These sidebars often highlight difficult terminology or
+suggest future areas for exploration.
+
+" You can get a quick reminder of how to perform the tasks you learned by
+reading the Quick Reference at the end of a lesson.

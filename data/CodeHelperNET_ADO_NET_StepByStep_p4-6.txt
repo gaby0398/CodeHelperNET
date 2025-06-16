@@ -1,0 +1,177 @@
+Using the ADO.NET Step by Step CD-ROM
+
+The Microsoft ADO.NET Step by Step CD-ROM inside the back cover contains practice
+files that you'll use as you complete the exercises in the book. By using the files, you
+won't need to waste time creating databases and entering sample data. Instead, you can
+concentrate on how to use ADO.NET. With the files and the step-by-step instructions in
+the lessons, you'll also learn by doing, which is an easy and effective way to acquire and
+remember new skills.
+
+System Requirements
+
+In order to complete the exercises in this book, you will need the following software:
+« Microsoft Windows 2000 or Microsoft Windows XP
+«Microsoft Visual Studio .NET
+« Microsoft SQL Server Desktop Engine (included with Visual Studio .NET)
+or Microsoft SQL Server 2000
+
+This book and practice files were tested primarily using Windows 2000 and Visual Studio
+.NET Professional; however, other editions of Visual Studio .NET, such as Visual Basic
+.NET Standard and Visual C# .NET Standard, should also work.
+
+Since Windows XP Home Edition does not include Internet Information Services (IIS),
+you won't be able to create local ASP.NET Web applications (discussed in chapters 12
+and 13) using Windows XP Home Edition. Windows 2000 and Windows XP Professional
+do include IIS.
+
+Installing the Practice Files
+
+Follow these steps to install the practice files on your computer so that you can use them
+with the exercises in this book.
+1. Insert the CD in your CD-ROM drive.
+A Start menu should appear automatically. If this menu does not appear,
+double-click StartCD.exe at the root of the CD.
+2. Click the Getting Started option.
+3. Follow the instructions in the Getting Started document to install the
+practice files and setup SQL Server 2000 or the Microsoft SQL Server
+Desktop Engine (MSDE).
+
+Using the Practice Files
+
+The practice files contain the projects and completed solutions for the ADO.NET Step by
+Step book. Folders marked 'Finish' contain working solutions. Folders marked 'Start'
+contain the files needed to perform the exercises in the book.
+
+Uninstalling the Practice Files
+
+Follow these steps to remove the practice files from your computer.
+1. Insert the CD in your CD-ROM drive.
+A Start menu should appear automatically. If this menu does not appear,
+double-click StartCD.exe at the root of the CD.
+2. Click the Uninstall Practice Files option.
+3. Follow the steps in the Uninstall Practice Files document to remove
+the practice files.
+
+Need Help with the Practice Files?
+
+Every effort has been made to ensure the accuracy of the book and the contents of this
+CD-ROM. As corrections or changes are collected for this book, they will be placed ona
+Web page and any errata will also be integrated into the Microsoft online Help tool
+known as the Knowledge Base. To view the list of known corrections for this book, visit
+the following page:
+
+htto://support.microsoft.com/support/misc/kblookup. asp 7id=Q314759
+
+
+To search the Knowledge Base and review your support options for the book or CD-
+ROM, visit the Microsoft Press Support site:
+
+http://www. microsoft.com/mspress/support/
+
+If you have comments, questions, or ideas regarding the book or this CD-ROM, or
+questions that are not answered by searching the Knowledge Base, please send them to
+Microsoft Press via e-mail to:
+
+mspinput@microsoft.com
+or by postal mail to:
+
+Microsoft Press
+
+Attn: Microsoft ADO.NET Step by Step Editor
+One Microsoft Way
+
+Redmond, WA 98052-6399
+
+Please note that product support is not offered through the above addresses.
+
+part: Getting Started with ADO.NET
+
+Chapter List
+Chapter 1: Getting Started with ADO.NET
+
+Chapter 1: Getting Started with ADO.NET
+
+Overview
+
+In this chapter, you'll learn how to:
+
+"Identify the primary objects that make up Microsoft ADO.NET are and how
+they interact
+
+"Create Connection and DataAdapter objects by using the DataAdapter
+Configuration Wizard
+
+« Automatically generate a DataSet
+
+«Bind control properties to a DataSet
+
+«Load data into a DataSet at run time
+
+Like other components of the .NET Framework, ADO.NET consists of a set of objects
+that interact to provide the required functionality. Unfortunately, this can make learning to
+use the object model frustrating—you feel like you need to learn all of it before you can
+understand any of it.
+
+The solution to this problem is to start by building a conceptual framework. In other
+words, before you try to learn the details of how any particular object functions, you need
+to have a general understanding of what each object does and how the objects interact.
+
+That's what we'll do in this chapter. We'll start by looking at the main ADO.NET objects
+and how they work together to get data from a physical data store, to the user, and back
+again. Then, just to whet your appetite, we'll work through building a set of objects and
+binding them to a simple data form.
+
+On the Fundamental Interconnectedness of All Things
+
+In later chapters in this section, we'll examine each object in the ADO.NET object model
+in turn. At least in theory. In reality, because the objects are so closely interlinked, it’s
+impossible to look at any single object in isolation.
+
+
+Roadmap A roadmap note like this will point you to the discussion of a
+property or method that hasn’t yet been introduced.
+
+Where it’s necessary to use a method or property that we haven’t yet examined, I'll use
+
+roadmap notes, like the one in the margin next to this paragraph, to point you to the
+chapter where they are discussed.
+
+The ADO.NET Object Model
+
+The figure below shows a simplified view of the primary objects in the ADO.NET object
+model. Of course, the reality of the class library is more complicated, but we'll deal with
+the intricacies later. For now, it’s enough to understand what the primary objects are and
+how they typically interact.
+
+The ADO.NET classes are divided into two components: the Data Providers (sometimes
+called Managed Providers), which handle communication with a physical data store, and
+the DataSet, which represents the actual data. Either component can communicate with
+data consumers such as WebForms and WinForms.
+
+Data Providers
+
+The Data Provider components are specific to a data source. The .NET Framework
+includes two Data Providers: a generic provider that can communicate with any OLE DB
+data source, and a SQL Server provider that has been optimized for Microsoft SQL
+Server versions 7.0 and later. Data Providers for other databases such as Oracle and
+DB2 are expected to become available, or you can write your own. (You may be relieved
+to know that we won’t be covering the creation of Data Providers in this book.)
+
+The two Data Providers included in the .NET Framework contain the same objects,
+although their names and some of their properties and methods are different. To
+illustrate, the SQL Server provider objects begin with SQL (for example,
+SQLConnection), while the OLE DB objects begin with OleDB (for example,
+OleDbConnection).
+
+The Connection object represents the physical connection to a data source. Its
+properties determine the data provider (in the case of the OLE DB Data Provider), the
+data source and database to which it will connect, and the string to be used during
+connecting. Its methods are fairly simple: You can open and close the connection,
+change the database, and manage transactions.
+
+The Command object represents a SQL statement or stored procedure to be executed at
+the data source. Command objects can be created and executed independently against
+a Connection object, and they are used by DataAdapter objects to handle
+communications from a DataSet back to a data source. Command objects can support
+SQL statements and stored procedures that return single values, one or more sets of
+rows, or no values at all.

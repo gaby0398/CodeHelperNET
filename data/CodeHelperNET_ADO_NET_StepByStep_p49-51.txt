@@ -1,0 +1,170 @@
+FF Riesgemersbe parameters collection for the: command. zs | Cancel |
+
+10. Verify that the Regenerate parameters collection for this command
+check box is selected, and then click OK.
+
+Visual Studio displays a warning message.
+
+Microsslt Dhevelopment Grvironnment 2]
+
+aN Source column inf ammation for gers parameters may be leet. bo you eae to apply tee parameter canfiguneticn?
+
+Ee ee ee
+
+11. Click Yes.
+
+Visual Studio generates the CommandText property and the Parameters
+collection.
+12. In the Properties window, select the Parameters property, and then
+click the ellipsis button.
+
+Visual Studio displays the SqlParameter Collection Editor. Because the Query
+Builder generated the parameters for us, there is nothing to do here.
+However, you could add, change, or remove parameters as necessary.
+
+$olParanecter Collection Editor
+
+13. Click OK.
+
+
+Add and Configure Parameters at Run Time
+
+Visual Basic .NET
+1. Press F7 to display the code editor.
+2. Add the following lines to the end of the New Sub:
+
+3. Me.cmdGetOrders.Parameters.Add("@custlD",
+SqlDbType.VarChar)
+
+Me.cmdGetOrders.Parameters.Add("@empID", SqlDbType. Int)
+
+Visual C# .NET
+
+1. Press F7 to display the code editor.
+2. Add the following lines after the property instantiations:
+
+3. this.cmdGetOrders.Parameters.Add("@custID",
+SqlDbType.VarChar);
+
+4. this.cmdGetOrders.Parameters.Add("@empID", SqlDbType. Int);
+Set Parameter Values
+
+After you have established the Parameters collection and before you execute the
+command, you must set the values for each of the Parameters. This can be done only at
+run time with a simple assignment statement.
+
+Visual Basic .NET
+1. In the Code Editor window, select btnOrderCount in the Object Name
+list, and Click in the Method Name box.
+Visual Studio adds the click event handler for the button.
+2. Add the following code to the event handler:
+
+oo
+
+Dim cnt As Integer
+Dim strMsg As String
+
+4
+5.
+6. Me.cmdOrderCount.Parameters("@emplD").Value = _
+7 Me. lbEmployees.Selectedltem("EmployeelD")
+8. Me.cmdOrderCount.Parameters("@custID").Value = _
+Me.|bClients.Selecteditem("Customer|D")
+
+The code first declares a couple of variables that will be used in the next
+exercise, and then sets the value of each of the parameters in the
+cmdOrderCount.Parameters collection to the value of the Employees and
+Clients list boxes, respectively.
+
+Visual C# .NET
+
+1. Add the following event handler to the code below the existing
+btnGetOrders_ Click procedure:
+2. private void btnOrderC ount_Click(object sender,
+3. System.EventArgs e)
+4. {
+5 int cnt;
+6. string strMsg;
+7. System.Data.DataRowView drv;
+8
+
+9. drv = (System.Data. DataRowView)
+
+10. this.lbEmployees.Selectedltem;
+
+11. this.cmdOrderCount.Parameters["@empID"].Value =
+12. drv["EmployeelD"};
+
+13. drv = (System.Data.DataRowView)
+
+
+14. this.lbClients.Selectedltem;
+15. this.cmdOrderCount.Parameters["@custID"].Value =
+16. drv["CustomerID");
+
+The code first declares a couple of variables that will be used in the next
+exercise, and then sets the value of each of the parameters in the
+cmdOrderCount.Parameters collection to the value of the Employees and
+Clients list boxes, respectively.
+18. Connect the event handler to the click event by adding the following
+line to the end of the frmDataCmds sub:
+
+19. this.btnOrderCount.Click += new
+EventHandler(this.otnOrderCount_Click);
+
+Command Methods
+
+The methods exposed by the Command object are shown in Table 3-6. Of these, the
+most important are the four Execute methods: ExecuteNonQuery, ExecuteReader,
+ExecuteScalar, and ExecuteXm/Reader.
+
+ExecuteNonQuery is used when the SQL command or stored procedure to be executed
+returns no rows. An Update query, for example, would use the ExecuteNonQuery
+method.
+
+ExecuteScalar is used for SQL commands and stored procedures that return a single
+value. The most common example of this sort of command is one that returns a count of
+rows:
+
+SELECT Count(*) from OrderTotals
+Table 3-6: Command Methods
+
+Method Description
+
+Cancel Cancels
+
+execution of a
+Data
+Command
+
+CreateParameter Creates a new
+
+parameter
+
+ExecuteNonQuery Executes a
+
+command
+against the
+Connection
+and returns the
+number of
+rows affected
+
+ExecuteReader Sends the
+
+CommandText
+to the
+Connection
+and builds a
+DataReader
+
+ExecuteScalar Executes the
+
+query and
+returns the first
+column of the
+first row of the
+result set
+
+ExecuteXmlReader Sends the
+

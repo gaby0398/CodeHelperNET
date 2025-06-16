@@ -1,0 +1,222 @@
+private void btnTest_Click(object sender, System.EventArgs e)
+{
+
+2.
+3.
+4. this. myConnection.Open();
+5 MessageBox.Show(this.myConnection.State. ToString());
+6 this. myConnection.Close();
+
+7. Add the following code, which connects the event handler to the
+btnTest.Click event, to the end of the ConnectionProperties sub:
+
+this.btnTest.Click += new EventHandler(this.btnTest_Click);
+8. Press F5 to save and run the application.
+9. Change the Connection Type and then click the Test button.
+
+2/5) x}
+
+Connection Sting
+
+Integrated Secunty=55P) Persia Secunty Indo=F alse lriial CatalogeNothwind. Data
+
+Sourcesiocalhod:Packet Sire=4096 Werkelation ID=BUNNY
+
+| x
+
+Database: [Northwind oe |
+Time Out: fis
+
+pwn | Cia]
+
+10. Close the application.
+
+Handling Connection Events
+
+Both the OLE DB and the SQL Server Connection objects provide two events:
+StateChange and InfoMessage.
+
+StateChange Events
+
+Not surprisingly, the StateChange event fires whenever the state of the Connection
+object changes. The event passes a StateChangeEventArgs to its handler, which, in
+turn, has two properties: OriginalState and CurrentState. The possible values for
+OriginalState and CurrentState are shown in Table 2-5.
+
+Table 2-5: Connection States
+
+State Meaning
+
+Broken The
+Connecti
+on is
+open, but
+not
+functiona
+
+Closed The
+Connecti
+
+
+
+Table 2-5: Connection States
+
+State Meaning
+
+on is
+closed
+
+Connecting The
+Connecti
+on is in
+the
+
+process
+of
+connecti
+ng, but
+has not
+yet been
+opened
+
+Executing The
+Connecti
+on is
+executin
+
+ga
+comman
+d
+
+Fetching The
+Connecti
+on is
+retrieving
+data
+
+Open The
+Connecti
+on is
+open
+
+Respond to a StateChange Event
+
+Visual Basic .NET
+1. Select OleDbConnection1 in the Class Name combobox of the editor
+and the StateChange event in the Method Name combobox.
+Visual Studio adds the event declaration to the class.
+2. Add the following code to display the previous and current Connection
+states:
+
+3. Dim theMessage As String
+
+4. theMessage = "The Connection is changing from " & _
+5 e.OriginalState.ToString & _
+
+6. "to" & e.CurrentState. ToString
+
+MessageBox.Show(theMessage)
+7. Repeat steps 1 and 2 for SqiDbConnection1.
+8. Save and run the program.
+9. Click the Test button.
+
+The application displays MessageBoxes as the Connection is opened and
+closed.
+
+
+Visual C# .NET
+
+1. Add the following procedure code to display the previous and current
+Connection states for each of the two Connection objects:
+2. private void oleDbConnection1_StateChange (object sender,
+
+3. StateChangeEventArgs e)
+
+4. {
+
+5 string theMessage;
+
+6 theMessage = "The Connection State is changing from " +
+7. e.OriginalState.ToString() +
+
+8. "to" + e.CurrentState. ToString();
+
+9. MessageBox.Show(theMessage);
+
+10. }
+
+11. private void SqiDbConnection1_StateChange (object sender,
+
+12. StateChangeEventArgs e)
+
+14. string theMessage;
+
+15. theMessage = "The Connection State is changing from " +
+
+16. e.OriginalState. ToString() +
+
+17. "to" + e.CurrentState. ToString();
+
+18. MessageBox.Show(theMessage);
+
+19. Add the code to connect the event handlers to the
+
+ConnectionProperties sub:
+
+20. this.oleDbConnection1.StateChange += new
+
+21.
+System.Data.StateChangeEventHandler(this.oleDbConnection1
+_StateChange);
+
+22. this.SqlDoConnection1.StateChange += new
+
+System.Data.StateChangeEventHandler(this.SqiIDbConnection1_StateCha
+
+nge);
+23. Save and run the program.
+
+24. Change the Connection Type and then click the Test button.
+
+The application displays two MessageBoxes as the Connection is opened and
+
+closed.
+
+InfoMessage Events
+
+The InfoMessage event is triggered when the data source returns warnings. The
+information passed to the event handler depends on the Data Provider.
+
+Chapter 2 Quick Reference
+
+To
+
+Create a Server Explorer Connection
+
+Add an instance of a Server Explorer
+Connection to a form
+
+Do this
+
+Click the Connect to Database
+
+button in the Server Explorer,
+or choose Connect to
+Database on the Tools menu
+
+Server Explorer to the form
+
+Create a Connection using code
+
+Use the New constructor. For
+example:
+
+Dim myConn as New
+OleDbConnection ()
+
+Use an intermediary variable to reference
+
+Drag the Connection from the |
+
+Declare the variable as an
+

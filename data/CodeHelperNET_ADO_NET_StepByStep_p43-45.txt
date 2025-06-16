@@ -1,0 +1,147 @@
+Table 3-4: UpdatedRowSource Values
+
+Property Description
+discarded
+
+OutputParameters Output
+parameters
+of the
+Command
+will be
+mapped to
+the changed
+row
+
+If the Data Command is generated automatically by Visual Studio, the default value of
+the UpdatedRowSource property is None. If the Command is generated at run time or
+created by the user at design time, the default value is Both.
+
+Setting Command Properties at Design Time
+
+As might be expected, the properties of a Command control created in Visual Studio are
+set using the Properties window. In specifying the CommandText property, you can
+either type the value directly or use the Query Builder to generate the required SQL
+statement. You must specify the Connection property before you can set the
+CommandText property.
+
+Set Command Properties in Visual Studio
+1. Inthe form designer, select cndGetEmployees in the Component
+
+Designer.
+Detatommasds | hicestoh Vereal Gea ba | [dined « Chatet ommend ob (Dene [=
+Bie Ede eee Beoject fd Debug Gye pean Took ‘hire Mais
+gi ae EG BO ee - Ty oy > gh tees s~age .
+E é Lal ¢ c eee Pe eH as.
+tt» | eeler Eoeioest fetal aoeieds om
+eg) Oe}
+
+sf Pakerors
+Fi Somembipire yy
+Bb 7
+eed ( wi
+OS
+[E] ts [om] i
+B brio o
+Lenina =e
+Hiwatt mee Ae
+1S Coskgetstiore
+Cpe Ppt
+1B Data
+Corradi aut
+| Corearedt pos Po
+| Parte ellen
+‘Bh lieome
+hoe tomb emphepeee
+
+2. In the Properties window, select the Connection property, expand the
+Existing node in the drop-down list, and then click cnNorthwind.
+3. Select the CommandText property, and then click the ellipsis button.
+
+Visual Studio displays the Query Builder's Add Table dialog box.
+
+
+Add Table Ed
+
+Tables | Views | Functions |
+
+CustomerCustomerDemo
+CustomerDemographics
+
+Employee enitories
+Onder Details
+
+4. Click the Views tab in the Add Table dialog box, and then click
+EmployeeList.
+
+Tables Views | Functions |
+
+Alphabetical list of products
+Category Sales for 1997
+Curent Product List
+
+Customer and Suppliers by City
+CusbonverList
+
+Invoices
+Onder Details Extended
+Order Subtotals
+
+Product Sales for 1997
+Products Above Average Price
+Products by Category =
+
+5. Click Add, and then click Close.
+
+Visual Studio adds EmployeeList to the Query Builder.
+6. Select the check box next to (All Columns) in the Diagram pane of the
+Query Builder to select all columns.
+
+Visual Studio updates the SQL text in the SQL pane.
+
+
+FF Regensiate paanesers codecbon fot the commarcd.
+
+7. Click OK.
+
+Visual Studio generates the SQL command and sets the CommandText
+property in the Properties window.
+
+Setting Command Properties at Run Time
+
+The majority of the properties of the Command object are set by using simple
+assignment statements. The exception is the Parameters collection, which because it is
+a collection, uses the Add method.
+
+Set Command Properties at Run Time
+
+Visual Basic .NET
+
+1. In the Code window, add the following lines below the variable
+instantiations of the New Sub:
+2. Me.cmdGetCustomers.CommandText = "SELECT * FROM
+
+CustomerList"
+3. Me.cmdGetCustomers.CommandType = CommandType. Text
+Me.cmdGetCustomers.Connection = Me.cnNorthwind
+
+4. The first line specifies the command to be executed on the
+Connection—it simply returns all rows from the CustomerList view.
+The second line specifies that the CommandText property is to be
+treated as a SQL command, and the third line sets the Connection
+on which the command is to be executed.
+
+Visual C# .NET
+
+1. In the Code window, add the following lines below the variable
+
+instantiation:
+2. this.cmdGetCustomers.CommandText = "SELECT * FROM
+CustomerList";
+3. this.cmdGetCustomers.CommandType = CommandType.Text;
+this.cmdGetCustomers.Connection = this.cnNorthwind;
+
+4. The first line specifies the command to be executed on the
+Connection—it simply returns all rows from the CustomerList view.
+The second line specifies that the CommandText property is to be
+treated as a SQL command, and the third line sets the Connection
+on which the command is to be executed.

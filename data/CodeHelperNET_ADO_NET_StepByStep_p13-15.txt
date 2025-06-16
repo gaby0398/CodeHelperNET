@@ -1,0 +1,124 @@
+a ftp
+12. Click OK to close the Query Builder, and then click Next.
+
+The DataAdapter Configuration Wizard displays a page showing the results of
+adding the Connection and DataAdapter objects to the form.
+
+i Date Adapter Confegquriaton Wirard
+
+View Wizard Results
+Review ther fist of tacks the wizard hae perhonmed. Click, Finish to
+complete or Back to make changes.
+
+The data adapler “Sqiataadapten]” wat configuned quocerHtuly
+
+Detads:
+* Generated Select Statement,
+
+~ Genersted Mappings.
+
+~ Generated Inoert Statement,
+ Genersted Update Statement.
+@ Generated Delete Siatement
+
+Cancel <Back fees Finish
+Creat | cok | |e
+13. Click Finish to close the DataAdapter Configuration Wizard.
+
+The DataAdapter Configuration Wizard creates and configures a
+SQLDataAdapter and a SQLConnection, and then adds them to the
+Component Designer.
+
+Se ee
+fe te vee Beer Be Geb Ce [en Heo ee
+
+epee 0: eee eer ee -Sere y oar]
+
+i a4 eo : SE elbitkea Bees.
+
+Creating DataSets
+Roadmap We'll examine the DataSet in Chapter 6
+
+
+The Connection and DataAdapter objects handle the physical communication with the
+data store, but you must also create a memory -resident representation of the actual data
+that will be bound to the form. You can bind a control to almost any structure that
+contains data, including arrays and collections, but you'll typically use a DataSet.
+
+As with the Data Provider objects, Visual Studio provides a mechanism for automating
+this process. In fact, it can be done with a simple menu choice, although because Visual
+Studio exposes the code it creates, you can further modify the basic DataSet
+functionality that Visual Studio provides.
+
+Create a DataSet
+
+1. On the Data menu, choose Generate Dataset.
+The Generate Dataset dialog box opens.
+
+Generate Dataset x
+
+Generate 4 dataset that includes the epacified tables.
+Choose 4 dataset:
+
+C Evsting [Os
+* New [DataSett
+
+Choose whech table|s} to add to the dataset:
+
+i Employees (Sqilatatdapter |
+
+I¥ Add this dataset to the designer.
+
+Po] ces ee
+
+2. In the New text box, type dsEmployees
+
+
+Generate Dataset |x|
+
+Generate 3 datase! that includes the specified tables,
+Choose a dataset:
+
+C esting [Od
+New [dsE mphyees
+
+Choose whech table[s] to add to the dataset:
+
+iv Employees (Sigil ataddapter |
+
+[¥ Add this dataset to the designer,
+
+[a] toms | ne
+
+3. Click OK.
+
+Visual Studio creates the DataSet class and adds an instance of it to the
+bottom pane of the forms designer.
+
+Rami
+ipa Fhe ey opel a iy aati he ha
+
+—
+
+Simple Binding Controls to a DataSet
+The .NET Framework supports two kinds of binding: simple and complex. Simple binding
+occurs when a single data element, such as a date, is bound to a control. Complex
+binding occurs when a control is bound to multiple data values, for example, binding a
+list box to a DataSet that contains a list of Order Numbers.
+Roadmap We'll examine simple and complex data binding in more
+detail in Chapters 10 and 11.
+
+Almost any property of a control can support simple binding, but only a subset of
+Windows and WebForms controls (such as DataGrids and ListBoxes) can support
+complex binding.
+
+Bind the Text Property of a Control to a DataSet
+1. Click the txtTitle text box in the forms designer to select it.
+2. Click the plus sign next to DataBindings to expand the DataBindings
+properties.
+3. Click the drop-down arrow for the Text property.
+
+Visual Studio displays a list of available data sources.
+4. In the list of available data sources for the Text property, click the plus
+sign next to the DsEmployees1 data source, and then click the plus
+sign next to the Employees DataTable.

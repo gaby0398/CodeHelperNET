@@ -1,0 +1,181 @@
+Propeities h x)
+tatTite System Windows. Fors. Text8 ox |
+2] 4 [oo]
+
+eI DsEmployees!
+=-E] Employees
+fo) Employee
+(2) FirstName
+[=] Lasil
+
+i Properties | © Oynamic Help |
+
+5. Click the TitleOfCourtesy column to select it.
+
+6. Repeat steps 1 through 5 to bind the Text property of the remaining
+controls to the columns of the Employees DataTable, as shown in the
+following table.
+
+Control DataTable
+Column
+
+| lblEmployeelD EmployeelD
+
+| txtGivenName FirstName
+
+txtSurname LastName
+txtHireDate HireDate
+
+txtPosition Title
+
+| txtNotes Notes
+
+Loading Data into the DataSet
+
+We now have all the components in place for manipulating the data from our data
+source, but we have one task remaining: We must actually load the data into the
+DataSet.
+
+If you’re used to working with data bound forms in environments such as Microsoft
+Access, it may come as a surprise that you need to do this manually. Remember,
+however, that the ADO.NET architecture has been designed to operate without a
+permanent connection to the database. In a disconnected environment, it’s appropriate,
+
+
+and indeed necessary, that the management of the connection be under programmatic
+control.
+
+Roadmap The DataAdapter’s Fill method is discussed in Chapter 4.
+
+The DataAdapter’s Fill method is used to load data into the DataSet. The DataAdapter
+provides several versions of the Fill method. The simplest version takes the name of a
+DataSet as a parameter, and that’s the one we'll use in the exercise below.
+
+Load Data into the DataSet
+
+Visual Basic .NET
+
+1. Press F7 to view the code for the form.
+2. Expand the region labeled “Windows Form Designer generated code”
+and navigate to the New Sub.
+
+3. Add the following line of code just before the end of the procedure:
+SqlDataAdapter1 .Fill(DsEmployees1)
+Roadmap The DataAdapter’s Fill method is discussed in Chapter 4.
+
+This line calls the DataAdapter’s Fill method, passing the name of the
+DataSet to be filled.
+
+4. Press F5 to build and run the program.
+Visual Studio displays the form with the first row displayed.
+
+5. Admire your data bound form for a few minutes (see, that wasn’t so
+hard!), and then close the form.
+GE Employees
+
+Tide: ht: ] 1
+
+Giver awe [Nancy
+
+Surame: Suet
+
+Hie Dats (-00.AM Pestor, [Sales Represeniaive
+
+Nolet
+
+Ediacation inchices o BA in paycteologs feos Coloreds State Uineeaity i 1970. Sie atta complished
+Thee Aut of thee Cold Call” Nancy is a member of Toastmasters irtemnational
+
+Visual C# .NET
+
+1. Press F7 to view the code for the form.
+2. Add the following line of code to the end of the Employees procedure:
+
+sqlDataAdapter1 .Fill(dsEmployees1);
+Roadmap The DataAdapter’s Fill method is discussed in Chapter 4.
+
+This line calls the DataAdapter’s Fill method, passing the name of the
+DataSet to be filled.
+
+3. Press F5 to build and run the program.
+Visual Studio displays the form with the first row displayed.
+
+
+o..| Eeaployees
+
+Hre Dista Poser:
+
+Noles
+
+Sales Aepresendativnes
+
+Ediacation awthices & BA in paycheniogy feos Coborads State Uneasy 197 Sie ates covnplebed
+Thee Art of thee Cold Call" Nancy is a member of Toastmasters lrtemational
+
+4. Admire your data bound form for a few minutes (see, that wasn’t so
+
+hard!), and then close the form.
+
+Chapter 1 Quick Reference
+
+To
+
+Add a Connection and DataAdapter to a
+form by using the DataAdapter
+Configuration Wizard
+
+Use Visual Studio to automatically
+generate a typed DataSet
+
+Simple bind properties of a control to a
+data source
+
+Load data into a DataSet
+
+Do this
+
+Drag a DataAdapter object onto the
+form and follow the wizard
+instructions
+
+Select Create DataSet from the
+Data menu, complete the Generate
+Dataset dialog box as required, and
+then click OK
+
+In the Properties window
+DataBindings section, select the
+data source, DataTable, and
+column
+
+Use the Fill method of the
+DataAdapter. For example:
+myDataAdapter.Fill(myDataS
+
+et)
+
+parti: Data Providers
+Chapter 2: Creating Connections
+
+Chapter 3: Data Commands and the DataReader
+
+Chapter 4: The DataAdapter
+
+Chapter 5: Transaction Processing in ADO.NET
+
+Chapter 2: Creating Connections
+
+Overview
+
+In this chapter, you'll learn how to:
+
+= Add an instance of a Server Explorer Connection to a form
+
+"Create a Connection using code
+«Use Connection properties
+
+«Use an intermediary variable to reference multiple types of Connections
+
+«Bind Connection properties to form controls
+
+"Open and close Connections

@@ -1,0 +1,137 @@
+12. Exception Handling
+
+A mechanism to handle runtime errors gracefully, ensuring the program continues or
+fails gracefully.
+
+try
+{
+// Code that might throw an exception.
+}
+catch (SpecificException ex) // Catches specific exceptions, allowing tailored responses.
+{
+// Handle this specific error.
+}
+finally
+{
+// Cleanup code. Executes regardless of whether an exception was thrown.
+}
+
+Hint: It’s best practice to catch an exception with a specific type (e.g. SqlException) and
+have a single general fallback try-catch to catch exceptions of type Exception.
+
+13. Delegates, Events & Lambdas
+
+Essential for event-driven programming and for treating methods as first-class citizens.
+// A type that represents methods with a specific signature.
+public delegate void MyDelegate();
+// An event that can be triggered when certain actions occur.
+
+event MyDelegate MyEvent;
+
+Func<int, int, int> add = (a, b) => a+b; // Lambda expression. A concise way to define m
+ethods.
+
+14. LINQ (Language-Integrated Query)
+
+Introduces native query capabilities into C#, making data manipulation simpler and
+more readable.
+
+uSing System.Ling; // Required for LINQ queries.
+var result = from s in list where s.Contains("test") select s; // Sample query to filter d
+
+C# Cheat Sheet Z T M
+
+
+ata.
+
+15. Attributes
+
+Add metadata to your code. This metadata can be inspected at runtime.
+
+[Obsolete("This method is deprecated.")] // An attribute warning developers about deprecat
+
+ed methods.
+public void OldMethod() { /*...*/ }
+
+16. Async/Await
+
+Modern mechanism for writing non-blocking (asynchronous) code, especially useful for
+I/O-bound operations.
+
+public async Task<returnType> MethodName( )
+
+{
+
+return await OtherAsyncMethod(); // 'await' pauses method execution until the awaited
+task completes.
+
+}
+
+17. Miscellaneous
+e enum: Defines a set of named constants.
+e interface : Acontract that classes can choose to implement.
+
+¢ class : An implementation of an interface (explicit, or implicit inheriting from
+System.Object). Stored on the heap.
+
+e record : A class or struct that provides special syntax and behavior for working with
+data models.
+
+e struct : Lightweight class-like structures, useful for small data structures. Stored on
+the stack.
+
+e dynamic : Allows runtime type resolution (Skips compile-time type checking).
+Uncommon in modern .NET code.
+
+e is, as: Useful for type checking and conversions.
+
+¢ var : Compiler figures out the type for you, based on the assigned value.
+
+C# Cheat Sheet S Z T M
+
+
+¢ nameof : Returns the name of code elements like variables, types, or members.
+
+18. String Manipulation
+
+Given the ubiquity of string operations in programming, C# provides powerful string
+manipulation tools.
+
+string.Concat(); // Combines multiple strings.
+string.Join(); // Joins elements with a separator.
+str.Split(); // Splits a string based on delimiters.
+str.ToUpper(); // Converts to uppercase.
+
+str.ToLower(); // Converts to lowercase.
+
+str.Trim(); // Removes leading and trailing whitespace.
+str.Substring(); // Extracts a portion of the string.
+
+19. File I/O
+
+Interactions with the filesystem are common tasks. C# makes reading from and writing
+to files straightforward.
+
+using System.10; // Necessary for most File I/O operations.
+
+File.ReadAllText(path); // Reads the entire content of a file into a string.
+File.WriteAllText(path, content); // Writes a string to a file, creating or overwriting i
+ibe
+
+File.Exists(path); // Checks if a file exists at the specified path.
+
+20. Date & Time
+
+Handling dates and times is integral to many applications. C# offers rich date and time
+manipulation capabilities.
+
+DateTime current = DateTime.Now; // Gets the current date and time.
+current.AddDays(1); // Adds a day to the current date.
+current.ToShortDateString(); // Converts the date to a short date string format.
+
+21. Generics
+
+Generics allow for type-safe data structures without compromising type integrity or
+performance.
+
+C# Cheat Sheet Z T M

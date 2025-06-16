@@ -1,0 +1,159 @@
+A DataReader is a fast, low-overhead object for obtaining a forward-only, read-only
+stream of data from a data source. They cannot be created directly in code; they are
+created only by calling the ExecuteReader method of a Command.
+
+The DataAdapter is functionally the most complex object in a Data Provider. It provides
+the bridge between a Connection and a DataSet. The DataAdapter contains four
+Command objects: the SelectCommand, UpdateCommand, InsertCommand, and
+DeleteCommand. The DataAdapter uses the SelectCommand to fill a DataSet and uses
+the remaining three commands to transmit changes back to the data source, as required.
+
+Microsoft ActiveX In functional terms, the Connection and Command
+Data Objects objects are roughly equivalent to their ADO
+(ADO) counterparts (the major difference being the lack of
+
+support for server-side cursors), while the
+DataReader functions like a firehose cursor. The
+DataAdapter and DataSet have no real equivalent in
+ADO.
+
+DataSets
+
+The DataSet is a memory-resident representation of data. Its structure is shown in the
+figure below. The DataSet can be considered a somewhat simplified relational database,
+consisting of tables and their relations. It’s important to understand, however, that the
+DataSet is always disconnected from the data source—it doesn’t “know” where the data
+it contains came from, and in fact, it can contain data from multiple sources.
+
+DataTadleCollacton DataR elation Collection
+
+DataRelaticn
+
+Cokumns
+
+DataColurw |
+
+Constraints
+
+a)
+
+The DataSet is composed of two primary objects: the DataTableCollection and the
+DataRelationCollection. The DataTableCollection contains zero or more DataTable
+objects, which are in turn made up of three collections: Columns, Rows, and Constraints.
+The DataRelationCollection contains zero or more DataRelations.
+
+The DataTable’s Columns collection defines the columns that compose the DataTable.
+In addition to ColumnName and DataType properties, a DataColumn’s properties allow
+you to define such things as whether or not it allows nulls (AllowDBNull), its maximum
+length (MaxLength), and even an expression that is used to calculate its value
+(Expression).
+
+The DataTable’s Rows collection, which may be empty, contains the actual data as
+defined by the Columns collection. For each Row, the DataTable maintains its original,
+current, and proposed values. As we'll see, this ability greatly simplifies certain kinds of
+programming tasks.
+
+
+ADO The ADO.NET DataTable provides essentially the same
+functionality as the ADO Recordset object, although it obviously
+plays a very different role in the object model.
+
+The DataTable’s Constraints collection contains zero or more Constraints. Just as in a
+relational database, Constraints are used to maintain the integrity of the data. ADO.NET
+supports two types of constraints: ForeignKeyConstraints, which maintain relational
+integrity (that is, they ensure that a child row cannot be orphaned), and
+UniqueConstraints, which maintain data integrity (that is, they ensure that duplicate rows
+cannot be added to the table). In addition, the PrimaryKey property of the DataTable
+ensures entity integrity (that is, it enforces the uniqueness of each row).
+
+Finally, the DataSet’s DataRelationCollection contains zero or more DataRelations.
+DataRelations provide a simple programmatic interface for navigating from a master row
+in one table to the related rows in another. For example, given an Order, a DataRelation
+allows you to easily extract the related OrderDetails rows. (Note, however, that the
+DataRelation itself doesn’t enforce relational integrity. A Constraint is used for that.)
+
+Binding Data to a Simple Windows Form
+
+The process of connecting data to a form is called data binding. Data binding can be
+
+performed in code, but the Microsoft Visual Studio .NET designers make the process
+
+very simple. In this chapter, we’ll use the designers and the wizards to quickly create a
+
+simple data bound Windows form.
+
+Important If you have not yet installed this book’s practice files, work
+
+through “Installing and Using the Practice Files” in the
+Introduction, and then return to this chapter.
+
+Adding a Connection and DataAdapter to a Form
+Roadmap We'll examine the Connection object in Chapter 2 and the
+DataAdapter in Chapter 4.
+
+The first step in binding data is to create the Data Provider objects. Visual Studio
+provides a DataAdapter Configuration Wizard to make this process simple. Once the
+DataAdapter has been added, you can check that its configuration is correct by using the
+DataAdapter Preview window within Visual Studio.
+
+Add a Connection to a Windows Form
+1. Open the EmployeesForm project from the Visual Studio Start Page.
+2. Double-click Employees.vb (or Employees.cs if you’re using C#) in the
+Solution Explorer to open the form.
+
+Visual Studio displays the form in the form designer.
+
+ee ee
+fin Ct Yi ome Det Geb Ee Fea Tech inches lei
+
+kee
+
+3. Drag a SQLDataAdapter onto the form from the Data tab of the
+Toolbox.
+
+Visual Studio displays the first page of the DataAdapter Configuration Wizard.
+
+
+‘Date Adapter Confpguration Wizard x]
+
+Welcome to the Data Adapter
+Configuration Wizard
+
+This vazeed helps you specily the commecton and
+database commands thal the data adacter uses bo
+elect ecotds and handle changes bo lhe database
+Viou need to provide connection infomshon aud make
+decions about how pou want the database
+commands shored and executed ‘four abilily bo
+complete thir wizard may depend on the penrersions
+pou hawe in the databane
+
+(Clb, hers Be crevice
+
+Se | ee | |)
+
+4. Click Next.
+
+The DataAdapter Configuration Wizard displays a page asking you to choose
+a connection.
+
+i Date Adapter Conlegqurabon Wizard |
+
+Choose Your Data Connection
+The date adapter ell execute quenes using thi conmection to load
+and updabs data
+
+"e
+
+Choose from the if of date commectond curerty in Sereer Explorer or add a new connection
+if the one pou weart ie mot Rehed
+
+Which data conmecton should the diate adapter wee?
+
+TT <) Nem Comecton |
+
+=e | eo Pe
+
+5. Click New Connection.
+
+The Data Link Properties dialog box opens.

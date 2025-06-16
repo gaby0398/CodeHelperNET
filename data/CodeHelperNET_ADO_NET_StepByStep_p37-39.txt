@@ -1,0 +1,177 @@
+| To Do this |
+multiple types of IDbConnection. For example:
+
+Dim myConn As
+System.Data. IDbConnect
+ion Connections
+
+Open a Connection Use the Open method. For |
+example: myConn. Open
+
+Close a Connection Use the Close method. For |
+example: myConn.Close
+
+Chapter 3: Data Commands and the DataReader
+
+Overview
+
+In this chapter, you’ll learn how to:
+
+«Add a Data Command to a form
+
+"Create a Data Command at run time
+
+"Set Command properties at run time
+
+«Configure the Parameters collection in Microsoft Visual Studio .NET
+
+«Add and configure Parameters at run time
+
+"Set Parameter values
+
+=Execute a Command
+
+"Create a DataReader to return Command results
+The Connection object that we examined in Chapter 2 represents the physical
+connection to a data source; the conduit for exchanging information between an
+application and the data source. The mechanism for this exchange is the Data
+Command.
+
+Understanding Data Commands and DataReaders
+
+Essentially, an ADO.NET data command is simply a SQL command or a reference to a
+stored procedure that is executed against a Connection object. In addition to retrieving
+and updating data, the Data Command can be used to execute certain types of queries
+on the data source that do not return a result set and to execute data definition (DDL)
+commands that change the structure of the data source.
+
+When a Data Command does return a result set, a DataReader is used to retrieve the
+data. The DataReader object returns a read-only, forward-only stream of data from a
+Data Command. Because only a single row of data is in memory at a time (unlike a
+DataSet, which, as we'll see in Chapter 6, stores the entire result set), a DataReader
+requires very little overhead. The Read method of the DataReader is used to retrieve a
+row, and the GetType methods (where Type is a system data type, such as GetSiring to
+return a data string) return each column within the current row.
+
+As part of the Data Provider, Data Commands and DataReaders are specific to a data
+source. Each of the .NET Framework Data Providers implements a Command and a
+DataReader object: OleDbCommand and OleDbDataReader in the System.Data.OleDb
+namespace; and SqiCommand and SqIDataReader in the System.Data.SqlClient
+namespace.
+
+Creating Data Commands
+
+Like most of the objects that can exist at the form level, Data Commands can either be
+created and configured at design time in Visual Studio or at run time in code.
+DataReaders can be created only at run time, using the ExecuteReader method of the
+Data Command, as we'll see later in this chapter.
+
+
+Creating Data Commands in Visual Studio
+
+A Command object is created in Visual Studio just like any other control—simply drag
+the control off of the Data tab of the Toolbox and drop it on the form. Since the Data
+Command has no user interface, like most of the objects we've covered, Visual Studio
+will add the control to the Component Designer.
+
+Add a Data Command to a Form at Design Time
+
+In this exercise we'll create and name a Data Command. We'll configure its properties in
+later lessons.
+1. Open the DataCommands project from the Visual Studio start page or
+from the Project menu.
+
+7 Datalerreardh . Cerrareft Woreal Cw JT | demgn] + GebeCereresdicce (ienign) ll =)
+Ce Ce ret Beit pte pet Le tii tee
+
+SOS OG Ame Ry ey ee ‘|ae 7
+H\b 2 2 Te hl S GA eR EE PEE lie eS S.
+| an ted
+
+J
+2. Double-click DataCommands.vb (or DataCommands.cs, if you're using
+C#) in the Solution Explorer to open the form.
+
+3. Drag a SqlCommand control from the Data tab of the Toolbox to the
+form.
+
+Visual Studio adds the command to the form.
+4. Inthe Properties window, change the name of the Command to
+cmdGetEmployees.
+
+Creating Data Commands at Run Time
+Roadmap We'll discuss the version of the Command constructor that
+supports transactions in Chapter 5.
+
+
+The Data Command supports four versions of its constructor, as shown in Table 3-1. The
+New() version sets all the properties to their default values, while the other versions allow
+you to set properties of the Command object during creation. Whichever version you
+
+choose, of course, you can set or change property values after the Command is created.
+
+Table 3-1: Command Constructors
+
+Property Description
+
+New() Creates a
+new, default
+instance of
+the Data
+Command
+
+Creates a
+new Data
+Command
+with the
+CommandT
+ext set to
+the string
+specified in
+Command
+
+New(Commana)
+
+Creates a
+new Data
+Command
+with the
+CommandT
+ext set to
+the string
+specified in
+Command
+and the
+Connection
+property set
+to the
+SqlConnecti
+on specified
+in
+Connection
+
+New(Command, Connection)
+
+Creates a
+new Data
+Command
+with the
+CommandT
+ext set to
+the string
+specified in
+Command,
+the
+Connection
+property set
+to the
+Connection
+specified in
+Connection,
+and the
+Transaction
+property set
+to the
+
+New(Command, Connection, Transaction)
+

@@ -1,0 +1,175 @@
+GM Connection Properties
+
+Integrated Secunty=$SPi-Persist Secunty Info=F alsetratial Catalog=sMotheand:Data
+Sourceslocathost- Packet Size=4036wokstaton ID=BUNMY
+
+9. Close the application.
+
+Visual C# .NET
+
+1. Add the following procedure to the class module below the
+CheckChanged event handlers:
+2. private void RefreshValues()
+3. {
+4. this.txtConectionString. Text =
+this. myConnection.ConnectionString;
+this.txtDatabase. Text = this. myConnection.Database;
+this.txtTimeOut.Text =
+this. myConnection.ConnectionTimeout. ToString();
+
+on
+
+7. Add a call to the RefreshValues procedure to the end of each of the
+CheckedChanged event handlers.
+
+8. Save and run the program by pressing F5. Choose each of the
+Connections in turn to confirm that their properties are displayed in
+the text boxes.
+
+GM Connection Properties
+
+Integrated Secunty=$$Pi-Persit Secunty Info=F alsetratial Catalog=sMotheand:Data
+Sourceslocathost: Packet Size=4036 workstation ID=BUNMY
+
+9. Close the application.
+
+Using Dynamic Properties
+
+Another way to handle ConnectionString configurations is to use .NET Framework
+dynamic properties. When an application is deployed, dynamic properties are stored in
+an external configuration file, allowing them to be easily changed.
+
+
+Connection Methods
+Both the SqlConnection and OleDbConnection objects expose the same set of methods,
+as shown in Table 2-4.
+
+Table 2-4: Connection Methods
+
+Method Description
+
+BeginTransaction Begins a
+
+database
+transaction
+
+ChangeDatabase Changes
+
+the current
+database on
+an open
+Connection
+
+Close Closes the
+
+connection
+to the data
+source
+
+CreateCommand Creates and
+
+returns a
+Data
+Command
+associated
+with the
+Connection
+
+Open Establishes
+a
+connection
+to the data
+source
+
+Roadmap We'll examine transaction processing in Chapter 5.
+
+The Connection methods that you will use most often are Open and Close, which do
+exactly what you would expect them to—they open and close the connection. The
+BeginTransaction method begins transaction processing for a Connection, as we'll see in
+
+Chapter 5.
+Roadmap We'll examine Data Commands in Chapter 3.
+
+The CreateCommand method can be used to create an ADO.NET Data Command
+object. We'll examine this method in Chapter 3.
+
+Opening and Closing Connections
+The Open and Close methods are invoked automatically by the two objects that use a
+Connection, the DataAdapter and Data Command. You can also invoke them explicitly in
+code, if required.
+
+Roadmap We'll examine the DataAdapter in Chapter 4.
+
+If the Open method is invoked on a Connection by the DataAdapter or a Data Command,
+these objects will leave the Connection in the state in which they found it. If the
+Connection was open when a DataAdapter. Fill method is invoked, for example, it will
+remain open when the Fill operation is complete. On the other hand, if the Connection is
+closed when the Fill method is invoked, the DataAdapter will close it upon completion.
+
+If you invoke the Open method explicitly, the data source connection will remain open
+until it is explicitly closed. It will not be closed automatically, even if the Connection
+object goes out of scope.
+
+
+
+Important You must always explicitly invoke a Close method when you
+have finished using a Connection object, and for scalability
+and performance purposes, you should call Close as soon as
+possible after you’ve completed the operations on the
+Connection.
+
+Connection Pooling
+
+Although it’s easiest to think of Openand Close methods as discrete operations, in fact
+the .NET Framework pools connections to improve performance. The specifics of the
+connection pooling are determined by the Data Provider.
+
+The OLE DB Data Provider automatically uses OLE DB connection pooling. You have
+no programmatic control over the process. The SQL Server Data Provider uses implicit
+pooling by default, based on an exact match in the connection string, but the OLE DB
+Data Provider supports some additional keywords in the ConnectionString to control
+pooling. See online help for more details.
+
+Open and Close a Connection
+
+Visual Basic .NET
+
+1. Select the btnTest control in the Class Name combo box of the editor
+and the Click event in the Method Name combo box.
+Visual Studio adds the click event handler template.
+2. Add the following lines to the procedure to open the connection,
+display its status in a message box, and then close the connection:
+
+3. myConnection.Open()
+4. MessageBox.Show(Me.myConnection. State. ToString)
+
+myConnection.Close()
+5. Press F5 to save and run the application.
+6. Change the Connection Type, and then click the Test button.
+The application displays the Connection state.
+‘Connection Propertie: 2/5) x}
+Connection Type
+7 OleDB
+
+© SOL Server
+
+Connection Sting
+
+Integrated Secunity=5SP) Persia Secunty Indo=FalzeJlribal Calalog=Nothwaind Data
+
+Sourceshocalhodt:- Packet Size=dilS6Wokelation [D=8 UNA
+
+E x
+
+Database: [Northwind oO |
+Time Out: fis
+Refresh | Teal
+
+7. Close the application.
+
+Visual C# .NET
+
+1. Add the following procedure to the code window to open the
+connection, display its status in a message box, and then close the
+connection:
+

@@ -1,0 +1,202 @@
+Table 3-1: Command Constructors
+
+Property Description
+
+Transaction
+specified in
+Transaction
+
+Create a Command Object at Run Time
+
+Once again, we will create the Command object in this exercise and set its properties
+later in the chapter.
+
+Visual Basic .NET
+
+1. Press F7 to display the code editor window.
+2. Add the following line after the Inherits statement:
+
+Friend WithEvents cmdGetCustomers As
+System.Data.Sq|Client.SqlCommand
+This line declares the command variable. (One variable, cndGetOrders, has
+already been declared in the exercise project.)
+3. Expand the region labeled 'Windows Form Designer generated code’.
+4. Add the following line to end of the New Sub:
+
+Me.cmdGetCustomers = New System.Data.SqlClient.SqlCommand()
+
+This command instantiates the Command object using the default constructor.
+(cmdGetOrders has already been instantiated.)
+
+Visual C# .NET
+1. Press F7 to display the code editor window.
+2. Add the following line after the opening bracket of the class
+declaration:
+internal System.Data.SqlClient.SqlCommand cmdGetCustomers;
+
+This line declares the command variable.
+3. Scroll down to the frmDataCmds Sub.
+4. Add the following line to the procedure after the InitializeComponent
+call:
+
+this.cmdGetCustomers = new System.Data.SqlClient.SqlCommand();
+
+This command instantiates the Command object using the default constructor.
+(cmdGetOrders has already been declared and instantiated.)
+
+Command Properties
+
+The properties exposed by the Data Command object are shown in Table 3-2. These
+properties will only be checked for syntax errors when they are set. Final validation
+occurs only when the Command is executed by a data source.
+
+Table 3-2: Data Command Properties
+
+Property Description
+
+CommandText The SQL
+statement or
+stored
+procedure to
+execute
+
+CommandTimeout The time (in
+seconds) to
+
+
+
+Table 3-2: Data Command Properties
+
+Property Description
+
+wait fora
+response
+from the
+data source
+
+CommandType Indicates
+how the
+CommandT
+ext property
+is to be
+interpreted,
+defaults to
+Text
+
+Connection The
+Connection
+object on
+which the
+Data
+Command is
+to be
+executed
+
+Parameters The
+Parameters
+Collection
+
+Transaction The
+Transaction
+in which the
+command
+will execute
+
+Determines
+how results
+are applied
+toa
+DataRow
+when the
+Command is
+used by the
+Update
+method of a
+DataAdapter
+
+UpdatedRowSource
+
+The CommandText property, which is a string, contains either the actual text of the
+command to be executed against the connection or the name of a stored procedure in
+the data source.
+
+The CommandTimeout property determines the time that the Command will wait for a
+response from the server before it generates an error. Note that this is the wait time
+before the Command begins receiving results, not the time it takes the command to
+execute. The data source might take ten or fifteen minutes to return all the rows of a
+huge table, but provided the first row is received within the specified CommandTimeout
+period, no error will be generated.
+
+The CommandType property tells the command object how to interpret the contents of
+the CommandText property. The possible values are shown in Table 3-3. TableDirect is
+only supported by the OleDbCommand, not the SqlCommand, and is equivalent to
+SELECT * FROM <tablename>, where the <tablename> is specified in the
+CommandText property.
+
+
+
+Table 3-3: CommandType Values
+
+Property Description
+
+StoredProcedure The name of
+a stored
+procedure
+
+TableDirect A table
+name
+
+Text A SQL text
+command
+
+The Connection property contains a reference to the Connection object on which the
+Command will be executed. The Connection object must belong to the same namespace
+as the Command object, that is, a SqlCommand must contain a reference to a
+SqlConnection and an OleDbCommand must contain a reference to an
+OleDbConnection.
+
+The Command object's Parameters property contains a collection of Parameters for the
+SQL command or stored procedure specified in CommandText. We'll examine this
+collection in detail later in this exercise.
+
+Roadmap We'll examine the Transaction property in Chapter 5.
+
+The Transaction property contains a reference to a Transaction object and serves to
+enroll the Command in that transaction. We'll examine this property in detail in Chapter
+5.
+Roadmap We'll examine the DataAdapter in Chapter 4 and the
+DataRow in Chapter 7.
+The UpdatedRowSource property determines how results are applied to a DataRow
+when the Command is executed by the Update method of the DataAdapter. The possible
+
+values for the UpdatedRowSource property are shown in Table 3-4.
+Table 3-4: UpdatedRowSource Values
+
+Property Description
+
+Both Both the
+output
+parameters
+and the first
+row returned
+by the
+Command
+will be
+mapped to
+the changed
+row
+
+FirstReturnedRecord The first row
+returned by
+the
+Command
+will be
+mapped to
+the changed
+row
+
+None Any
+returned
+parameters
+or rows are
+

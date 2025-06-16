@@ -1,0 +1,116 @@
+Data Link Properties
+
+C:\Documents and Setlings\Rebecca\My Documents’ fF]
+
+Bere yoo:
+
+I Blan
+
+9. Click OK.
+Visual Studio adds the Connection to the Server Explorer.
+
+10. Right-click the Connection in the Server Explorer, click Rename from
+the context menu, and then rename the Connection Access nwind.
+
+
+erver Explorer
+2] |
+
+et ee Data Connections
+
+BBAccess nwind
+{% BUNNY. pubs.dbo
++) & BUNNY. Northwind.dbo
+=) oy Servers
+
+&)-- (Gl bunry
+
+Database References
+
+In addition to Database Connections in the Server Explorer, Visual Studio also
+supports Database References. Database References are set as part of a Database
+Project, which is a special type of project used to store SQL scripts, Data Commands,
+and Data Connections.
+
+Database References are created in the Solution Explorer (rather than the Server
+Explorer) and, unlike Database Connections defined in the Server Explorer, they are
+stored along with the project.
+
+Data connections defined through the Server Explorer become part of your Visual
+Studio environment—they will persist as you open and close projects. Database
+references, on the other hand, exist as part of a specific project and are only available
+as part of the project.
+
+Design time connections aren't automatically included in any project, but you can drag a
+design time connection from the Server Explorer to a form, and Visual Studio will create
+a pre-configured Connection object for you.
+
+
+Add an Instance of a Design Time Connection to a Form
+"Select the Access nwind Connection in the Server Explorer and drag it
+onto the Connection Properties form.
+Visual Studio adds a pre-configured OleDbConnection to the Component
+Designer.
+
+Fe Edt View Beet Bud Debog Date
+Pi ee £e elo OG» be * i *"aoa8- =
+
+Pe ComnecinanPsogention ri [Demage)* | 2 ot | Aika, apa - Corre am
+
+1 P|
+Gale, Larvae 1) peer
+a Le
+
+Fase
+i eta
+
+Pep emboe
+
+*
+i
+
+Creating a Connection at Run Time
+
+Using Visual Studio to create form-level Connections is by far the easiest method, but if
+you need a Connection that isn't attached to a form, you can create one at run time in
+code.
+
+Note You wouldn't ordinarily create a form-level Connection object in
+code because the Visual Studio designers are easier and just as
+effective.
+
+The Connection object provides two overloaded versions of its constructor, giving you
+the option of passing in the ConnectionString, as shown in Table 2-1.
+
+Table 2-1: Connection Constructors
+
+Method Description
+
+New() Creates a
+Connection
+with the
+
+ConnectionSt
+ring property
+set to an
+empty string
+
+New(ConnectionString) Creates a
+Connection
+with the
+ConnectionSt
+ring property
+specified
+
+The ConnectionString is used by the Connection object to connect to the data source.
+
+We'll explore it in detail in the next section of this chapter.
+
+Create a Connection in Code
+
+Visual Basic .NET
+
+1. Display the code for the ConnectionProperties form by pressing F7.
+2. Add the following lines after the Inherits statement:
+
+3. Friend WithEvents SqiIDbConnection1 As New _

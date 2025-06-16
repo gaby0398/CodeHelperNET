@@ -1,0 +1,218 @@
+Using the Parameters Collection
+
+There are three steps to using parameters in queries and stored procedures—you must
+specify the parameters in the query or stored procedure, you must specify the
+parameters in the Parameters collection, and finally you must set the parameter values.
+
+If you're using a stored procedure, the syntax for specifying parameters will be
+determined by the data source when the stored procedure is created. If you are using
+parameters in a SQL command specified in the CommandText property of the Command
+object, the syntax requirement is determined by the .NET Data Provider.
+
+Unfortunately, the two Data Providers supplied in the .NET Framework use different
+syntax. OleDbCommand objects use a question mark (?) as a placeholder for a
+parameter:
+
+SELECT * FROM Customers WHERE CustomerID = ?
+
+SqlDbCommand objects use named parameters, prefixed with the @ character:
+
+SELECT * FROM Customers WHERE CustomerID = @custID
+
+Having created the stored procedure or SQL command, you must then add each of the
+parameters to the Parameters collection of the Command object. Again, if you are using
+Visual Studio, it will configure the collection for you, but if you are creating or re-
+configuring the Command object at run time, you must use the Add method of the
+Parameters collection to create a Parameter object for each parameter in the query or
+stored procedure.
+
+The Parameters collection provides a number of methods for configuring the collection at
+run time. The most useful of these are shown in Table 3-5. Note that because the
+OleDbCommand doesn't support named parameters, the parameters will be substituted
+in the order they are found in the Parameters collection. Because of this, it is important
+that you configure the items in the collection correctly. (This can be a very difficult bug to
+track, and yes, that is the voice of experience.)
+
+Table 3-5: Parameters Collection Methods
+
+Property Description
+
+Add(Value) Adds a new
+parameter
+
+at the end of
+the
+collection
+with the
+specified
+Value
+
+Add(Parameter) Adds a
+Parameter
+to the end of
+the
+collection
+
+Adds a
+Parameter
+with the
+name
+specified in
+the Name
+string and
+the specified
+Value to the
+end of the
+collection
+
+Add(Name, Value)
+
+
+
+Table 3-5: Parameters Collection Methods
+
+Property
+
+Add(Name, Type)
+
+Add(Name, Type, Size)
+
+Description
+
+Adds a
+Parameter
+of the
+specified
+Type with
+the name
+specified in
+the Name
+string to the
+end of the
+collection
+
+Adds a
+Parameter
+of the
+specified
+Type and
+Size with
+the name
+specified in
+the Name
+string to the
+end of the
+collection
+
+Add(Name, Type, Size, SourceColumn)
+
+Clear
+
+Insert(Index, Value)
+
+Adds a
+Parameter
+of the
+specified
+Type and
+Size with
+the name
+specified in
+the Name
+string to the
+end of the
+collection,
+and maps it
+to the
+DataTable
+column
+specified in
+the
+SourceColu
+mn string
+
+Removes all
+Parameters
+from the
+collection
+
+Inserts a
+
+new
+Parameter
+with the
+Value
+specified at
+the position
+specified by
+
+
+Table 3-5: Parameters Collection Methods
+
+Property Description
+
+the zero-
+based Index
+into the
+collection
+
+Removes
+the
+parameter
+with the
+specified
+Value from
+the
+collection
+
+Remove(Value)
+
+Removes
+the
+parameter
+at the
+position
+specified by
+the zero-
+based Index
+into the
+collection
+
+Removes
+the
+parameter
+with the
+name
+specified by
+the Name
+string from
+the
+collection
+
+RemoveAt(Index)
+
+RemoveAt(Name)
+
+Configure the Parameters Collection in Visual Studio
+1. Inthe form designer, drag a SqliCommand object onto the form.
+Visual Studio adds a new command to the Component Designer.
+
+2. Inthe Properties window, change the new Command's name to
+cmdOrderCount.
+
+3. Inthe Properties window, expand the Existing node in the Connection
+property's drop-down list, and then click cnNorthwind.
+
+4. Select the CommandText property, and then click the ellipsis button.
+
+Visual Studio opens the Query Builder and the Add Table dialog box.
+5. Click the Views tab in the Add Table dialog box, and then click
+OrderTotals.
+6. Click Add, and then click Close.
+
+Visual Studio adds OrderTotals to the Query Builder.
+7. Change the SQL statement in the SQL pane to read as follows:
+
+8. SELECT Count(*) AS OrderCount
+9. FROM OrderTotals
+WHERE (EmployeelD = @empID) AND (CustomerID = @custID)

@@ -1,0 +1,241 @@
+System.Data.SqlClient.SqlConnection()
+
+This code creates the new Connection object using the default values.
+
+Visual C# .NET
+
+1. Display the code for the ConnectionProperties form by pressing F7.
+
+2. Add the following lines after the opening bracket of the class
+
+declaration:
+
+3. internal System.Data.SqlClient.SqlConnection
+
+SqlDbConnection1 ;
+
+This code creates the new Connection object. (For the time being, ignore the
+
+warning that the variable is never assigned to.)
+
+Using Connection Properties
+
+The significant properties of the OleDbConnection and SqlDbConnection objects are
+
+shown in Table 2-2 and Table 2-3, respectively.
+Table 2-2: OleDbConnection Properties
+
+Property
+
+ConnectionString
+
+ConnectionTimeout
+
+Meaning
+
+The string
+used to
+connect to
+the data
+source when
+the Open
+method is
+executed
+
+The
+maximum
+time the
+Connection
+object will
+continue
+attempting to
+make the
+connection
+before
+throwing an
+exception
+
+Default
+
+Empty
+15
+
+second
+s
+
+Database
+
+DataSource
+
+Provider
+
+ServerVersion
+
+The name of
+the database
+to be opened
+once a
+connection is
+opened
+
+The location
+and file
+containing
+the database
+
+The name of
+the OLE DB
+Data
+Provider
+
+The version
+of the server,
+
+Empty
+
+
+
+Table 2-2: OleDbConnection Properties
+
+Property Meaning Default
+as provided
+by the OLE
+DB Data
+Provider
+
+State A Closed
+ConnectionS
+tate value
+indicating the
+current state
+of the
+Connection
+
+Table 2-3: SqlConnection Properties
+
+The string
+used to
+connect to
+the data
+source when
+the Open
+method is
+executed
+
+ConnectionString Empty
+
+—
+o
+
+ConnectionTimeout The
+
+maximum secon
+time the ds
+Connection
+
+object will
+
+continue
+
+attempting to
+
+make the
+
+connection
+
+before
+
+throwing an
+
+exception
+
+Database The name of Empty
+the database
+to be opened
+once a
+connection is
+opened
+
+DataSource The location Empty
+and file
+containing
+the database
+
+PacketSize The size of 8192
+network bytes
+packets used
+to
+communicate
+with SQL
+Server
+
+Hy
+
+ServerVersion The version Empty
+of SQL
+Server being
+
+
+
+| | _used
+
+State A Closed
+ConnectionS
+tate value
+indicating the
+current state
+of the
+Connection
+
+WorkStation|D A string Empty
+identifying
+the database
+client, or, if
+that is not
+specified, the
+name of the
+workstation
+
+As you can see, the two versions of the Connection object expose a slightly different set
+of properties: The SqlDbConnection doesn’t have a Provider property, and the
+OleDbConnection doesn’t expose PacketSize or WorkStationID. To make matters worse,
+not all OLE DB Data Providers support all of the OleDbConnection properties, and if
+you’re working with a custom Data Provider, all bets are off.
+
+What this means in real terms is that we still can’t quite write code that is completely data
+source-independent unless we're prepared to give up the optimization of specific Data
+
+Providers. However, as we'll see, the problem isn’t as bad as it might at first seem, since
+the .NET Framework provides a number of ways to accommodate run-time configuration.
+
+Rather more tedious to deal with are the different names of the objects, but using an
+intermediate variable can minimize the impact, as we'll see later in this chapter.
+
+The ConnectionString Property
+
+The ConnectionString is the most important property of any Connection object. In fact,
+the remaining properties are read-only and set by the Connection based on the value
+provided for the ConnectionString.
+
+All ConnectionStrings have the same format. They consist of a set of keywords and
+values, with the pairs separated by semicolons, and the whole thing is delimited by either
+single or double quotes:
+
+"keyword = value;keyword = value;keyword = value"
+
+Keyword names are case-insensitive, but the values may not be, depending on the data
+source. The use of single or double quotes follows the normal rules for strings. For
+example, if the database name is Becca’s Data, then the ConnectionString must be
+delimited by double quotes: “Database=Becca’s Data’. ‘Database = Becca’s Data’ would
+cause an error.
+
+If you use the same keyword multiple times, the last instance will be used. For example,
+given the ConnectionString “database=Becca’s Data; database=Northwind’, the initial
+database will be set to Northwind. The use of multiple instances is perfectly legal; no
+syntax error will be generated.
+
+ADO Unlike ADO, the ConnectionString returned by the .NET
+Framework is the same as the user-set string, with the exception
+that the user name and password are returned only if Persist
+Security Info is set to true (it is false by default).
+

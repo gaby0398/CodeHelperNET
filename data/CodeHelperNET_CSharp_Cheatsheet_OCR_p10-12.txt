@@ -1,0 +1,125 @@
+public class MyGenericClass<T> // 'T' is a placeholder for any type.
+
+{
+private T item;
+public void UpdateItem(T newItem)
+{
+item = newItem;
+}
+}
+
+22. Nullables
+
+C# allows value types to be set to nuii using nullable types.
+
+int? nullableInt = null; // '?' makes the int nullable.
+bool hasValue = nullableInt.HasValue; // Checks if nullable type has a value.
+
+23. Attributes & Reflection
+
+Attributes provide metadata about program entities, while reflection allows introspection
+into types at runtime.
+
+[MyCustomAttribute] // Custom attribute applied to a class.
+public class MyClass
+
+{
+//...
+
+// Using reflection to get the attribute:
+Attribute[] attrs = Attribute.GetCustomAttributes(typeof(MyClass));
+
+24. Extension Methods
+
+Add new methods to existing types without altering them.
+
+public static class StringExtensions
+
+{
+public static bool IsNullOrEmpty(this string str)
+
+{
+return string.IsNullOrEmpty(str);
+
+C# Cheat Sheet Z T M
+
+
+Hint: Extension Methods are only accessible if you import (using keyword) their
+namespace. Extension Methods should primarily be used when you cannot alter the
+type you extend. For example, when extending a framework or third-party library type.
+
+25. Dependency Injection
+
+A software design pattern that facilitates loosely coupled code, improving maintainability
+and testability.
+
+public interface IService
+
+{
+void DoSomething();
+}
+public class MyService : IService
+{
+public void DoSomething( )
+{
+// Implementation here
+}
+}
+public class Consumer
+{
+private readonly IService _service;
+public Consumer(IService service)
+{
+_service = service; // Dependency injection through constructor
+}
+}
+
+//Register services to the internal dependency injection container in the Program.cs file.
+builder .Services.AddScoped<IService, MyService>();
+
+26. Partial Classes
+
+Allows the splitting of a single class definition over multiple files or sections in the same
+file.
+
+C# Cheat Sheet Z T M
+
+
+public partial class MyClass
+
+{
+
+public void MethodOne() { /*...*/ }
+}
+public partial class MyClass
+{
+
+public void MethodTwo() { /*...*/ }
+}
+
+Hint: Many .NET frameworks, such as Blazor or ASP.NET Core make use of the partial
+keyword.
+
+27. Interoperability
+
+C# allows interoperability with other languages, particularly with legacy Win32 API
+functions.
+
+using System.Runtime.InteropServices; // Required for DllImport.
+
+[DllImport("user32.d11") ]
+public static extern int MessageBox(IntPtr h, string m, string c, int type);
+
+28. Anonymous Types
+
+Allows creation of unnamed types with automatic property definition.
+
+var anon = new { Name = "John", Age = 25 }; // The type of ‘anon' is inferred at compile t
+ime.
+29. Tuples
+
+Tuples are data structures that have a specific number and sequence of elements.
+
+var person = Tuple.Create("John", 25); // Creates a tuple with two items.
+
+C# Cheat Sheet Z T M

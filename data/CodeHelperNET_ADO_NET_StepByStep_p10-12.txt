@@ -1,0 +1,89 @@
+Prowider Connection | Advanced | r1 | |
+
+Specify the following to connect to SOL Server data:
+1. Select of enter a server name:
+
+nn | Refresh |
+
+2. Enter information ta log on to the server:
+& Use Windows NT Integrated security
+C Use a specific user name and password:
+
+Ren rrsnire ———————————
+Fasayord =e
+[Blank password) JT Allow saving password
+3. Select the dalebase on the server:
+Fa
+
+Attach a database file a¢ a database name:
+
+DF
+
+Werng tine fener:
+
+6. Specify the name of your server, the appropriate logon information,
+select the Northwind database, and then click Test Connection.
+
+The DataAdapter Configuration Wizard displays a message indicating that the
+connection was successful.
+
+Microsoft Data Link |
+
+-
+
+i Test connection succeeded.
+
+If you’re unsure how to complete step 6, check with your system
+administrator.
+
+7. Click OK to close the message, click OK to close the Data Link
+Properties dialog box, and then click Next to display the next page of
+the DataAdapter Configuration Wizard.
+
+The DataAdapter Configuration Wizard displays a page requesting that you
+choose a query type.
+
+Tip
+
+
+i Date Adapter Confiquiation Wizard
+
+x
+Choose 4 Query Type _
+The date adapter user SOL dalements 1 shoeed procedures, w—
+
+8. Verify that the Use SQL statements option is selected, and then click
+Next.
+
+The DataAdapter Configuration Wizard displays a page requesting the SQL
+statement(s) to be used.
+
+i Date Adapter Configuiation Wizard
+
+Generate the SOL statements
+The Select statement val be ured to create the Insert. Update. and
+Delebe slatemerds,
+
+9. Click Query Builder.
+
+The DataAdapter Configuration Wizard opens the Query Builder and displays
+the Add Table dialog box.
+
+
+Add Table x|
+
+Tables | views | Functions |
+
+CustomerCustomerDemoa
+CustomerDemographics
+
+10. Select the Employees table, click Add, and then click Close.
+
+The Add Table dialog box closes, and the Employees table is added to the
+Query Builder.
+
+11. Add the following fields to the query by selecting the check box next to
+the field name in the top pane: EmployeelD, LastName, FirstName,
+Title, TitleOfCourtesy, HireDate, Notes.
+
+The Query Builder creates the SQL command.

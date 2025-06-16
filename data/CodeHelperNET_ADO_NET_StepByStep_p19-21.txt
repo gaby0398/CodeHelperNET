@@ -1,0 +1,117 @@
+«Respond to a Connection.StateChange event
+In the previous chapter, we took a brief tour through the ADO.NET object model. In this
+chapter, we'll begin to examine the objects in detail, starting with the lowest level object,
+the Connection.
+
+Understanding Connections
+
+Connections are responsible for handling the physical communication between a data
+
+store and a .NET application. Because the Connection object is part of a Data Provider,
+
+each Data Provider implements its own version. The two Data Providers supported by
+
+the .NET Framework implement the OleDbConnection in the System.Data.OleDB
+
+namespace and the SqlConnection in the System.Data.SqlClient namespace,
+
+respectively.
+
+Note It’s important to understand that if you’re using a Connection
+
+object implemented by another Data Provider, the details of the
+implementation may vary from those described here.
+
+The OleDbConnection, not surprisingly, uses OLE DB and can be used with any OLE DB
+provider, including Microsoft SQL Server. The SqlConnection goes directly to SQL
+Server without going through the OLE DB provider and so is more efficient.
+
+Microsoft Since ADO.NET merges the ADO object model with OLE
+ActiveX DB, it is rarely necessary to go directly to OLE DB for
+Data performance reasons. You might still need to use OLE DB
+Objects directly if you need specific functionality that isn’t exposed
+(ADO) by ADO.NET, but again, these situations are likely to be
+
+rarer than when using ADO.
+
+Creating Connections
+
+In the previous chapter, we created a Connection object by using the DataAdapter
+Configuration Wizard. The Data Form Wizard, accessed by clicking Add Windows Form
+on the Project menu, also creates a Connection automatically. In this chapter, we'll look
+at several other methods for creating Connections in Microsoft Visual Studio .NET.
+
+Design Time Connections
+
+Visual Studio's Server Explorer provides the ability, at design time, to view and maintain
+connections to a number of different system services, including event logs, message
+queues, and, most important for our purposes, data connections.
+Important If you have not yet installed this book's practice files, work
+through ‘Installing and Using the Practice Files' in the
+Introduction and then return to this chapter.
+
+Add a Design Time Connection to the Server Explorer
+1. Open the Connection project from the Visual Studio start page or from
+the Project menu.
+2. Double-click ConnectionProperties.vb (or ConnectionProperties.cs, if
+you're using C#) in the Solution Explorer to open the form.
+
+Visual Studio displays the form in the form designer.
+
+
+3. Open the Server Explorer.
+4. Click the Connect to Database button.
+
+Visual Studio displays the Data Link Properties dialog box.
+Ti You can also display the Data Link Properties dialog box by choosing
+p
+Connect to Database on the Tools menu.
+
+EH Data Link Properties
+
+5. Click the Provider tab and then select Microsoft Jet 4.0 OLE DB
+Provider.
+
+
+Provider | Connection] Advanced | All |
+Select the data you want lo commect to:
+
+DLE DB Providers)
+Microsoft Jet 3.51 OLE OB Prowider
+Microrolt Jet 4.0 ULE DB Provecer
+Microsoft OLE OB Frowide: for DTS Packages
+Microsoft OLE DOB Provider for Indexing Service
+Microsoft OLE OB Provider for Internet Publishing
+Microtoft OLE OB Provider for ODBC Onvers
+
+Microsoft OLE OB Provider for OLAP Services
+
+Microsoft OLE DB Provider for Olap Services 9.0
+Microsoft OLE OB Provides for Oracle
+
+Microsolt OLE DE Provider for SQL Server
+
+Microsoft OLE DB Simple Provider
+
+MSDataShape
+
+OLE DB Provider for Microsoft Directory Services
+
+SGL Server Repheation OLE DB Provider for DTS
+
+WSEE Versioning Enlistment Manager Proxy Datla Source
+
+Next >>
+Lock | corcet |e |
+
+6. Click Next.
+
+Visual Studio displays the Connection tab of the dialog box.
+7. Click the ellipsis button after Select or enter a database name,
+navigate to the folder containing the sample files, and then select the
+nwind sample database.
+
+Select Access Databare
+
+8. Click Open.
+Visual Studio creates a Connection string for the database.

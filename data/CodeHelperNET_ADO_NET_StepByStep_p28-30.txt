@@ -1,0 +1,189 @@
+Unfortunately, the format of the ConnectionString is the easy part. It’s determining the
+contents that can be difficult because it will always be unique to the Data Provider. You
+can always cheat (a little) by creating a design time connection using the Data Link
+Properties dialog box, and then copying the values.
+
+The ConnectionString can only be set when the Connection is closed. When it is set, the
+Connection object will check the syntax of the string and then set the remaining
+properties (which, you’ll remember, are read-only). The ConnectionString is fully
+validated when the Connection is opened. If the Connection detects an invalid or
+unsupported property, it will generate an exception (either an OleDbException or a
+SqIDbException, depending on the object being used).
+
+Setting a ConnectionString Property
+
+In this exercise, we'll set the ConnectionString for the SqiDbConnection that we created
+in the previous exercise. The ConnectionString that your system requires will be different
+from the one in my installation. (| have SQL Server installed locally, and my machine
+name is BUNNY, for example.)
+
+Fortunately, the DataAdapter Configuration Wizard in Chapter 1 created a design time
+Connection for you. If you select that connection in the Server Explorer, you can see the
+values in the Properties window. In fact, you can copy and paste the entire
+ConnectionString from the Properties window if you want. (If you didn’t do the exercise in
+Chapter 1, you can create a design time connection by using the technique described in
+the Add a Design Time Connection exercise in this chapter.)
+
+Set a ConnectionString Property
+
+Visual Basic .NET
+
+1. Expand the region labeled “Windows Form Designer generated code”
+and navigate to the New Sub.
+
+2. Add the following line to the procedure after the InitializeComponent
+call, filling in the ConnectionString values required for your
+implementation:
+
+3. Me.SqlDbConnection1.ConnectionString = "<<add your
+ConnectionString here>>"
+
+Visual C# .NET
+
+1. Scroll down to the ConnectionProperties Sub.
+
+2. Add the following lines to the procedure after the InitializeComponent
+call, filling in the ConnectionString values required for your
+implementation:
+
+3. this.SqlIDbConnection1 = new
+
+4. System.Data.SqlClient.SqiConnection();
+
+5. this.SqlIDbConnection1.ConnectionString =
+"<<add your ConnectionString here>>";
+
+Using Other Connection Properties
+
+With the Connection objects in place, we can now add the code to display the
+Connection properties on the sample form. But first, we need to use a little bit of object-
+oriented sleight of hand in order to accommodate the two different types of objects.
+One method would be to write conditional code. In Visual Basic, this would look like:
+If Me.rbOleChecked then
+Me.txtConnectionString. Text = Me.OleDbConnection1 .ConnectionString
+Me.txtDatabase.Text = Me.OleDbConnection1.Database.String
+
+
+Me.txtTimeOut. Text = Me.OleDbConnection1.ConnectionTimeout
+
+Else
+Me.txtConnectionString. Text = Me.SqlDbConnection1.ConnectionString
+Me.txtDatabase. Text = Me.SqlIDbConnection1.Database.String
+Me.txtTimeOut. Text = Me.SqlDbConnection1.ConnectionTimeout
+
+End If
+
+Another option would be to use compiler constants to conditionally compile code. Again,
+in Visual Basic:
+
+#Const SqlVersion
+
+#If SqlVersion Then
+Me.txtConnectionString. Text = Me. OleDbConnection1.ConnectionString
+Me.txtDatabase. Text = Me.OleDbConnection1.Database. String
+Me.txtTimeOut. Text = Me.OleDbConnection1.ConnectionTimeout
+
+#Else
+Me.txtConnectionString. Text = Me.SqlDbConnection1.ConnectionString
+Me.txtDatabase. Text = Me.SqiIDbConnection1.Database.String
+Me.txtTimeOut. Text = Me.SqlDbConnection1.ConnectionTimeout
+
+#End If
+
+But either option requires a lot of typing, in a lot of places, and can become a
+maintenance nightmare. If you only need to access the ConnectionString, Database, and
+TimeOut properties (and these are the most common), there’s an easier way.
+
+Connection objects, no matter the Data Provider to which they belong, must implement
+the IDbConnection interface, so by declaring a variable as an IDbConnection, we can
+use it as an intermediary to access a few of the shared properties.
+
+Create an Intermediary Variable
+
+Visual Basic .NET
+
+1. Declare the variable by adding the following line of code at the
+beginning of the class module, under the Connection declarations
+we added previously:
+
+Dim myConnection As System.Data.IDoConnection
+
+2. Add procedures to set the value of the myConnection variable when
+the user changes their choice in the Connection Type group box. Do
+that by using the CheckedChanged event of the two Radio Buttons.
+
+Select the roOleDB control in the Class Name box of the editor and the
+CheckedChanged event in the Method Name box.
+
+Visual Studio adds the CheckedChanged event handler template to the class.
+3. Add the following assignment statement to the procedure:
+
+myConnection = Me.OleDbConnection1
+4. Repeat steps 2 and 3 for the rbSql radio button, substituting the
+SqlDbConnection object:
+
+5. myConnection = Me.SqlDoConnection1
+
+
+Visual C# .NET
+
+1. Declare the variable by adding the following line of code at the
+beginning of the class module, under the Connection declaration we
+added previously:
+
+private System.Data.|IDbConnection myConnection;
+
+2. Add procedures to set the value of the myConnection variable when
+the user changes their choice in the Connection Type group box. Do
+that by using the CheckedChanged event of the two radio buttons.
+
+Add the following event handlers to the code window below the Dispose
+procedure:
+private void roOleDB_CheckChanged(object sender, EventArgs e)
+
+{
+
+myConnection = this.oleDbConnection1;
+
+private void roSQL_CheckChanged (object sender, EventArgs e)
+{
+
+myConnection = this.SqlDoConnection1 ;
+
+}
+
+3. Connect the event handlers to the actual radio button events. Add the
+following code to the end of the ConnectionProperties sub:
+
+4. this.roOleDB.CheckedChanged += new
+
+5. EventHandler(this.roOleDB_CheckChanged);
+
+6. this.roSQL.CheckedChanged += new
+EventHandler(this.roSQL_CheckChanged);
+
+Binding Connection Properties to Form Controls
+
+Now that we have the intermediary variable in place, we can add the code to display the
+Connection (or rather, the IDbConnection properties) in the control:
+
+Bind Connection Properties to Form Controls
+
+Visual Basic .NET
+
+1. Add the following procedure to the class module:
+2. Private Sub RefreshValues()
+3. Me.txtConnectionString. Text =
+
+Me.myConnection.ConnectionString
+
+4. Me.txtDatabase.Text = Me.myConnection.Database
+5. Me.txtTimeOut. Text = Me.myConnection.ConnectionTimeout
+6. End Sub
+
+7. Add a call to the RefreshValues procedure to the end of each of the
+CheckedChanged event handlers.
+
+8. Save and run the program by pressing F5. Choose each of the
+Connections in turn to confirm that their properties are displayed in
+the text boxes.
