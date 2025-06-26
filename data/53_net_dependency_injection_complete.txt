@@ -1,0 +1,559 @@
+# Inyección de Dependencias Completa en .NET
+
+## Introducción
+La Inyección de Dependencias (DI) es un patrón fundamental en .NET que permite crear aplicaciones desacopladas, testeables y mantenibles. .NET proporciona un contenedor de DI nativo y potente.
+
+## Conceptos Fundamentales
+
+### ¿Qué es la Inyección de Dependencias?
+La inyección de dependencias es un patrón de diseño que permite que una clase reciba sus dependencias desde el exterior en lugar de crearlas internamente.
+
+### Ventajas
+- **Desacoplamiento**: Las clases no dependen de implementaciones concretas
+- **Testabilidad**: Fácil mockeo de dependencias para testing
+- **Flexibilidad**: Cambio de implementaciones sin modificar código
+- **Mantenibilidad**: Código más limpio y organizado
+
+## Configuración Básica
+
+### Program.cs
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Registrar servicios
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
+
+// Registrar servicios singleton
+builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+
+// Registrar servicios transient
+builder.Services.AddTransient<ILogger, Logger>();
+
+var app = builder.Build();
+```
+
+### Clases de Servicio
+```csharp
+public interface IEmailService
+{
+    Task SendEmailAsync(string to, string subject, string body);
+}
+
+public class EmailService : IEmailService
+{
+    private readonly ILogger<EmailService> _logger;
+    private readonly IConfiguration _configuration;
+    
+    public EmailService(ILogger<EmailService> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _configuration = configuration;
+    }
+    
+    public async Task SendEmailAsync(string to, string subject, string body)
+    {
+        _logger.LogInformation("Sending email to {To}", to);
+        // Implementación del envío de email
+        await Task.CompletedTask;
+    }
+}
+```
+
+## Ciclos de Vida de Servicios
+
+### Singleton
+```csharp
+// Una sola instancia para toda la aplicación
+builder.Services.AddSingleton<ICacheService, CacheService>();
+
+public class CacheService : ICacheService
+{
+    private readonly Dictionary<string, object> _cache = new();
+    
+    public void Set(string key, object value)
+    {
+        _cache[key] = value;
+    }
+    
+    public object Get(string key)
+    {
+        return _cache.TryGetValue(key, out var value) ? value : null;
+    }
+}
+```
+
+### Scoped
+```csharp
+// Una instancia por request HTTP
+builder.Services.AddScoped<IUserService, UserService>();
+
+public class UserService : IUserService
+{
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<UserService> _logger;
+    
+    public UserService(IUserRepository userRepository, ILogger<UserService> logger)
+    {
+        _userRepository = userRepository;
+        _logger = logger;
+    }
+    
+    public async Task<User> GetUserAsync(int id)
+    {
+        _logger.LogInformation("Getting user {Id}", id);
+        return await _userRepository.GetByIdAsync(id);
+    }
+}
+```
+
+### Transient
+```csharp
+// Nueva instancia cada vez que se solicita
+builder.Services.AddTransient<IValidator, Validator>();
+
+public class Validator : IValidator
+{
+    private readonly Guid _instanceId = Guid.NewGuid();
+    
+    public bool Validate(string input)
+    {
+        Console.WriteLine($"Validator {_instanceId} validating: {input}");
+        return !string.IsNullOrEmpty(input);
+    }
+}
+```
+
+## Patrones de Inyección
+
+### Constructor Injection
+```csharp
+public class ProductController : ControllerBase
+{
+    private readonly IProductService _productService;
+    private readonly ILogger<ProductController> _logger;
+    
+    public ProductController(IProductService productService, ILogger<ProductController> logger)
+    {
+        _productService = productService;
+        _logger = logger;
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetProducts()
+    {
+        var products = await _productService.GetAllAsync();
+        return Ok(products);
+    }
+}
+```
+
+### Property Injection
+```csharp
+public class NotificationService
+{
+    [Inject]
+    public IEmailService EmailService { get; set; }
+    
+    [Inject]
+    public ISmsService SmsService { get; set; }
+    
+    public async Task SendNotificationAsync(string message)
+    {
+        await EmailService.SendEmailAsync("user@example.com", "Notification", message);
+        await SmsService.SendSmsAsync("+1234567890", message);
+    }
+}
+```
+
+### Method Injection
+```csharp
+public class ReportGenerator
+{
+    public async Task<Report> GenerateReportAsync(
+        IDataProvider dataProvider,
+        IReportFormatter formatter)
+    {
+        var data = await dataProvider.GetDataAsync();
+        return formatter.Format(data);
+    }
+}
+```
+
+## Configuración Avanzada
+
+### Factory Pattern
+```csharp
+builder.Services.AddScoped<IEmailService>(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var emailProvider = configuration["Email:Provider"];
+    
+    return emailProvider switch
+    {
+        "SendGrid" => new SendGridEmailService(configuration),
+        "SMTP" => new SmtpEmailService(configuration),
+        _ => throw new ArgumentException($"Unknown email provider: {emailProvider}")
+    };
+});
+```
+
+### Conditional Registration
+```csharp
+var environment = builder.Environment;
+
+if (environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IEmailService, MockEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+}
+```
+
+### Options Pattern
+```csharp
+// Configurar opciones
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+
+// Registrar servicio que usa opciones
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+public class EmailSettings
+{
+    public string SmtpServer { get; set; }
+    public int Port { get; set; }
+    public string Username { get; set; }
+    public string Password { get; set; }
+}
+
+public class EmailService : IEmailService
+{
+    private readonly EmailSettings _settings;
+    
+    public EmailService(IOptions<EmailSettings> settings)
+    {
+        _settings = settings.Value;
+    }
+    
+    public async Task SendEmailAsync(string to, string subject, string body)
+    {
+        // Usar _settings.SmtpServer, _settings.Port, etc.
+    }
+}
+```
+
+## Patrones de Diseño con DI
+
+### Repository Pattern
+```csharp
+public interface IRepository<T> where T : class
+{
+    Task<T> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+}
+
+public class Repository<T> : IRepository<T> where T : class
+{
+    private readonly ApplicationDbContext _context;
+    
+    public Repository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<T> GetByIdAsync(int id)
+    {
+        return await _context.Set<T>().FindAsync(id);
+    }
+    
+    // Implementación de otros métodos...
+}
+
+// Registro
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+```
+
+### Unit of Work Pattern
+```csharp
+public interface IUnitOfWork : IDisposable
+{
+    IRepository<Product> Products { get; }
+    IRepository<Category> Categories { get; }
+    Task<int> SaveChangesAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IRepository<Product> _products;
+    private readonly IRepository<Category> _categories;
+    
+    public UnitOfWork(ApplicationDbContext context)
+    {
+        _context = context;
+        _products = new Repository<Product>(context);
+        _categories = new Repository<Category>(context);
+    }
+    
+    public IRepository<Product> Products => _products;
+    public IRepository<Category> Categories => _categories;
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+    
+    public void Dispose()
+    {
+        _context?.Dispose();
+    }
+}
+```
+
+### Service Layer Pattern
+```csharp
+public interface IProductService
+{
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task<Product> GetByIdAsync(int id);
+    Task<Product> CreateAsync(Product product);
+    Task UpdateAsync(Product product);
+    Task DeleteAsync(int id);
+}
+
+public class ProductService : IProductService
+{
+    private readonly IRepository<Product> _productRepository;
+    private readonly ILogger<ProductService> _logger;
+    private readonly IEmailService _emailService;
+    
+    public ProductService(
+        IRepository<Product> productRepository,
+        ILogger<ProductService> logger,
+        IEmailService emailService)
+    {
+        _productRepository = productRepository;
+        _logger = logger;
+        _emailService = emailService;
+    }
+    
+    public async Task<Product> CreateAsync(Product product)
+    {
+        _logger.LogInformation("Creating product: {ProductName}", product.Name);
+        
+        var createdProduct = await _productRepository.AddAsync(product);
+        
+        // Notificar administradores
+        await _emailService.SendEmailAsync(
+            "admin@example.com",
+            "New Product Created",
+            $"Product {product.Name} has been created.");
+        
+        return createdProduct;
+    }
+    
+    // Implementación de otros métodos...
+}
+```
+
+## Testing con DI
+
+### Unit Testing
+```csharp
+[Test]
+public async Task CreateProduct_ShouldSendEmailNotification()
+{
+    // Arrange
+    var mockRepository = new Mock<IRepository<Product>>();
+    var mockLogger = new Mock<ILogger<ProductService>>();
+    var mockEmailService = new Mock<IEmailService>();
+    
+    var productService = new ProductService(
+        mockRepository.Object,
+        mockLogger.Object,
+        mockEmailService.Object);
+    
+    var product = new Product { Name = "Test Product", Price = 99.99m };
+    
+    mockRepository.Setup(r => r.AddAsync(It.IsAny<Product>()))
+        .ReturnsAsync(product);
+    
+    // Act
+    await productService.CreateAsync(product);
+    
+    // Assert
+    mockEmailService.Verify(e => e.SendEmailAsync(
+        "admin@example.com",
+        "New Product Created",
+        It.IsAny<string>()), Times.Once);
+}
+```
+
+### Integration Testing
+```csharp
+public class ProductControllerTests
+{
+    private readonly TestServer _server;
+    private readonly HttpClient _client;
+    
+    public ProductControllerTests()
+    {
+        var builder = new WebHostBuilder()
+            .UseStartup<TestStartup>();
+        
+        _server = new TestServer(builder);
+        _client = _server.CreateClient();
+    }
+    
+    [Test]
+    public async Task GetProducts_ShouldReturnProducts()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/products");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var products = await response.Content.ReadFromJsonAsync<List<Product>>();
+        Assert.IsNotNull(products);
+    }
+}
+
+public class TestStartup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddControllers();
+        
+        // Mock services for testing
+        services.AddScoped<IProductService, MockProductService>();
+        services.AddScoped<IEmailService, MockEmailService>();
+    }
+    
+    public void Configure(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+        });
+    }
+}
+```
+
+## Configuración en appsettings.json
+
+```json
+{
+  "Email": {
+    "Provider": "SendGrid",
+    "SmtpServer": "smtp.sendgrid.net",
+    "Port": 587,
+    "Username": "apikey",
+    "Password": "your-api-key"
+  },
+  "Database": {
+    "ConnectionString": "Server=localhost;Database=MyDb;Trusted_Connection=true;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}
+```
+
+## Mejores Prácticas
+
+### Naming Conventions
+```csharp
+// Interfaces con prefijo I
+public interface IUserService { }
+public interface IEmailService { }
+
+// Implementaciones sin prefijo
+public class UserService : IUserService { }
+public class EmailService : IEmailService { }
+```
+
+### Service Registration
+```csharp
+// Agrupar registros relacionados
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IOrderService, OrderService>();
+        
+        return services;
+    }
+    
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IFileService, FileService>();
+        
+        return services;
+    }
+}
+
+// Program.cs
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
+```
+
+### Lazy Loading
+```csharp
+public class LazyService
+{
+    private readonly Lazy<IExpensiveService> _expensiveService;
+    
+    public LazyService(Lazy<IExpensiveService> expensiveService)
+    {
+        _expensiveService = expensiveService;
+    }
+    
+    public void DoWork()
+    {
+        // El servicio solo se crea cuando se accede por primera vez
+        _expensiveService.Value.Process();
+    }
+}
+
+// Registro
+builder.Services.AddScoped<IExpensiveService, ExpensiveService>();
+builder.Services.AddScoped<LazyService>();
+```
+
+## Conclusión
+
+La inyección de dependencias en .NET proporciona:
+
+**Ventajas Principales:**
+- **Desacoplamiento**: Código más modular y mantenible
+- **Testabilidad**: Fácil testing con mocks
+- **Flexibilidad**: Cambio de implementaciones sin modificar código
+- **Performance**: Optimización de creación de objetos
+- **Configuración centralizada**: Gestión de dependencias en un lugar
+- **Patrones establecidos**: Repository, Unit of Work, Service Layer
+- **Integración nativa**: Con ASP.NET Core y Entity Framework
+
+**Casos de Uso:**
+- **Aplicaciones web**: Controllers, Services, Repositories
+- **APIs**: Dependency injection en endpoints
+- **Testing**: Mocking de dependencias
+- **Microservicios**: Gestión de dependencias entre servicios
+- **Aplicaciones de consola**: Configuración de servicios 

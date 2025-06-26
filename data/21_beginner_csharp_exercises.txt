@@ -1,0 +1,600 @@
+# Ejercicios Prácticos de C# para Principiantes
+
+## Introducción a los Ejercicios Básicos
+
+Esta guía contiene ejercicios prácticos diseñados para principiantes en C#. Los ejercicios están organizados por nivel de dificultad y cubren los conceptos fundamentales del lenguaje.
+
+### Ejercicios de Variables y Tipos de Datos
+
+#### Ejercicio 1: Calculadora Simple
+**Objetivo**: Practicar el uso de variables, entrada de usuario y operaciones básicas.
+
+```csharp
+// Crear un programa que solicite dos números al usuario y muestre:
+// - La suma
+// - La resta
+// - La multiplicación
+// - La división
+// - El resto de la división
+
+Console.WriteLine("Calculadora Simple");
+Console.WriteLine("==================");
+
+Console.Write("Ingrese el primer número: ");
+double numero1 = Convert.ToDouble(Console.ReadLine());
+
+Console.Write("Ingrese el segundo número: ");
+double numero2 = Convert.ToDouble(Console.ReadLine());
+
+Console.WriteLine($"\nResultados:");
+Console.WriteLine($"Suma: {numero1 + numero2}");
+Console.WriteLine($"Resta: {numero1 - numero2}");
+Console.WriteLine($"Multiplicación: {numero1 * numero2}");
+Console.WriteLine($"División: {numero1 / numero2}");
+Console.WriteLine($"Resto: {numero1 % numero2}");
+```
+
+#### Ejercicio 2: Conversión de Temperatura
+**Objetivo**: Practicar conversiones de tipos y fórmulas matemáticas.
+
+```csharp
+// Crear un programa que convierta temperaturas entre Celsius y Fahrenheit
+// Fórmula: F = (C * 9/5) + 32
+
+Console.WriteLine("Conversor de Temperatura");
+Console.WriteLine("========================");
+
+Console.Write("Ingrese la temperatura en Celsius: ");
+double celsius = Convert.ToDouble(Console.ReadLine());
+
+double fahrenheit = (celsius * 9.0 / 5.0) + 32;
+
+Console.WriteLine($"{celsius}°C equivale a {fahrenheit}°F");
+```
+
+#### Ejercicio 3: Calculadora de Área y Perímetro
+**Objetivo**: Practicar el uso de constantes y cálculos geométricos.
+
+```csharp
+// Crear un programa que calcule el área y perímetro de un círculo
+// Fórmulas: A = π * r², P = 2 * π * r
+
+const double PI = 3.14159;
+
+Console.WriteLine("Calculadora de Círculo");
+Console.WriteLine("======================");
+
+Console.Write("Ingrese el radio del círculo: ");
+double radio = Convert.ToDouble(Console.ReadLine());
+
+double area = PI * radio * radio;
+double perimetro = 2 * PI * radio;
+
+Console.WriteLine($"\nResultados:");
+Console.WriteLine($"Área: {area:F2}");
+Console.WriteLine($"Perímetro: {perimetro:F2}");
+```
+
+### Ejercicios de Control de Flujo
+
+#### Ejercicio 4: Verificador de Edad
+**Objetivo**: Practicar el uso de condicionales if-else.
+
+```csharp
+// Crear un programa que determine si una persona es mayor de edad
+// y muestre diferentes mensajes según la edad
+
+Console.WriteLine("Verificador de Edad");
+Console.WriteLine("===================");
+
+Console.Write("Ingrese su edad: ");
+int edad = Convert.ToInt32(Console.ReadLine());
+
+if (edad >= 18)
+{
+    Console.WriteLine("Eres mayor de edad.");
+    
+    if (edad >= 65)
+    {
+        Console.WriteLine("Eres una persona de la tercera edad.");
+    }
+    else if (edad >= 30)
+    {
+        Console.WriteLine("Eres un adulto.");
+    }
+    else
+    {
+        Console.WriteLine("Eres un adulto joven.");
+    }
+}
+else
+{
+    int añosFaltantes = 18 - edad;
+    Console.WriteLine($"Eres menor de edad. Te faltan {añosFaltantes} años para ser mayor de edad.");
+}
+```
+
+#### Ejercicio 5: Calculadora de Notas
+**Objetivo**: Practicar el uso de switch-case.
+
+```csharp
+// Crear un programa que convierta calificaciones numéricas a letras
+// 90-100: A, 80-89: B, 70-79: C, 60-69: D, 0-59: F
+
+Console.WriteLine("Calculadora de Notas");
+Console.WriteLine("====================");
+
+Console.Write("Ingrese la calificación numérica (0-100): ");
+int calificacion = Convert.ToInt32(Console.ReadLine());
+
+string notaLetra;
+
+if (calificacion >= 90 && calificacion <= 100)
+{
+    notaLetra = "A";
+}
+else if (calificacion >= 80 && calificacion <= 89)
+{
+    notaLetra = "B";
+}
+else if (calificacion >= 70 && calificacion <= 79)
+{
+    notaLetra = "C";
+}
+else if (calificacion >= 60 && calificacion <= 69)
+{
+    notaLetra = "D";
+}
+else if (calificacion >= 0 && calificacion <= 59)
+{
+    notaLetra = "F";
+}
+else
+{
+    notaLetra = "Inválida";
+}
+
+Console.WriteLine($"Calificación en letra: {notaLetra}");
+```
+
+#### Ejercicio 6: Generador de Tabla de Multiplicar
+**Objetivo**: Practicar el uso de bucles for.
+
+```csharp
+// Crear un programa que genere la tabla de multiplicar de un número
+
+Console.WriteLine("Generador de Tabla de Multiplicar");
+Console.WriteLine("=================================");
+
+Console.Write("Ingrese un número para generar su tabla: ");
+int numero = Convert.ToInt32(Console.ReadLine());
+
+Console.WriteLine($"\nTabla de multiplicar del {numero}:");
+Console.WriteLine("=====================================");
+
+for (int i = 1; i <= 10; i++)
+{
+    int resultado = numero * i;
+    Console.WriteLine($"{numero} x {i} = {resultado}");
+}
+```
+
+### Ejercicios de Arrays y Colecciones
+
+#### Ejercicio 7: Calculadora de Promedio
+**Objetivo**: Practicar el uso de arrays y bucles.
+
+```csharp
+// Crear un programa que calcule el promedio de un conjunto de números
+
+Console.WriteLine("Calculadora de Promedio");
+Console.WriteLine("=======================");
+
+Console.Write("¿Cuántos números desea ingresar? ");
+int cantidad = Convert.ToInt32(Console.ReadLine());
+
+double[] numeros = new double[cantidad];
+double suma = 0;
+
+// Ingresar números
+for (int i = 0; i < cantidad; i++)
+{
+    Console.Write($"Ingrese el número {i + 1}: ");
+    numeros[i] = Convert.ToDouble(Console.ReadLine());
+    suma += numeros[i];
+}
+
+double promedio = suma / cantidad;
+
+Console.WriteLine($"\nNúmeros ingresados:");
+for (int i = 0; i < cantidad; i++)
+{
+    Console.Write($"{numeros[i]} ");
+}
+
+Console.WriteLine($"\n\nSuma total: {suma}");
+Console.WriteLine($"Promedio: {promedio:F2}");
+```
+
+#### Ejercicio 8: Buscador de Números
+**Objetivo**: Practicar búsqueda en arrays.
+
+```csharp
+// Crear un programa que busque un número en un array y muestre su posición
+
+Console.WriteLine("Buscador de Números");
+Console.WriteLine("===================");
+
+int[] numeros = { 10, 25, 8, 42, 15, 30, 7, 18, 33, 12 };
+
+Console.WriteLine("Array de números:");
+for (int i = 0; i < numeros.Length; i++)
+{
+    Console.Write($"{numeros[i]} ");
+}
+
+Console.Write("\n\nIngrese el número a buscar: ");
+int numeroBuscado = Convert.ToInt32(Console.ReadLine());
+
+bool encontrado = false;
+int posicion = -1;
+
+for (int i = 0; i < numeros.Length; i++)
+{
+    if (numeros[i] == numeroBuscado)
+    {
+        encontrado = true;
+        posicion = i;
+        break;
+    }
+}
+
+if (encontrado)
+{
+    Console.WriteLine($"El número {numeroBuscado} se encontró en la posición {posicion}.");
+}
+else
+{
+    Console.WriteLine($"El número {numeroBuscado} no se encontró en el array.");
+}
+```
+
+### Ejercicios de Métodos
+
+#### Ejercicio 9: Calculadora con Métodos
+**Objetivo**: Practicar la creación y uso de métodos.
+
+```csharp
+class Calculadora
+{
+    public static double Sumar(double a, double b)
+    {
+        return a + b;
+    }
+    
+    public static double Restar(double a, double b)
+    {
+        return a - b;
+    }
+    
+    public static double Multiplicar(double a, double b)
+    {
+        return a * b;
+    }
+    
+    public static double Dividir(double a, double b)
+    {
+        if (b == 0)
+        {
+            Console.WriteLine("Error: No se puede dividir por cero.");
+            return 0;
+        }
+        return a / b;
+    }
+    
+    public static void MostrarMenu()
+    {
+        Console.WriteLine("\nCalculadora con Métodos");
+        Console.WriteLine("=======================");
+        Console.WriteLine("1. Sumar");
+        Console.WriteLine("2. Restar");
+        Console.WriteLine("3. Multiplicar");
+        Console.WriteLine("4. Dividir");
+        Console.WriteLine("5. Salir");
+        Console.Write("Seleccione una opción: ");
+    }
+}
+
+// Programa principal
+while (true)
+{
+    Calculadora.MostrarMenu();
+    int opcion = Convert.ToInt32(Console.ReadLine());
+    
+    if (opcion == 5)
+    {
+        Console.WriteLine("¡Hasta luego!");
+        break;
+    }
+    
+    Console.Write("Ingrese el primer número: ");
+    double num1 = Convert.ToDouble(Console.ReadLine());
+    
+    Console.Write("Ingrese el segundo número: ");
+    double num2 = Convert.ToDouble(Console.ReadLine());
+    
+    double resultado = 0;
+    
+    switch (opcion)
+    {
+        case 1:
+            resultado = Calculadora.Sumar(num1, num2);
+            Console.WriteLine($"Resultado: {resultado}");
+            break;
+        case 2:
+            resultado = Calculadora.Restar(num1, num2);
+            Console.WriteLine($"Resultado: {resultado}");
+            break;
+        case 3:
+            resultado = Calculadora.Multiplicar(num1, num2);
+            Console.WriteLine($"Resultado: {resultado}");
+            break;
+        case 4:
+            resultado = Calculadora.Dividir(num1, num2);
+            if (num2 != 0)
+            {
+                Console.WriteLine($"Resultado: {resultado}");
+            }
+            break;
+        default:
+            Console.WriteLine("Opción inválida.");
+            break;
+    }
+}
+```
+
+#### Ejercicio 10: Validador de Contraseña
+**Objetivo**: Practicar métodos con validaciones complejas.
+
+```csharp
+class ValidadorContraseña
+{
+    public static bool ValidarLongitud(string contraseña)
+    {
+        return contraseña.Length >= 8;
+    }
+    
+    public static bool ValidarMayuscula(string contraseña)
+    {
+        return contraseña.Any(char.IsUpper);
+    }
+    
+    public static bool ValidarMinuscula(string contraseña)
+    {
+        return contraseña.Any(char.IsLower);
+    }
+    
+    public static bool ValidarNumero(string contraseña)
+    {
+        return contraseña.Any(char.IsDigit);
+    }
+    
+    public static bool ValidarCaracterEspecial(string contraseña)
+    {
+        return contraseña.Any(c => !char.IsLetterOrDigit(c));
+    }
+    
+    public static void ValidarContraseña(string contraseña)
+    {
+        Console.WriteLine("Validación de Contraseña");
+        Console.WriteLine("========================");
+        
+        bool longitudValida = ValidarLongitud(contraseña);
+        bool mayusculaValida = ValidarMayuscula(contraseña);
+        bool minusculaValida = ValidarMinuscula(contraseña);
+        bool numeroValido = ValidarNumero(contraseña);
+        bool caracterValido = ValidarCaracterEspecial(contraseña);
+        
+        Console.WriteLine($"Longitud mínima (8 caracteres): {(longitudValida ? "✓" : "✗")}");
+        Console.WriteLine($"Contiene mayúscula: {(mayusculaValida ? "✓" : "✗")}");
+        Console.WriteLine($"Contiene minúscula: {(minusculaValida ? "✓" : "✗")}");
+        Console.WriteLine($"Contiene número: {(numeroValido ? "✓" : "✗")}");
+        Console.WriteLine($"Contiene carácter especial: {(caracterValido ? "✓" : "✗")}");
+        
+        bool contraseñaValida = longitudValida && mayusculaValida && 
+                               minusculaValida && numeroValido && caracterValido;
+        
+        Console.WriteLine($"\nContraseña válida: {(contraseñaValida ? "SÍ" : "NO")}");
+    }
+}
+
+// Programa principal
+Console.Write("Ingrese una contraseña: ");
+string contraseña = Console.ReadLine();
+
+ValidadorContraseña.ValidarContraseña(contraseña);
+```
+
+### Ejercicios de Clases y Objetos
+
+#### Ejercicio 11: Clase Estudiante
+**Objetivo**: Practicar la creación de clases y objetos.
+
+```csharp
+class Estudiante
+{
+    // Propiedades
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    public string Carrera { get; set; }
+    public double Promedio { get; set; }
+    
+    // Constructor
+    public Estudiante(string nombre, int edad, string carrera)
+    {
+        Nombre = nombre;
+        Edad = edad;
+        Carrera = carrera;
+        Promedio = 0.0;
+    }
+    
+    // Métodos
+    public void AgregarCalificacion(double calificacion)
+    {
+        // Simulación simple: actualizar promedio
+        Promedio = (Promedio + calificacion) / 2;
+    }
+    
+    public string ObtenerEstado()
+    {
+        if (Promedio >= 7.0)
+        {
+            return "Aprobado";
+        }
+        else if (Promedio >= 5.0)
+        {
+            return "Regular";
+        }
+        else
+        {
+            return "Reprobado";
+        }
+    }
+    
+    public void MostrarInformacion()
+    {
+        Console.WriteLine($"Nombre: {Nombre}");
+        Console.WriteLine($"Edad: {Edad}");
+        Console.WriteLine($"Carrera: {Carrera}");
+        Console.WriteLine($"Promedio: {Promedio:F2}");
+        Console.WriteLine($"Estado: {ObtenerEstado()}");
+    }
+}
+
+// Programa principal
+Console.WriteLine("Gestión de Estudiantes");
+Console.WriteLine("======================");
+
+Estudiante estudiante1 = new Estudiante("Juan Pérez", 20, "Ingeniería Informática");
+estudiante1.AgregarCalificacion(8.5);
+estudiante1.AgregarCalificacion(7.8);
+
+Estudiante estudiante2 = new Estudiante("María García", 19, "Medicina");
+estudiante2.AgregarCalificacion(9.2);
+estudiante2.AgregarCalificacion(8.9);
+
+Console.WriteLine("Estudiante 1:");
+estudiante1.MostrarInformacion();
+
+Console.WriteLine("\nEstudiante 2:");
+estudiante2.MostrarInformacion();
+```
+
+#### Ejercicio 12: Clase Banco
+**Objetivo**: Practicar encapsulación y métodos más complejos.
+
+```csharp
+class CuentaBancaria
+{
+    // Propiedades privadas
+    private string numeroCuenta;
+    private string titular;
+    private double saldo;
+    private List<string> historial;
+    
+    // Propiedades públicas
+    public string NumeroCuenta => numeroCuenta;
+    public string Titular => titular;
+    public double Saldo => saldo;
+    
+    // Constructor
+    public CuentaBancaria(string numero, string titularCuenta)
+    {
+        numeroCuenta = numero;
+        titular = titularCuenta;
+        saldo = 0.0;
+        historial = new List<string>();
+    }
+    
+    // Métodos
+    public bool Depositar(double monto)
+    {
+        if (monto > 0)
+        {
+            saldo += monto;
+            historial.Add($"Depósito: +${monto:F2} - Saldo: ${saldo:F2}");
+            return true;
+        }
+        return false;
+    }
+    
+    public bool Retirar(double monto)
+    {
+        if (monto > 0 && monto <= saldo)
+        {
+            saldo -= monto;
+            historial.Add($"Retiro: -${monto:F2} - Saldo: ${saldo:F2}");
+            return true;
+        }
+        return false;
+    }
+    
+    public void MostrarSaldo()
+    {
+        Console.WriteLine($"Saldo actual: ${saldo:F2}");
+    }
+    
+    public void MostrarHistorial()
+    {
+        Console.WriteLine("Historial de transacciones:");
+        Console.WriteLine("===========================");
+        
+        if (historial.Count == 0)
+        {
+            Console.WriteLine("No hay transacciones registradas.");
+        }
+        else
+        {
+            foreach (string transaccion in historial)
+            {
+                Console.WriteLine(transaccion);
+            }
+        }
+    }
+}
+
+// Programa principal
+Console.WriteLine("Sistema Bancario Simple");
+Console.WriteLine("=======================");
+
+CuentaBancaria cuenta = new CuentaBancaria("123456789", "Ana López");
+
+Console.WriteLine($"Cuenta: {cuenta.NumeroCuenta}");
+Console.WriteLine($"Titular: {cuenta.Titular}");
+
+cuenta.Depositar(1000.0);
+cuenta.Retirar(250.0);
+cuenta.Depositar(500.0);
+cuenta.Retirar(100.0);
+
+cuenta.MostrarSaldo();
+cuenta.MostrarHistorial();
+```
+
+### Conclusión
+
+Estos ejercicios cubren los conceptos fundamentales de C# para principiantes. Es importante practicar cada ejercicio, modificarlo y experimentar con diferentes variaciones para consolidar el aprendizaje.
+
+**Consejos para principiantes**:
+1. **Practica regularmente**: Dedica tiempo diario a programar.
+2. **Experimenta**: Modifica los ejercicios y prueba diferentes enfoques.
+3. **Debugging**: Aprende a usar el debugger para entender el flujo del programa.
+4. **Documentación**: Lee la documentación oficial de C#.
+5. **Comunidad**: Únete a foros y comunidades de programadores.
+
+**Próximos pasos**:
+- Aprender sobre herencia y polimorfismo
+- Estudiar interfaces y delegados
+- Practicar con LINQ y colecciones avanzadas
+- Explorar programación asíncrona
+- Aprender sobre manejo de excepciones

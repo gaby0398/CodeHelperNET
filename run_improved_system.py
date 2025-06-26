@@ -61,7 +61,7 @@ def build_vector_database():
         from improved_vector_db import ImprovedVectorDBGenerator
         
         generator = ImprovedVectorDBGenerator()
-        generator.build_vector_db()
+        generator.generate_vector_db()
         
         print("✅ Base de datos vectorial construida exitosamente")
         return True

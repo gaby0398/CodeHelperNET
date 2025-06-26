@@ -1,0 +1,34 @@
+# .NET MAUI y Desarrollo Multiplataforma
+
+## ¿Qué es .NET MAUI?
+.NET Multi-platform App UI (MAUI) es el framework de Microsoft para crear aplicaciones nativas para Android, iOS, macOS y Windows con una sola base de código.
+
+### Características
+- UI nativa en cada plataforma
+- Acceso a APIs de dispositivo
+- Hot reload y tooling moderno
+
+### Ejemplo de App MAUI
+```csharp
+public partial class MainPage : ContentPage
+{
+    int count = 0;
+    public MainPage()
+    {
+        InitializeComponent();
+    }
+    private void OnCounterClicked(object sender, EventArgs e)
+    {
+        count++;
+        CounterBtn.Text = $"Clicked {count} times";
+    }
+}
+```
+
+### Buenas Prácticas
+- Usar MVVM para separar lógica y UI
+- Compartir lógica de negocio en proyectos .NET Standard
+- Probar en todos los dispositivos
+
+### Recursos
+- [Documentación oficial de .NET MAUI](https://docs.microsoft.com/dotnet/maui/)

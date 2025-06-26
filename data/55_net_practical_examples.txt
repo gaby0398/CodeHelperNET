@@ -1,0 +1,902 @@
+# Ejemplos Prácticos de Uso de .NET
+
+## Introducción
+Esta guía presenta ejemplos prácticos y casos de uso reales de .NET, desde aplicaciones simples hasta sistemas complejos.
+
+## Aplicación Web Básica - Blog
+
+### Modelos
+```csharp
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string Author { get; set; }
+    public List<Comment> Comments { get; set; } = new();
+}
+
+public class Comment
+{
+    public int Id { get; set; }
+    public string Content { get; set; }
+    public string Author { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int PostId { get; set; }
+    public Post Post { get; set; }
+}
+```
+
+### DbContext
+```csharp
+public class BlogDbContext : DbContext
+{
+    public BlogDbContext(DbContextOptions<BlogDbContext> options) : base(options) { }
+    
+    public DbSet<Post> Posts { get; set; }
+    public DbSet<Comment> Comments { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Post>()
+            .HasMany(p => p.Comments)
+            .WithOne(c => c.Post)
+            .HasForeignKey(c => c.PostId);
+    }
+}
+```
+
+### Controlador
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class PostsController : ControllerBase
+{
+    private readonly BlogDbContext _context;
+    private readonly ILogger<PostsController> _logger;
+    
+    public PostsController(BlogDbContext context, ILogger<PostsController> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Post>>> GetPosts()
+    {
+        var posts = await _context.Posts
+            .Include(p => p.Comments)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+        
+        return Ok(posts);
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Post>> GetPost(int id)
+    {
+        var post = await _context.Posts
+            .Include(p => p.Comments)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        
+        if (post == null)
+            return NotFound();
+        
+        return Ok(post);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<Post>> CreatePost(Post post)
+    {
+        post.CreatedAt = DateTime.UtcNow;
+        _context.Posts.Add(post);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Created new post: {PostTitle}", post.Title);
+        
+        return CreatedAtAction(nameof(GetPost), new { id = post.Id }, post);
+    }
+    
+    [HttpPost("{id}/comments")]
+    public async Task<ActionResult<Comment>> AddComment(int id, Comment comment)
+    {
+        var post = await _context.Posts.FindAsync(id);
+        if (post == null)
+            return NotFound();
+        
+        comment.PostId = id;
+        comment.CreatedAt = DateTime.UtcNow;
+        _context.Comments.Add(comment);
+        await _context.SaveChangesAsync();
+        
+        return Ok(comment);
+    }
+}
+```
+
+## API REST Completa - E-commerce
+
+### Modelos de Dominio
+```csharp
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public int CategoryId { get; set; }
+    public Category Category { get; set; }
+    public List<OrderItem> OrderItems { get; set; } = new();
+}
+
+public class Category
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public List<Product> Products { get; set; } = new();
+}
+
+public class Order
+{
+    public int Id { get; set; }
+    public string CustomerEmail { get; set; }
+    public DateTime OrderDate { get; set; }
+    public OrderStatus Status { get; set; }
+    public decimal TotalAmount { get; set; }
+    public List<OrderItem> Items { get; set; } = new();
+}
+
+public class OrderItem
+{
+    public int Id { get; set; }
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public Order Order { get; set; }
+    public Product Product { get; set; }
+}
+
+public enum OrderStatus
+{
+    Pending,
+    Confirmed,
+    Shipped,
+    Delivered,
+    Cancelled
+}
+```
+
+### Servicios de Negocio
+```csharp
+public interface IProductService
+{
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task<Product> GetByIdAsync(int id);
+    Task<Product> CreateAsync(Product product);
+    Task UpdateAsync(Product product);
+    Task DeleteAsync(int id);
+    Task<IEnumerable<Product>> GetByCategoryAsync(int categoryId);
+    Task<IEnumerable<Product>> SearchAsync(string searchTerm);
+}
+
+public class ProductService : IProductService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<ProductService> _logger;
+    private readonly IEmailService _emailService;
+    
+    public ProductService(
+        ApplicationDbContext context,
+        ILogger<ProductService> logger,
+        IEmailService emailService)
+    {
+        _context = context;
+        _logger = logger;
+        _emailService = emailService;
+    }
+    
+    public async Task<IEnumerable<Product>> GetAllAsync()
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .ToListAsync();
+    }
+    
+    public async Task<Product> GetByIdAsync(int id)
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
+    
+    public async Task<Product> CreateAsync(Product product)
+    {
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Created product: {ProductName}", product.Name);
+        
+        // Notificar administradores
+        await _emailService.SendEmailAsync(
+            "admin@store.com",
+            "New Product Added",
+            $"Product {product.Name} has been added to inventory.");
+        
+        return product;
+    }
+    
+    public async Task UpdateAsync(Product product)
+    {
+        _context.Products.Update(product);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Updated product: {ProductName}", product.Name);
+    }
+    
+    public async Task DeleteAsync(int id)
+    {
+        var product = await _context.Products.FindAsync(id);
+        if (product != null)
+        {
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation("Deleted product: {ProductName}", product.Name);
+        }
+    }
+    
+    public async Task<IEnumerable<Product>> GetByCategoryAsync(int categoryId)
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.CategoryId == categoryId)
+            .ToListAsync();
+    }
+    
+    public async Task<IEnumerable<Product>> SearchAsync(string searchTerm)
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.Name.Contains(searchTerm) || p.Description.Contains(searchTerm))
+            .ToListAsync();
+    }
+}
+```
+
+### Controlador con Validación
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _productService;
+    private readonly ILogger<ProductsController> _logger;
+    
+    public ProductsController(IProductService productService, ILogger<ProductsController> logger)
+    {
+        _productService = productService;
+        _logger = logger;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Product>>> GetProducts([FromQuery] string search = null)
+    {
+        try
+        {
+            IEnumerable<Product> products;
+            
+            if (!string.IsNullOrEmpty(search))
+            {
+                products = await _productService.SearchAsync(search);
+            }
+            else
+            {
+                products = await _productService.GetAllAsync();
+            }
+            
+            return Ok(products);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving products");
+            return StatusCode(500, "An error occurred while retrieving products");
+        }
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Product>> GetProduct(int id)
+    {
+        var product = await _productService.GetByIdAsync(id);
+        
+        if (product == null)
+            return NotFound();
+        
+        return Ok(product);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        try
+        {
+            var createdProduct = await _productService.CreateAsync(product);
+            return CreatedAtAction(nameof(GetProduct), new { id = createdProduct.Id }, createdProduct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating product");
+            return StatusCode(500, "An error occurred while creating the product");
+        }
+    }
+    
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] Product product)
+    {
+        if (id != product.Id)
+            return BadRequest();
+        
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        try
+        {
+            await _productService.UpdateAsync(product);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating product");
+            return StatusCode(500, "An error occurred while updating the product");
+        }
+    }
+    
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteProduct(int id)
+    {
+        try
+        {
+            await _productService.DeleteAsync(id);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting product");
+            return StatusCode(500, "An error occurred while deleting the product");
+        }
+    }
+}
+```
+
+## Servicio en Segundo Plano - Procesamiento de Archivos
+
+### Servicio de Procesamiento
+```csharp
+public class FileProcessingService : BackgroundService
+{
+    private readonly ILogger<FileProcessingService> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IConfiguration _configuration;
+    
+    public FileProcessingService(
+        ILogger<FileProcessingService> logger,
+        IServiceProvider serviceProvider,
+        IConfiguration configuration)
+    {
+        _logger = logger;
+        _serviceProvider = serviceProvider;
+        _configuration = configuration;
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("File Processing Service started");
+        
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ProcessPendingFilesAsync();
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); // Procesar cada 5 minutos
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in file processing service");
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Esperar 1 minuto en caso de error
+            }
+        }
+    }
+    
+    private async Task ProcessPendingFilesAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        
+        var pendingFiles = await dbContext.FileUploads
+            .Where(f => f.Status == FileStatus.Pending)
+            .Take(10) // Procesar máximo 10 archivos por vez
+            .ToListAsync();
+        
+        foreach (var file in pendingFiles)
+        {
+            try
+            {
+                await ProcessFileAsync(file, dbContext, emailService);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing file {FileName}", file.FileName);
+                file.Status = FileStatus.Failed;
+                file.ErrorMessage = ex.Message;
+                await dbContext.SaveChangesAsync();
+            }
+        }
+    }
+    
+    private async Task ProcessFileAsync(FileUpload file, ApplicationDbContext dbContext, IEmailService emailService)
+    {
+        _logger.LogInformation("Processing file: {FileName}", file.FileName);
+        
+        file.Status = FileStatus.Processing;
+        await dbContext.SaveChangesAsync();
+        
+        // Simular procesamiento
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        
+        // Procesar según el tipo de archivo
+        switch (Path.GetExtension(file.FileName).ToLower())
+        {
+            case ".csv":
+                await ProcessCsvFileAsync(file);
+                break;
+            case ".json":
+                await ProcessJsonFileAsync(file);
+                break;
+            case ".xml":
+                await ProcessXmlFileAsync(file);
+                break;
+            default:
+                throw new NotSupportedException($"File type {Path.GetExtension(file.FileName)} is not supported");
+        }
+        
+        file.Status = FileStatus.Completed;
+        file.ProcessedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+        
+        // Notificar al usuario
+        await emailService.SendEmailAsync(
+            file.UserEmail,
+            "File Processing Complete",
+            $"Your file {file.FileName} has been processed successfully.");
+        
+        _logger.LogInformation("File {FileName} processed successfully", file.FileName);
+    }
+    
+    private async Task ProcessCsvFileAsync(FileUpload file)
+    {
+        // Implementar procesamiento de CSV
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
+    
+    private async Task ProcessJsonFileAsync(FileUpload file)
+    {
+        // Implementar procesamiento de JSON
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
+    
+    private async Task ProcessXmlFileAsync(FileUpload file)
+    {
+        // Implementar procesamiento de XML
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
+}
+```
+
+## Aplicación de Consola - Herramienta de Administración
+
+### Programa Principal
+```csharp
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var host = CreateHostBuilder(args).Build();
+        
+        using var scope = host.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        
+        try
+        {
+            var app = services.GetRequiredService<ConsoleApplication>();
+            await app.RunAsync(args);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while running the application");
+        }
+    }
+    
+    static IHostBuilder CreateHostBuilder(string[] args) =>
+        Host.CreateDefaultBuilder(args)
+            .ConfigureServices((context, services) =>
+            {
+                services.AddDbContext<ApplicationDbContext>(options =>
+                    options.UseSqlServer(context.Configuration.GetConnectionString("DefaultConnection")));
+                
+                services.AddScoped<IUserService, UserService>();
+                services.AddScoped<IEmailService, EmailService>();
+                services.AddScoped<ConsoleApplication>();
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole();
+                logging.AddFile("logs/app-{Date}.txt");
+            });
+}
+```
+
+### Aplicación de Consola
+```csharp
+public class ConsoleApplication
+{
+    private readonly IUserService _userService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<ConsoleApplication> _logger;
+    
+    public ConsoleApplication(
+        IUserService userService,
+        IEmailService emailService,
+        ILogger<ConsoleApplication> logger)
+    {
+        _userService = userService;
+        _emailService = emailService;
+        _logger = logger;
+    }
+    
+    public async Task RunAsync(string[] args)
+    {
+        _logger.LogInformation("Console application started");
+        
+        if (args.Length == 0)
+        {
+            ShowHelp();
+            return;
+        }
+        
+        var command = args[0].ToLower();
+        
+        switch (command)
+        {
+            case "users":
+                await HandleUsersCommandAsync(args.Skip(1).ToArray());
+                break;
+            case "email":
+                await HandleEmailCommandAsync(args.Skip(1).ToArray());
+                break;
+            case "backup":
+                await HandleBackupCommandAsync(args.Skip(1).ToArray());
+                break;
+            default:
+                Console.WriteLine($"Unknown command: {command}");
+                ShowHelp();
+                break;
+        }
+    }
+    
+    private async Task HandleUsersCommandAsync(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            Console.WriteLine("Users command requires an action: list, create, delete");
+            return;
+        }
+        
+        var action = args[0].ToLower();
+        
+        switch (action)
+        {
+            case "list":
+                var users = await _userService.GetAllAsync();
+                Console.WriteLine("Users:");
+                foreach (var user in users)
+                {
+                    Console.WriteLine($"- {user.Email} ({user.Name})");
+                }
+                break;
+                
+            case "create":
+                if (args.Length < 3)
+                {
+                    Console.WriteLine("Usage: users create <email> <name>");
+                    return;
+                }
+                
+                var newUser = new User
+                {
+                    Email = args[1],
+                    Name = args[2]
+                };
+                
+                await _userService.CreateAsync(newUser);
+                Console.WriteLine($"User {newUser.Email} created successfully");
+                break;
+                
+            case "delete":
+                if (args.Length < 2)
+                {
+                    Console.WriteLine("Usage: users delete <email>");
+                    return;
+                }
+                
+                await _userService.DeleteAsync(args[1]);
+                Console.WriteLine($"User {args[1]} deleted successfully");
+                break;
+        }
+    }
+    
+    private async Task HandleEmailCommandAsync(string[] args)
+    {
+        if (args.Length < 3)
+        {
+            Console.WriteLine("Usage: email <to> <subject> <message>");
+            return;
+        }
+        
+        var to = args[0];
+        var subject = args[1];
+        var message = string.Join(" ", args.Skip(2));
+        
+        await _emailService.SendEmailAsync(to, subject, message);
+        Console.WriteLine($"Email sent to {to}");
+    }
+    
+    private async Task HandleBackupCommandAsync(string[] args)
+    {
+        var backupPath = args.Length > 0 ? args[0] : "backup.sql";
+        
+        Console.WriteLine($"Creating backup to {backupPath}...");
+        
+        // Implementar lógica de backup
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        
+        Console.WriteLine("Backup completed successfully");
+    }
+    
+    private void ShowHelp()
+    {
+        Console.WriteLine("Available commands:");
+        Console.WriteLine("  users list                    - List all users");
+        Console.WriteLine("  users create <email> <name>   - Create a new user");
+        Console.WriteLine("  users delete <email>          - Delete a user");
+        Console.WriteLine("  email <to> <subject> <msg>    - Send an email");
+        Console.WriteLine("  backup [path]                 - Create database backup");
+    }
+}
+```
+
+## Caso de Uso Real - Sistema de Notificaciones
+
+### Modelos
+```csharp
+public class Notification
+{
+    public int Id { get; set; }
+    public string UserId { get; set; }
+    public string Title { get; set; }
+    public string Message { get; set; }
+    public NotificationType Type { get; set; }
+    public NotificationStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ReadAt { get; set; }
+}
+
+public enum NotificationType
+{
+    Email,
+    SMS,
+    Push,
+    InApp
+}
+
+public enum NotificationStatus
+{
+    Pending,
+    Sent,
+    Failed,
+    Read
+}
+```
+
+### Servicio de Notificaciones
+```csharp
+public interface INotificationService
+{
+    Task SendNotificationAsync(Notification notification);
+    Task SendBulkNotificationsAsync(IEnumerable<Notification> notifications);
+    Task<IEnumerable<Notification>> GetUserNotificationsAsync(string userId);
+    Task MarkAsReadAsync(int notificationId);
+    Task MarkAllAsReadAsync(string userId);
+}
+
+public class NotificationService : INotificationService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IEmailService _emailService;
+    private readonly ISmsService _smsService;
+    private readonly IPushNotificationService _pushService;
+    private readonly ILogger<NotificationService> _logger;
+    
+    public NotificationService(
+        ApplicationDbContext context,
+        IEmailService emailService,
+        ISmsService smsService,
+        IPushNotificationService pushService,
+        ILogger<NotificationService> logger)
+    {
+        _context = context;
+        _emailService = emailService;
+        _smsService = smsService;
+        _pushService = pushService;
+        _logger = logger;
+    }
+    
+    public async Task SendNotificationAsync(Notification notification)
+    {
+        try
+        {
+            notification.Status = NotificationStatus.Pending;
+            notification.CreatedAt = DateTime.UtcNow;
+            
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+            
+            var success = await SendNotificationByTypeAsync(notification);
+            
+            notification.Status = success ? NotificationStatus.Sent : NotificationStatus.Failed;
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation("Notification {Id} sent successfully", notification.Id);
+        }
+        catch (Exception ex)
+        {
+            notification.Status = NotificationStatus.Failed;
+            await _context.SaveChangesAsync();
+            
+            _logger.LogError(ex, "Error sending notification {Id}", notification.Id);
+            throw;
+        }
+    }
+    
+    public async Task SendBulkNotificationsAsync(IEnumerable<Notification> notifications)
+    {
+        var notificationList = notifications.ToList();
+        
+        foreach (var notification in notificationList)
+        {
+            await SendNotificationAsync(notification);
+        }
+        
+        _logger.LogInformation("Sent {Count} bulk notifications", notificationList.Count);
+    }
+    
+    public async Task<IEnumerable<Notification>> GetUserNotificationsAsync(string userId)
+    {
+        return await _context.Notifications
+            .Where(n => n.UserId == userId)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync();
+    }
+    
+    public async Task MarkAsReadAsync(int notificationId)
+    {
+        var notification = await _context.Notifications.FindAsync(notificationId);
+        if (notification != null)
+        {
+            notification.Status = NotificationStatus.Read;
+            notification.ReadAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+    
+    public async Task MarkAllAsReadAsync(string userId)
+    {
+        var notifications = await _context.Notifications
+            .Where(n => n.UserId == userId && n.Status != NotificationStatus.Read)
+            .ToListAsync();
+        
+        foreach (var notification in notifications)
+        {
+            notification.Status = NotificationStatus.Read;
+            notification.ReadAt = DateTime.UtcNow;
+        }
+        
+        await _context.SaveChangesAsync();
+    }
+    
+    private async Task<bool> SendNotificationByTypeAsync(Notification notification)
+    {
+        return notification.Type switch
+        {
+            NotificationType.Email => await SendEmailNotificationAsync(notification),
+            NotificationType.SMS => await SendSmsNotificationAsync(notification),
+            NotificationType.Push => await SendPushNotificationAsync(notification),
+            NotificationType.InApp => true, // In-app notifications are already saved
+            _ => throw new NotSupportedException($"Notification type {notification.Type} is not supported")
+        };
+    }
+    
+    private async Task<bool> SendEmailNotificationAsync(Notification notification)
+    {
+        try
+        {
+            await _emailService.SendEmailAsync(
+                notification.UserId, // Assuming UserId is email
+                notification.Title,
+                notification.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending email notification");
+            return false;
+        }
+    }
+    
+    private async Task<bool> SendSmsNotificationAsync(Notification notification)
+    {
+        try
+        {
+            await _smsService.SendSmsAsync(notification.UserId, notification.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending SMS notification");
+            return false;
+        }
+    }
+    
+    private async Task<bool> SendPushNotificationAsync(Notification notification)
+    {
+        try
+        {
+            await _pushService.SendPushNotificationAsync(notification.UserId, notification.Title, notification.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending push notification");
+            return false;
+        }
+    }
+}
+```
+
+## Conclusión
+
+Estos ejemplos prácticos demuestran la versatilidad de .NET:
+
+**Casos de Uso Cubiertos:**
+- **Aplicaciones web**: APIs REST, controladores, servicios
+- **Servicios en segundo plano**: Procesamiento asíncrono, tareas programadas
+- **Aplicaciones de consola**: Herramientas de administración, scripts
+- **Sistemas de notificación**: Múltiples canales, procesamiento en lote
+- **E-commerce**: Modelos complejos, validación, logging
+- **Blog**: CRUD básico, relaciones entre entidades
+
+**Patrones Aplicados:**
+- **Repository Pattern**: Acceso a datos abstraído
+- **Service Layer**: Lógica de negocio separada
+- **Dependency Injection**: Desacoplamiento de componentes
+- **Background Services**: Procesamiento asíncrono
+- **Logging**: Registro de eventos y errores
+- **Error Handling**: Manejo robusto de excepciones 

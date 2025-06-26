@@ -14,193 +14,173 @@ class ImprovedVectorDBGenerator:
         self.client = PersistentClient(path=db_path)
         
         # Usar modelo especializado para código (mejor que el multilingüe genérico)
-        self.embedding_model = SentenceTransformer("microsoft/codebert-base-mlm")
+        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         
         # Crear colección con metadatos
         self.collection = self.client.get_or_create_collection(
             name="codehelper_csharp_improved",
-            metadata={"description": "Base de datos vectorial mejorada para C# y .NET"}
+            metadata={"description": "Base de datos vectorial para C# y .NET"}
         )
-        
-    def clean_text(self, text: str) -> str:
-        """Limpiar texto de errores de OCR y caracteres extraños"""
-        # Remover caracteres extraños comunes en OCR
-        text = re.sub(r'[^\w\s\.\,\;\:\!\?\(\)\[\]\{\}\+\-\*\/\=\<\>\"\'\n\r\t]', '', text)
-        # Normalizar espacios
-        text = re.sub(r'\s+', ' ', text)
-        # Remover líneas vacías múltiples
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-        return text.strip()
     
-    def semantic_chunking(self, text: str, max_length: int = 512) -> List[Dict[str, Any]]:
-        """
-        Chunking semántico que preserva contexto y estructura
-        """
+    def split_text_semantic(self, text: str, max_length: int = 500) -> List[str]:
+        """División semántica mejorada del texto"""
         chunks = []
         
-        # Dividir por secciones principales
-        sections = re.split(r'\n(?=[A-Z][A-Z\s]+:?\n)', text)
+        # Dividir por secciones principales (títulos con #)
+        sections = re.split(r'\n(?=#+\s)', text)
         
         for section in sections:
-            if len(section.strip()) < 50:  # Ignorar secciones muy pequeñas
+            if not section.strip():
                 continue
                 
-            # Detectar tipo de contenido
-            content_type = self.detect_content_type(section)
+            # Si la sección es pequeña, agregarla completa
+            if len(section) <= max_length:
+                chunks.append(section.strip())
+                continue
             
-            # Dividir sección en chunks más pequeños si es necesario
-            if len(section) > max_length:
-                sub_chunks = self.split_large_section(section, max_length)
-                for i, chunk in enumerate(sub_chunks):
-                    chunks.append({
-                        'content': chunk,
-                        'type': content_type,
-                        'section': section[:100] + "..." if len(section) > 100 else section,
-                        'chunk_id': i
-                    })
-            else:
-                chunks.append({
-                    'content': section,
-                    'type': content_type,
-                    'section': section[:100] + "..." if len(section) > 100 else section,
-                    'chunk_id': 0
-                })
+            # Dividir secciones grandes por párrafos
+            paragraphs = re.split(r'\n\s*\n', section)
+            current_chunk = ""
+            
+            for paragraph in paragraphs:
+                if len(current_chunk) + len(paragraph) <= max_length:
+                    current_chunk += paragraph + "\n\n"
+                else:
+                    if current_chunk.strip():
+                        chunks.append(current_chunk.strip())
+                    current_chunk = paragraph + "\n\n"
+            
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
         
         return chunks
     
-    def detect_content_type(self, text: str) -> str:
-        """Detectar tipo de contenido basado en patrones"""
+    def classify_content(self, text: str) -> str:
+        """Clasificar el tipo de contenido"""
         text_lower = text.lower()
         
-        if re.search(r'(class|interface|struct|enum)\s+\w+', text):
-            return 'class_definition'
-        elif re.search(r'(public|private|protected)\s+(static\s+)?(void|int|string|bool|double)', text):
-            return 'method_definition'
-        elif re.search(r'(if|for|while|foreach|switch)\s*\(', text):
-            return 'control_structure'
-        elif re.search(r'(using|namespace|import)', text):
-            return 'import_statement'
-        elif re.search(r'(console\.writeline|console\.readline)', text):
-            return 'console_io'
-        elif re.search(r'(sql|select|insert|update|delete)', text):
-            return 'database_operation'
-        elif re.search(r'(xml|json|serialization)', text):
-            return 'data_format'
+        if any(keyword in text_lower for keyword in ['using ', 'import ', 'namespace ']):
+            return "import_statement"
+        elif any(keyword in text_lower for keyword in ['class ', 'public class', 'private class']):
+            return "class_definition"
+        elif any(keyword in text_lower for keyword in ['public ', 'private ', 'static ', 'async ', 'void ', 'int ', 'string ', 'bool ']) and '(' in text and ')' in text:
+            return "method_definition"
+        elif any(keyword in text_lower for keyword in ['sqlconnection', 'sqldataadapter', 'sqldatareader', 'execute', 'query', 'database']):
+            return "database_operation"
+        elif any(keyword in text_lower for keyword in ['ado.net', 'entity framework', 'linq', 'asp.net']):
+            return "framework_concept"
         else:
-            return 'general_concept'
+            return "general_concept"
     
-    def split_large_section(self, section: str, max_length: int) -> List[str]:
-        """Dividir secciones grandes preservando contexto"""
-        chunks = []
-        current_chunk = ""
-        
-        # Dividir por líneas para preservar estructura
-        lines = section.split('\n')
-        
-        for line in lines:
-            if len(current_chunk) + len(line) < max_length:
-                current_chunk += line + '\n'
-            else:
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-                current_chunk = line + '\n'
-        
-        if current_chunk:
-            chunks.append(current_chunk.strip())
-        
-        return chunks
-    
-    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generar embeddings usando el modelo especializado"""
-        embeddings = self.embedding_model.encode(texts, convert_to_tensor=True)
-        return embeddings.cpu().numpy().tolist()
-    
-    def process_file(self, filepath: str) -> List[Dict[str, Any]]:
-        """Procesar un archivo completo"""
-        print(f"Procesando: {filepath}")
-        
-        with open(filepath, 'r', encoding='utf-8') as file:
-            content = file.read()
-        
-        # Limpiar contenido
-        cleaned_content = self.clean_text(content)
-        
-        # Chunking semántico
-        chunks = self.semantic_chunking(cleaned_content)
-        
-        # Agregar metadatos del archivo
-        filename = os.path.basename(filepath)
-        for chunk in chunks:
-            chunk['filename'] = filename
-            chunk['filepath'] = filepath
-        
-        return chunks
-    
-    def build_vector_db(self, data_dir: str = "./data"):
-        """Construir la base de datos vectorial completa"""
-        all_chunks = []
-        doc_id = 0
-        
-        # Procesar todos los archivos
-        for filename in os.listdir(data_dir):
-            if filename.endswith(".txt") and "Index" not in filename:
-                filepath = os.path.join(data_dir, filename)
-                try:
-                    chunks = self.process_file(filepath)
-                    all_chunks.extend(chunks)
-                except Exception as e:
-                    print(f"Error procesando {filename}: {e}")
-        
-        print(f"Total de chunks generados: {len(all_chunks)}")
-        
-        # Generar embeddings en lotes para eficiencia
-        batch_size = 32
-        for i in range(0, len(all_chunks), batch_size):
-            batch = all_chunks[i:i + batch_size]
+    def process_file(self, file_path: str) -> List[Dict[str, Any]]:
+        """Procesar un archivo y generar chunks con metadatos"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
             
-            # Preparar datos para ChromaDB
-            documents = [chunk['content'] for chunk in batch]
-            embeddings = self.generate_embeddings(documents)
-            ids = [f"chunk_{doc_id + j}" for j in range(len(batch))]
+            # Dividir el contenido semánticamente
+            chunks = self.split_text_semantic(content)
             
-            # Metadatos enriquecidos
-            metadatas = []
-            for chunk in batch:
-                metadata = {
-                    'content_type': chunk['type'],
-                    'filename': chunk['filename'],
-                    'section': chunk['section'],
-                    'chunk_id': chunk['chunk_id'],
-                    'length': len(chunk['content'])
+            documents = []
+            for i, chunk in enumerate(chunks):
+                if len(chunk.strip()) < 50:  # Ignorar chunks muy pequeños
+                    continue
+                
+                # Clasificar el contenido
+                content_type = self.classify_content(chunk)
+                
+                # Extraer título o primera línea como descripción
+                lines = chunk.split('\n')
+                title = lines[0].strip() if lines else "Sin título"
+                if title.startswith('#'):
+                    title = title.lstrip('#').strip()
+                
+                document = {
+                    "id": f"{os.path.basename(file_path)}_{i}",
+                    "text": chunk,
+                    "metadata": {
+                        "file": os.path.basename(file_path),
+                        "content_type": content_type,
+                        "title": title[:100],  # Limitar longitud del título
+                        "chunk_index": i,
+                        "length": len(chunk)
+                    }
                 }
-                metadatas.append(metadata)
+                documents.append(document)
             
-            # Agregar a la colección
-            self.collection.add(
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids
-            )
+            return documents
             
-            doc_id += len(batch)
-            print(f"Procesados {doc_id}/{len(all_chunks)} chunks")
+        except Exception as e:
+            print(f"Error procesando {file_path}: {e}")
+            return []
+    
+    def generate_vector_db(self):
+        """Generar la base de datos vectorial completa"""
+        print("🚀 Iniciando generación de base vectorial mejorada...")
         
-        print(f"✅ Base vectorial mejorada creada con {doc_id} chunks")
-        print(f"📊 Estadísticas de la colección:")
-        print(f"   - Total de documentos: {self.collection.count()}")
+        # Limpiar colección existente
+        try:
+            self.client.delete_collection("codehelper_csharp_improved")
+            self.collection = self.client.create_collection(
+                name="codehelper_csharp_improved",
+                metadata={"description": "Base de datos vectorial para C# y .NET"}
+            )
+        except:
+            pass
+        
+        # Procesar archivos en el directorio data
+        data_dir = "./data"
+        all_documents = []
+        
+        if os.path.exists(data_dir):
+            for filename in os.listdir(data_dir):
+                if filename.endswith('.txt'):
+                    file_path = os.path.join(data_dir, filename)
+                    print(f"Procesando: {file_path}")
+                    
+                    documents = self.process_file(file_path)
+                    all_documents.extend(documents)
+        
+        if not all_documents:
+            print("❌ No se encontraron documentos para procesar")
+            return
+        
+        # Preparar datos para ChromaDB
+        ids = [doc["id"] for doc in all_documents]
+        texts = [doc["text"] for doc in all_documents]
+        metadatas = [doc["metadata"] for doc in all_documents]
+        
+        # Generar embeddings y agregar a la base de datos
+        print(f"📝 Agregando {len(all_documents)} chunks a la base vectorial...")
+        
+        # Agregar en lotes para mejor rendimiento
+        batch_size = 10
+        for i in range(0, len(all_documents), batch_size):
+            batch_ids = ids[i:i+batch_size]
+            batch_texts = texts[i:i+batch_size]
+            batch_metadatas = metadatas[i:i+batch_size]
+            
+            self.collection.add(
+                ids=batch_ids,
+                documents=batch_texts,
+                metadatas=batch_metadatas
+            )
+        
+        # Estadísticas finales
+        print(f"✅ Base vectorial mejorada creada con {len(all_documents)} chunks")
         
         # Mostrar estadísticas por tipo de contenido
-        results = self.collection.get()
         content_types = {}
-        for metadata in results['metadatas']:
-            content_type = metadata['content_type']
+        for doc in all_documents:
+            content_type = doc["metadata"]["content_type"]
             content_types[content_type] = content_types.get(content_type, 0) + 1
         
-        print("   - Distribución por tipo:")
+        print("📊 Estadísticas de la colección:")
+        print(f"   - Total de documentos: {len(all_documents)}")
+        print(f"   - Distribución por tipo:")
         for content_type, count in content_types.items():
             print(f"     * {content_type}: {count}")
 
 if __name__ == "__main__":
     generator = ImprovedVectorDBGenerator()
-    generator.build_vector_db() 
+    generator.generate_vector_db() 

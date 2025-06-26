@@ -1,0 +1,1081 @@
+# GESTIÓN DE MEMORIA Y GARBAGE COLLECTION EN C# - GUÍA COMPLETA
+
+## 1. INTRODUCCIÓN A LA GESTIÓN DE MEMORIA
+
+### ¿Qué es la Gestión de Memoria?
+
+La gestión de memoria es el proceso de asignar, usar y liberar memoria durante la ejecución de un programa. En C#, la gestión de memoria es automática gracias al Garbage Collector (GC), que se encarga de liberar la memoria que ya no es necesaria.
+
+**Características del sistema de memoria de .NET:**
+- **Gestión automática**: El GC libera memoria automáticamente
+- **Seguridad de tipos**: Verificación de tipos en tiempo de ejecución
+- **Fragmentación**: El GC compacta la memoria para evitar fragmentación
+- **Generaciones**: Sistema de generaciones para optimizar la recolección
+- **Finalización**: Sistema de finalizadores para limpieza de recursos
+
+### Tipos de Memoria en .NET
+
+```csharp
+public class TiposMemoria
+{
+    // Stack - Para tipos de valor y referencias
+    public void MetodoStack()
+    {
+        int numero = 42; // Almacenado en stack
+        string texto = "Hola"; // Referencia en stack, objeto en heap
+        DateTime fecha = DateTime.Now; // Almacenado en stack
+    }
+    
+    // Heap - Para objetos de referencia
+    public void MetodoHeap()
+    {
+        var persona = new Persona { Nombre = "Juan", Edad = 30 }; // Objeto en heap
+        var lista = new List<int> { 1, 2, 3, 4, 5 }; // Objeto en heap
+        var array = new int[100]; // Array en heap
+    }
+    
+    // Large Object Heap (LOH) - Para objetos grandes (>85KB)
+    public void MetodoLOH()
+    {
+        var arrayGrande = new byte[100000]; // Almacenado en LOH
+        var listaGrande = new List<string>(10000); // Puede ir a LOH
+    }
+}
+```
+
+## 2. GARBAGE COLLECTOR (GC)
+
+### ¿Qué es el Garbage Collector?
+
+El Garbage Collector es un componente del runtime de .NET que automáticamente libera la memoria de objetos que ya no son accesibles. El GC utiliza un sistema de generaciones para optimizar el rendimiento de la recolección de basura.
+
+**Funciones principales del GC:**
+- **Detección**: Identifica objetos que ya no son accesibles
+- **Reclamación**: Libera la memoria de objetos no utilizados
+- **Compactación**: Reorganiza la memoria para evitar fragmentación
+- **Optimización**: Utiliza diferentes estrategias según la generación
+
+### Generaciones del GC
+
+```csharp
+public class GeneracionesGC
+{
+    // Generación 0 - Objetos nuevos
+    public void Generacion0()
+    {
+        // Los objetos nuevos van a la generación 0
+        var objeto1 = new Persona { Nombre = "Ana" };
+        var objeto2 = new List<string>();
+        var objeto3 = new StringBuilder();
+        
+        // Si sobreviven a una recolección, van a la generación 1
+    }
+    
+    // Generación 1 - Objetos que han sobrevivido una recolección
+    public void Generacion1()
+    {
+        var objetos = new List<Persona>();
+        
+        for (int i = 0; i < 1000; i++)
+        {
+            objetos.Add(new Persona { Nombre = $"Persona{i}" });
+        }
+        
+        // Algunos objetos pueden sobrevivir y ir a la generación 1
+    }
+    
+    // Generación 2 - Objetos de larga duración
+    public void Generacion2()
+    {
+        // Objetos estáticos y de larga duración
+        var cache = new Dictionary<string, object>();
+        var configuracion = new ConfiguracionGlobal();
+        
+        // Estos objetos pueden llegar a la generación 2
+    }
+    
+    // Large Object Heap (LOH)
+    public void LargeObjectHeap()
+    {
+        // Objetos grandes van directamente al LOH
+        var arrayGrande = new byte[100000]; // >85KB
+        var listaGrande = new List<string>(10000);
+        
+        // El LOH se recolecta menos frecuentemente
+    }
+}
+```
+
+### Configuración del GC
+
+```csharp
+public class ConfiguracionGC
+{
+    // Obtener información del GC
+    public void InformacionGC()
+    {
+        var memoriaTotal = GC.GetTotalMemory(false);
+        var memoriaOcupada = GC.GetTotalMemory(true); // Fuerza una recolección
+        
+        Console.WriteLine($"Memoria total: {memoriaTotal:N0} bytes");
+        Console.WriteLine($"Memoria ocupada: {memoriaOcupada:N0} bytes");
+        
+        // Información por generación
+        for (int i = 0; i <= GC.MaxGeneration; i++)
+        {
+            var memoriaGeneracion = GC.GetTotalMemory(false);
+            Console.WriteLine($"Generación {i}: {memoriaGeneracion:N0} bytes");
+        }
+    }
+    
+    // Forzar recolección de basura
+    public void ForzarRecoleccion()
+    {
+        // Recolección de generación 0
+        GC.Collect(0);
+        
+        // Recolección de generación 1
+        GC.Collect(1);
+        
+        // Recolección completa
+        GC.Collect();
+        
+        // Recolección con compactación
+        GC.Collect(2, GCCollectionMode.Forced, true, true);
+    }
+    
+    // Configurar modo de recolección
+    public void ConfigurarModoRecoleccion()
+    {
+        // Modo optimizado para estaciones de trabajo
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        
+        // Modo optimizado para servidores
+        GCSettings.IsServerGC = true;
+        
+        // Modo optimizado para aplicaciones de latencia crítica
+        GCSettings.LatencyMode = GCLatencyMode.LowLatency;
+    }
+}
+```
+
+## 3. PATRONES DE GESTIÓN DE MEMORIA
+
+### IDisposable Pattern
+
+```csharp
+public class PatronIDisposable
+{
+    // Implementación básica del patrón IDisposable
+    public class RecursoDisposable : IDisposable
+    {
+        private bool disposed = false;
+        private readonly IntPtr handle;
+        
+        public RecursoDisposable()
+        {
+            // Simulación de adquisición de recurso
+            handle = Marshal.AllocHGlobal(1000);
+        }
+        
+        public void UsarRecurso()
+        {
+            if (disposed)
+            {
+                throw new ObjectDisposedException(nameof(RecursoDisposable));
+            }
+            
+            Console.WriteLine("Usando recurso...");
+        }
+        
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // Liberar recursos administrados
+                    Console.WriteLine("Liberando recursos administrados");
+                }
+                
+                // Liberar recursos no administrados
+                if (handle != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(handle);
+                    Console.WriteLine("Recurso no administrado liberado");
+                }
+                
+                disposed = true;
+            }
+        }
+        
+        ~RecursoDisposable()
+        {
+            Dispose(false);
+        }
+    }
+    
+    // Uso del patrón using
+    public void UsarPatronUsing()
+    {
+        using (var recurso = new RecursoDisposable())
+        {
+            recurso.UsarRecurso();
+        } // Dispose se llama automáticamente
+        
+        // O usando la sintaxis de declaración using (C# 8.0+)
+        using var recurso2 = new RecursoDisposable();
+        recurso2.UsarRecurso();
+    } // Dispose se llama automáticamente
+}
+```
+
+### Finalizers (Destructores)
+
+```csharp
+public class Finalizers
+{
+    // Finalizador básico
+    public class ClaseConFinalizador
+    {
+        private readonly IntPtr handle;
+        
+        public ClaseConFinalizador()
+        {
+            handle = Marshal.AllocHGlobal(1000);
+        }
+        
+        // Finalizador (destructor)
+        ~ClaseConFinalizador()
+        {
+            // Liberar recursos no administrados
+            if (handle != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(handle);
+                Console.WriteLine("Finalizador ejecutado");
+            }
+        }
+        
+        public void UsarRecurso()
+        {
+            Console.WriteLine("Usando recurso...");
+        }
+    }
+    
+    // Clase con finalizador y IDisposable
+    public class ClaseCompleta : IDisposable
+    {
+        private bool disposed = false;
+        private readonly IntPtr handle;
+        
+        public ClaseCompleta()
+        {
+            handle = Marshal.AllocHGlobal(1000);
+        }
+        
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this); // Evitar que se ejecute el finalizador
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // Liberar recursos administrados
+                }
+                
+                // Liberar recursos no administrados
+                if (handle != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(handle);
+                }
+                
+                disposed = true;
+            }
+        }
+        
+        ~ClaseCompleta()
+        {
+            Dispose(false);
+        }
+    }
+}
+```
+
+### Weak References
+
+```csharp
+public class WeakReferences
+{
+    // WeakReference básica
+    public void DemostrarWeakReference()
+    {
+        var objetoFuerte = new Persona { Nombre = "Juan" };
+        var weakReference = new WeakReference(objetoFuerte);
+        
+        // Verificar si el objeto aún existe
+        if (weakReference.IsAlive)
+        {
+            var objeto = (Persona)weakReference.Target;
+            Console.WriteLine($"Objeto vivo: {objeto.Nombre}");
+        }
+        
+        // Eliminar referencia fuerte
+        objetoFuerte = null;
+        
+        // Forzar recolección
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        
+        // Verificar si el objeto fue recolectado
+        if (weakReference.IsAlive)
+        {
+            var objeto = (Persona)weakReference.Target;
+            Console.WriteLine($"Objeto aún vivo: {objeto.Nombre}");
+        }
+        else
+        {
+            Console.WriteLine("Objeto fue recolectado");
+        }
+    }
+    
+    // WeakReference<T> (C# 4.0+)
+    public void DemostrarWeakReferenceGenerica()
+    {
+        var objetoFuerte = new List<string> { "Uno", "Dos", "Tres" };
+        var weakReference = new WeakReference<List<string>>(objetoFuerte);
+        
+        if (weakReference.TryGetTarget(out var lista))
+        {
+            Console.WriteLine($"Lista viva con {lista.Count} elementos");
+        }
+        
+        objetoFuerte = null;
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        
+        if (weakReference.TryGetTarget(out var lista2))
+        {
+            Console.WriteLine("Lista aún viva");
+        }
+        else
+        {
+            Console.WriteLine("Lista fue recolectada");
+        }
+    }
+    
+    // Cache con WeakReference
+    public class CacheConWeakReference<TKey, TValue> where TValue : class
+    {
+        private readonly Dictionary<TKey, WeakReference<TValue>> cache = new Dictionary<TKey, WeakReference<TValue>>();
+        
+        public void Agregar(TKey clave, TValue valor)
+        {
+            cache[clave] = new WeakReference<TValue>(valor);
+        }
+        
+        public bool TryGetValue(TKey clave, out TValue valor)
+        {
+            if (cache.TryGetValue(clave, out var weakRef))
+            {
+                if (weakRef.TryGetTarget(out valor))
+                {
+                    return true;
+                }
+                else
+                {
+                    // El objeto fue recolectado, eliminar entrada
+                    cache.Remove(clave);
+                }
+            }
+            
+            valor = null;
+            return false;
+        }
+        
+        public void LimpiarEntradasMuertas()
+        {
+            var clavesAEliminar = new List<TKey>();
+            
+            foreach (var kvp in cache)
+            {
+                if (!kvp.Value.TryGetTarget(out _))
+                {
+                    clavesAEliminar.Add(kvp.Key);
+                }
+            }
+            
+            foreach (var clave in clavesAEliminar)
+            {
+                cache.Remove(clave);
+            }
+        }
+    }
+}
+```
+
+## 4. OPTIMIZACIÓN DE MEMORIA
+
+### Boxing y Unboxing
+
+```csharp
+public class BoxingUnboxing
+{
+    // Boxing - Conversión de tipo de valor a referencia
+    public void DemostrarBoxing()
+    {
+        int numero = 42;
+        object objeto = numero; // Boxing
+        
+        // El valor se copia al heap
+        Console.WriteLine($"Número original: {numero}");
+        Console.WriteLine($"Objeto boxeado: {objeto}");
+        
+        // Unboxing - Conversión de referencia a tipo de valor
+        int numeroDesempacado = (int)objeto; // Unboxing
+        
+        // Verificar si son iguales
+        Console.WriteLine($"¿Son iguales? {numero == numeroDesempacado}");
+    }
+    
+    // Evitar boxing innecesario
+    public void EvitarBoxing()
+    {
+        // ❌ Incorrecto - causa boxing
+        var listaObject = new List<object> { 1, 2, 3, 4, 5 };
+        
+        // ✅ Correcto - sin boxing
+        var listaInt = new List<int> { 1, 2, 3, 4, 5 };
+        
+        // ❌ Incorrecto - boxing en comparaciones
+        object obj1 = 42;
+        object obj2 = 42;
+        bool iguales = obj1.Equals(obj2); // Boxing
+        
+        // ✅ Correcto - sin boxing
+        int num1 = 42;
+        int num2 = 42;
+        bool iguales2 = num1 == num2; // Sin boxing
+    }
+    
+    // Boxing en interfaces
+    public void BoxingEnInterfaces()
+    {
+        // ❌ Incorrecto - boxing
+        IComparable comparable = 42; // Boxing
+        
+        // ✅ Correcto - sin boxing
+        IComparable<int> comparableGenerico = 42; // Sin boxing
+    }
+}
+```
+
+### Structs vs Classes
+
+```csharp
+public class StructsVsClasses
+{
+    // Struct - tipo de valor
+    public struct PuntoStruct
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        
+        public PuntoStruct(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+        
+        public double Distancia()
+        {
+            return Math.Sqrt(X * X + Y * Y);
+        }
+    }
+    
+    // Class - tipo de referencia
+    public class PuntoClass
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        
+        public PuntoClass(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+        
+        public double Distancia()
+        {
+            return Math.Sqrt(X * X + Y * Y);
+        }
+    }
+    
+    // Comparación de rendimiento
+    public void CompararRendimiento()
+    {
+        const int iteraciones = 1000000;
+        
+        // Usando structs
+        var sw1 = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < iteraciones; i++)
+        {
+            var punto = new PuntoStruct(i, i);
+            var distancia = punto.Distancia();
+        }
+        sw1.Stop();
+        
+        // Usando clases
+        var sw2 = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < iteraciones; i++)
+        {
+            var punto = new PuntoClass(i, i);
+            var distancia = punto.Distancia();
+        }
+        sw2.Stop();
+        
+        Console.WriteLine($"Structs: {sw1.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Clases: {sw2.ElapsedMilliseconds}ms");
+    }
+    
+    // Cuándo usar structs
+    public void CuandoUsarStructs()
+    {
+        // ✅ Bueno para structs - tipos pequeños e inmutables
+        public struct Coordenada
+        {
+            public readonly double Latitud;
+            public readonly double Longitud;
+            
+            public Coordenada(double latitud, double longitud)
+            {
+                Latitud = latitud;
+                Longitud = longitud;
+            }
+        }
+        
+        // ✅ Bueno para structs - tipos que representan valores
+        public struct Color
+        {
+            public byte R, G, B, A;
+            
+            public Color(byte r, byte g, byte b, byte a = 255)
+            {
+                R = r; G = g; B = b; A = a;
+            }
+        }
+        
+        // ❌ Malo para structs - tipos grandes
+        public struct PersonaGrande
+        {
+            public string Nombre;
+            public string Apellido;
+            public string Direccion;
+            public string Telefono;
+            public string Email;
+            public DateTime FechaNacimiento;
+            // ... muchos más campos
+        }
+    }
+}
+```
+
+### Object Pooling
+
+```csharp
+public class ObjectPooling
+{
+    // Pool básico de objetos
+    public class ObjectPool<T> where T : class, new()
+    {
+        private readonly Stack<T> pool;
+        private readonly int maxSize;
+        
+        public ObjectPool(int maxSize = 100)
+        {
+            this.maxSize = maxSize;
+            pool = new Stack<T>(maxSize);
+        }
+        
+        public T Obtener()
+        {
+            if (pool.Count > 0)
+            {
+                return pool.Pop();
+            }
+            
+            return new T();
+        }
+        
+        public void Devolver(T item)
+        {
+            if (item != null && pool.Count < maxSize)
+            {
+                pool.Push(item);
+            }
+        }
+        
+        public int CantidadDisponible => pool.Count;
+    }
+    
+    // Pool con reset de objetos
+    public class ObjectPoolConReset<T> where T : class, IReseteable, new()
+    {
+        private readonly Stack<T> pool;
+        private readonly int maxSize;
+        
+        public ObjectPoolConReset(int maxSize = 100)
+        {
+            this.maxSize = maxSize;
+            pool = new Stack<T>(maxSize);
+        }
+        
+        public T Obtener()
+        {
+            T item;
+            if (pool.Count > 0)
+            {
+                item = pool.Pop();
+            }
+            else
+            {
+                item = new T();
+            }
+            
+            item.Reset();
+            return item;
+        }
+        
+        public void Devolver(T item)
+        {
+            if (item != null && pool.Count < maxSize)
+            {
+                pool.Push(item);
+            }
+        }
+    }
+    
+    public interface IReseteable
+    {
+        void Reset();
+    }
+    
+    // Ejemplo de uso
+    public class Buffer : IReseteable
+    {
+        public byte[] Datos { get; set; }
+        public int Longitud { get; set; }
+        
+        public Buffer()
+        {
+            Datos = new byte[1024];
+        }
+        
+        public void Reset()
+        {
+            Longitud = 0;
+            Array.Clear(Datos, 0, Datos.Length);
+        }
+    }
+    
+    public void UsarObjectPool()
+    {
+        var pool = new ObjectPoolConReset<Buffer>(10);
+        
+        // Obtener buffer del pool
+        var buffer1 = pool.Obtener();
+        buffer1.Datos[0] = 1;
+        buffer1.Longitud = 10;
+        
+        // Devolver al pool
+        pool.Devolver(buffer1);
+        
+        // Obtener otro buffer (puede ser el mismo reutilizado)
+        var buffer2 = pool.Obtener();
+        Console.WriteLine($"Longitud: {buffer2.Longitud}"); // 0 (reset)
+    }
+}
+```
+
+## 5. MONITOREO DE MEMORIA
+
+### Herramientas de Monitoreo
+
+```csharp
+public class MonitoreoMemoria
+{
+    // Obtener información de memoria
+    public void InformacionMemoria()
+    {
+        var proceso = System.Diagnostics.Process.GetCurrentProcess();
+        
+        Console.WriteLine($"Memoria física: {proceso.WorkingSet64:N0} bytes");
+        Console.WriteLine($"Memoria virtual: {proceso.VirtualMemorySize64:N0} bytes");
+        Console.WriteLine($"Memoria privada: {proceso.PrivateMemorySize64:N0} bytes");
+        Console.WriteLine($"Memoria paged: {proceso.PagedMemorySize64:N0} bytes");
+        Console.WriteLine($"Memoria non-paged: {proceso.NonpagedSystemMemorySize64:N0} bytes");
+    }
+    
+    // Monitorear uso de memoria en tiempo real
+    public async Task MonitorearMemoriaAsync()
+    {
+        var proceso = System.Diagnostics.Process.GetCurrentProcess();
+        
+        for (int i = 0; i < 10; i++)
+        {
+            var memoria = proceso.WorkingSet64;
+            Console.WriteLine($"Iteración {i}: {memoria:N0} bytes");
+            
+            // Simular trabajo
+            await Task.Delay(1000);
+            
+            // Forzar recolección
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+    }
+    
+    // Detectar memory leaks
+    public class DetectorMemoryLeak
+    {
+        private readonly List<WeakReference> referencias = new List<WeakReference>();
+        
+        public void AgregarReferencia(object obj)
+        {
+            referencias.Add(new WeakReference(obj));
+        }
+        
+        public void VerificarMemoryLeaks()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            
+            var objetosVivos = referencias.Count(r => r.IsAlive);
+            var objetosMuertos = referencias.Count - objetosVivos;
+            
+            Console.WriteLine($"Objetos vivos: {objetosVivos}");
+            Console.WriteLine($"Objetos muertos: {objetosMuertos}");
+            
+            if (objetosMuertos > 0)
+            {
+                Console.WriteLine("Posible memory leak detectado");
+            }
+        }
+    }
+}
+```
+
+### Performance Counters
+
+```csharp
+public class PerformanceCounters
+{
+    public void MonitorearGCPorPerformanceCounters()
+    {
+        // Nota: PerformanceCounters requieren permisos administrativos
+        try
+        {
+            var gcGen0 = new System.Diagnostics.PerformanceCounter(".NET CLR Memory", "# Gen 0 Collections", "_Global_");
+            var gcGen1 = new System.Diagnostics.PerformanceCounter(".NET CLR Memory", "# Gen 1 Collections", "_Global_");
+            var gcGen2 = new System.Diagnostics.PerformanceCounter(".NET CLR Memory", "# Gen 2 Collections", "_Global_");
+            
+            Console.WriteLine($"Gen 0 Collections: {gcGen0.NextValue()}");
+            Console.WriteLine($"Gen 1 Collections: {gcGen1.NextValue()}");
+            Console.WriteLine($"Gen 2 Collections: {gcGen2.NextValue()}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al acceder a Performance Counters: {ex.Message}");
+        }
+    }
+}
+```
+
+## 6. PATRONES AVANZADOS DE MEMORIA
+
+### Memory<T> y Span<T>
+
+```csharp
+public class MemorySpan
+{
+    // Span<T> - vista sobre memoria
+    public void DemostrarSpan()
+    {
+        var array = new int[100];
+        
+        // Llenar array
+        for (int i = 0; i < array.Length; i++)
+        {
+            array[i] = i;
+        }
+        
+        // Crear Span sobre el array
+        Span<int> span = array;
+        
+        // Operaciones eficientes sin copias
+        var suma = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            suma += span[i];
+        }
+        
+        // Slice - crear vista sobre parte del Span
+        var mitad = span.Slice(50, 50);
+        var primeros10 = span.Slice(0, 10);
+        
+        // Operaciones de búsqueda
+        var indice = span.IndexOf(42);
+        var contiene = span.Contains(50);
+    }
+    
+    // Memory<T> - versión heap-allocated de Span<T>
+    public void DemostrarMemory()
+    {
+        var array = new int[100];
+        Memory<int> memory = array;
+        
+        // Crear Span desde Memory
+        Span<int> span = memory.Span;
+        
+        // Operaciones similares a Span
+        var suma = 0;
+        for (int i = 0; i < span.Length; i++)
+        {
+            suma += span[i];
+        }
+    }
+    
+    // Ejemplo práctico - procesamiento de bytes
+    public void ProcesarBytes()
+    {
+        var datos = new byte[1024];
+        var random = new Random();
+        random.NextBytes(datos);
+        
+        // Procesar usando Span
+        Span<byte> span = datos;
+        
+        // Encontrar secuencia específica
+        var secuencia = new byte[] { 0x01, 0x02, 0x03 };
+        var indice = span.IndexOf(secuencia);
+        
+        if (indice >= 0)
+        {
+            Console.WriteLine($"Secuencia encontrada en posición {indice}");
+        }
+    }
+}
+```
+
+### ValueTask<T>
+
+```csharp
+public class ValueTaskEjemplos
+{
+    // ValueTask para operaciones que frecuentemente completan sincrónicamente
+    public async ValueTask<int> OperacionOptimizadaAsync()
+    {
+        // Si la operación puede completar sincrónicamente
+        if (DateTime.Now.Second < 30)
+        {
+            return 42; // Sin overhead de Task
+        }
+        
+        // Si necesita ser asíncrona
+        await Task.Delay(100);
+        return await Task.Run(() => 42);
+    }
+    
+    // ValueTask con resultado inmediato
+    public ValueTask<string> ResultadoInmediatoAsync()
+    {
+        return new ValueTask<string>("Resultado inmediato");
+    }
+    
+    // ValueTask con operación asíncrona
+    public async ValueTask<int> CalcularAsync(int n)
+    {
+        if (n < 10)
+        {
+            return n * n; // Resultado inmediato
+        }
+        
+        await Task.Delay(1000); // Operación asíncrona
+        return await Task.Run(() => n * n);
+    }
+}
+```
+
+## 7. MEJORES PRÁCTICAS
+
+### Patrones Recomendados
+
+```csharp
+public class MejoresPracticas
+{
+    // 1. Usar using para recursos IDisposable
+    public void UsarUsing()
+    {
+        using (var stream = new FileStream("archivo.txt", FileMode.Open))
+        {
+            // Usar stream
+        } // Dispose se llama automáticamente
+    }
+    
+    // 2. Evitar finalizadores innecesarios
+    public class ClaseSinFinalizador
+    {
+        // Solo usar finalizadores para recursos no administrados
+        // No usar para recursos administrados
+    }
+    
+    // 3. Implementar IDisposable correctamente
+    public class ClaseConDispose : IDisposable
+    {
+        private bool disposed = false;
+        
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // Liberar recursos administrados
+                }
+                
+                // Liberar recursos no administrados
+                
+                disposed = true;
+            }
+        }
+    }
+    
+    // 4. Usar structs para tipos pequeños
+    public struct Punto
+    {
+        public int X, Y;
+        
+        public Punto(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
+    
+    // 5. Evitar boxing/unboxing
+    public void EvitarBoxing()
+    {
+        // ❌ Incorrecto
+        object obj = 42;
+        
+        // ✅ Correcto
+        int numero = 42;
+    }
+    
+    // 6. Usar object pooling para objetos costosos
+    public void UsarObjectPooling()
+    {
+        var pool = new ObjectPool<StringBuilder>(10);
+        
+        var sb = pool.Obtener();
+        sb.Append("Texto");
+        var resultado = sb.ToString();
+        pool.Devolver(sb);
+    }
+    
+    // 7. Monitorear uso de memoria
+    public void MonitorearMemoria()
+    {
+        var proceso = System.Diagnostics.Process.GetCurrentProcess();
+        var memoria = proceso.WorkingSet64;
+        
+        if (memoria > 100 * 1024 * 1024) // 100MB
+        {
+            Console.WriteLine("Uso de memoria alto detectado");
+            GC.Collect();
+        }
+    }
+}
+```
+
+### Anti-patrones a Evitar
+
+```csharp
+public class AntiPatrones
+{
+    // ❌ Anti-patrón: Finalizadores innecesarios
+    public class ClaseConFinalizadorInnecesario
+    {
+        private string texto;
+        
+        ~ClaseConFinalizadorInnecesario()
+        {
+            // No hacer nada útil
+            texto = null; // Innecesario
+        }
+    }
+    
+    // ❌ Anti-patrón: No implementar IDisposable
+    public class ClaseSinDispose
+    {
+        private FileStream stream;
+        
+        public ClaseSinDispose()
+        {
+            stream = new FileStream("archivo.txt", FileMode.Open);
+        }
+        
+        // Falta implementar IDisposable
+    }
+    
+    // ❌ Anti-patrón: Boxing innecesario
+    public void BoxingInnecesario()
+    {
+        var lista = new List<object> { 1, 2, 3 }; // Boxing
+        var diccionario = new Dictionary<string, object>(); // Boxing
+    }
+    
+    // ❌ Anti-patrón: Memory leaks
+    public class MemoryLeak
+    {
+        private static List<object> listaEstatica = new List<object>();
+        
+        public void AgregarObjeto(object obj)
+        {
+            listaEstatica.Add(obj); // Nunca se libera
+        }
+    }
+    
+    // ❌ Anti-patrón: Finalizadores que llaman métodos virtuales
+    public class ClaseConFinalizadorVirtual
+    {
+        protected virtual void Limpiar()
+        {
+            // Limpieza
+        }
+        
+        ~ClaseConFinalizadorVirtual()
+        {
+            Limpiar(); // Peligroso en finalizadores
+        }
+    }
+}
+```
+
+Esta guía completa de gestión de memoria y garbage collection en C# cubre desde los conceptos fundamentales hasta técnicas avanzadas, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo gestionar la memoria eficientemente en diferentes escenarios de programación. 

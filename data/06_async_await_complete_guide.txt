@@ -1,0 +1,1093 @@
+# ASYNC/AWAIT EN C# - GUÍA COMPLETA
+
+## 1. INTRODUCCIÓN A LA PROGRAMACIÓN ASÍNCRONA
+
+### ¿Qué es la Programación Asíncrona?
+
+La programación asíncrona es un modelo de programación que permite que las operaciones se ejecuten en segundo plano sin bloquear el hilo principal. Esto es especialmente importante para aplicaciones que necesitan mantener la responsividad mientras realizan operaciones que pueden tomar tiempo, como llamadas a bases de datos, servicios web, o operaciones de archivo.
+
+**Ventajas de la programación asíncrona:**
+- **Responsividad**: La interfaz de usuario permanece responsiva
+- **Escalabilidad**: Mejor utilización de recursos del sistema
+- **Eficiencia**: No se bloquean hilos innecesariamente
+- **Simplicidad**: Código más legible que callbacks tradicionales
+
+### Diferencias entre Síncrono y Asíncrono
+
+```csharp
+// Operación síncrona (bloqueante)
+public string ObtenerDatosSincrono()
+{
+    Thread.Sleep(2000); // Bloquea el hilo por 2 segundos
+    return "Datos obtenidos";
+}
+
+// Operación asíncrona (no bloqueante)
+public async Task<string> ObtenerDatosAsincrono()
+{
+    await Task.Delay(2000); // No bloquea el hilo
+    return "Datos obtenidos";
+}
+
+// Comparación de uso
+public void EjemploComparacion()
+{
+    // Síncrono - bloquea la UI
+    var datos1 = ObtenerDatosSincrono(); // UI se congela por 2 segundos
+    
+    // Asíncrono - no bloquea la UI
+    var datos2 = await ObtenerDatosAsincrono(); // UI permanece responsiva
+}
+```
+
+## 2. FUNDAMENTOS DE ASYNC/AWAIT
+
+### Palabras Clave: async y await
+
+```csharp
+public class FundamentosAsync
+{
+    // async: Indica que el método es asíncrono
+    // await: Espera la finalización de una operación asíncrona
+    public async Task<string> MetodoBasicoAsync()
+    {
+        Console.WriteLine("Iniciando operación asíncrona...");
+        
+        // await pausa la ejecución hasta que Task.Delay termine
+        await Task.Delay(1000);
+        
+        Console.WriteLine("Operación completada");
+        return "Resultado";
+    }
+    
+    // Método que no retorna valor
+    public async Task MetodoSinRetornoAsync()
+    {
+        await Task.Delay(500);
+        Console.WriteLine("Operación completada sin retorno");
+    }
+    
+    // Método que retorna un valor específico
+    public async Task<int> MetodoConRetornoAsync()
+    {
+        await Task.Delay(300);
+        return 42;
+    }
+    
+    // Método que retorna void (no recomendado)
+    public async void MetodoVoidAsync()
+    {
+        await Task.Delay(200);
+        Console.WriteLine("Completado");
+    }
+}
+```
+
+### Tipos de Retorno Asíncronos
+
+```csharp
+public class TiposRetornoAsync
+{
+    // Task - para operaciones que no retornan valor
+    public async Task OperacionSinRetornoAsync()
+    {
+        await Task.Delay(1000);
+        Console.WriteLine("Operación completada");
+    }
+    
+    // Task<T> - para operaciones que retornan un valor
+    public async Task<string> OperacionConRetornoAsync()
+    {
+        await Task.Delay(1000);
+        return "Resultado de la operación";
+    }
+    
+    // ValueTask<T> - para operaciones que frecuentemente completan sincrónicamente
+    public async ValueTask<int> OperacionOptimizadaAsync()
+    {
+        await Task.Delay(100);
+        return 123;
+    }
+    
+    // void - solo para event handlers (no recomendado para otros casos)
+    public async void EventHandlerAsync(object sender, EventArgs e)
+    {
+        await Task.Delay(100);
+        Console.WriteLine("Evento procesado");
+    }
+}
+```
+
+## 3. CREACIÓN DE TAREAS ASÍNCRONAS
+
+### Task.Run - Ejecutar Código en Thread Pool
+
+```csharp
+public class CreacionTareas
+{
+    // Ejecutar trabajo intensivo en CPU
+    public async Task<int> CalcularFactorialAsync(int n)
+    {
+        return await Task.Run(() =>
+        {
+            int resultado = 1;
+            for (int i = 2; i <= n; i++)
+            {
+                resultado *= i;
+                Thread.Sleep(10); // Simulación de trabajo intensivo
+            }
+            return resultado;
+        });
+    }
+    
+    // Ejecutar múltiples operaciones en paralelo
+    public async Task<List<int>> CalcularFactorialesParalelosAsync(List<int> numeros)
+    {
+        var tareas = numeros.Select(n => CalcularFactorialAsync(n));
+        return await Task.WhenAll(tareas);
+    }
+    
+    // Ejecutar con cancelación
+    public async Task<string> OperacionCancelableAsync(CancellationToken cancellationToken)
+    {
+        return await Task.Run(async () =>
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(500, cancellationToken);
+                Console.WriteLine($"Paso {i + 1} completado");
+            }
+            return "Operación completada";
+        }, cancellationToken);
+    }
+}
+```
+
+### Task.FromResult - Tareas Completadas
+
+```csharp
+public class TareasCompletadas
+{
+    // Crear tarea ya completada con un valor
+    public Task<string> ObtenerValorInmediatoAsync()
+    {
+        return Task.FromResult("Valor inmediato");
+    }
+    
+    // Crear tarea completada sin valor
+    public Task OperacionCompletadaAsync()
+    {
+        return Task.CompletedTask;
+    }
+    
+    // Crear tarea con excepción
+    public Task<string> TareaConErrorAsync()
+    {
+        return Task.FromException<string>(new InvalidOperationException("Error simulado"));
+    }
+    
+    // Crear tarea cancelada
+    public Task<string> TareaCanceladaAsync()
+    {
+        return Task.FromCanceled<string>(new CancellationToken(true));
+    }
+}
+```
+
+### Task.Delay - Simulación de Operaciones Asíncronas
+
+```csharp
+public class SimulacionOperaciones
+{
+    // Simular operación de red
+    public async Task<string> SimularLlamadaAPIAsync()
+    {
+        await Task.Delay(2000); // Simular latencia de red
+        return "Respuesta de la API";
+    }
+    
+    // Simular operación de base de datos
+    public async Task<List<string>> SimularConsultaBDAsync()
+    {
+        await Task.Delay(500); // Simular tiempo de consulta
+        return new List<string> { "Dato 1", "Dato 2", "Dato 3" };
+    }
+    
+    // Simular operación de archivo
+    public async Task<string> SimularLecturaArchivoAsync(string ruta)
+    {
+        await Task.Delay(1000); // Simular tiempo de lectura
+        return $"Contenido del archivo {ruta}";
+    }
+    
+    // Simular operación con cancelación
+    public async Task<string> SimularOperacionLargaAsync(CancellationToken cancellationToken)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            await Task.Delay(500, cancellationToken);
+            Console.WriteLine($"Progreso: {(i + 1) * 10}%");
+        }
+        return "Operación larga completada";
+    }
+}
+```
+
+## 4. MANEJO DE MÚLTIPLES TAREAS
+
+### Task.WhenAll - Esperar Todas las Tareas
+
+```csharp
+public class ManejadorMultiplesTareas
+{
+    // Ejecutar múltiples tareas y esperar todas
+    public async Task<List<string>> EjecutarTodasLasTareasAsync()
+    {
+        var tareas = new List<Task<string>>
+        {
+            SimularLlamadaAPIAsync("API1"),
+            SimularLlamadaAPIAsync("API2"),
+            SimularLlamadaAPIAsync("API3")
+        };
+        
+        var resultados = await Task.WhenAll(tareas);
+        return resultados.ToList();
+    }
+    
+    // Ejecutar tareas con timeout
+    public async Task<List<string>> EjecutarConTimeoutAsync(int timeoutMs = 5000)
+    {
+        var tareas = new List<Task<string>>
+        {
+            SimularLlamadaAPIAsync("API1"),
+            SimularLlamadaAPIAsync("API2"),
+            SimularLlamadaAPIAsync("API3")
+        };
+        
+        using var cts = new CancellationTokenSource(timeoutMs);
+        var tareaTimeout = Task.Delay(timeoutMs, cts.Token);
+        
+        var tareaCompletada = await Task.WhenAny(Task.WhenAll(tareas), tareaTimeout);
+        
+        if (tareaCompletada == tareaTimeout)
+        {
+            throw new TimeoutException("Las operaciones excedieron el tiempo límite");
+        }
+        
+        return tareas.Select(t => t.Result).ToList();
+    }
+    
+    private async Task<string> SimularLlamadaAPIAsync(string api)
+    {
+        await Task.Delay(1000);
+        return $"Respuesta de {api}";
+    }
+}
+```
+
+### Task.WhenAny - Esperar la Primera Tarea
+
+```csharp
+public class EsperarPrimeraTarea
+{
+    // Obtener el primer resultado disponible
+    public async Task<string> ObtenerPrimerResultadoAsync()
+    {
+        var tareas = new List<Task<string>>
+        {
+            SimularLlamadaAPIAsync("API1", 3000),
+            SimularLlamadaAPIAsync("API2", 1000),
+            SimularLlamadaAPIAsync("API3", 2000)
+        };
+        
+        var primeraCompletada = await Task.WhenAny(tareas);
+        return await primeraCompletada;
+    }
+    
+    // Implementar patrón de fallback
+    public async Task<string> ObtenerDatosConFallbackAsync()
+    {
+        var tareaPrincipal = SimularLlamadaAPIAsync("API Principal", 5000);
+        var tareaFallback = SimularLlamadaAPIAsync("API Fallback", 1000);
+        
+        var tareaCompletada = await Task.WhenAny(tareaPrincipal, tareaFallback);
+        
+        if (tareaCompletada == tareaFallback)
+        {
+            Console.WriteLine("Usando datos de fallback");
+        }
+        
+        return await tareaCompletada;
+    }
+    
+    // Implementar timeout con fallback
+    public async Task<string> ObtenerDatosConTimeoutAsync(int timeoutMs = 3000)
+    {
+        var tareaDatos = SimularLlamadaAPIAsync("API", 5000);
+        var tareaTimeout = Task.Delay(timeoutMs);
+        
+        var tareaCompletada = await Task.WhenAny(tareaDatos, tareaTimeout);
+        
+        if (tareaCompletada == tareaTimeout)
+        {
+            return "Datos por defecto (timeout)";
+        }
+        
+        return await tareaDatos;
+    }
+    
+    private async Task<string> SimularLlamadaAPIAsync(string api, int delayMs)
+    {
+        await Task.Delay(delayMs);
+        return $"Respuesta de {api}";
+    }
+}
+```
+
+### Task.WhenAll vs Task.WhenAny
+
+```csharp
+public class ComparacionWhenAllWhenAny
+{
+    // WhenAll - esperar todas las tareas
+    public async Task<string[]> EjecutarTodasAsync()
+    {
+        var tareas = CrearTareas(3);
+        return await Task.WhenAll(tareas);
+    }
+    
+    // WhenAny - esperar la primera tarea
+    public async Task<string> EjecutarPrimeraAsync()
+    {
+        var tareas = CrearTareas(3);
+        var primera = await Task.WhenAny(tareas);
+        return await primera;
+    }
+    
+    // WhenAny con procesamiento de todas
+    public async Task<List<string>> EjecutarTodasConProgresoAsync()
+    {
+        var tareas = CrearTareas(5);
+        var resultados = new List<string>();
+        var tareasPendientes = new List<Task<string>>(tareas);
+        
+        while (tareasPendientes.Count > 0)
+        {
+            var tareaCompletada = await Task.WhenAny(tareasPendientes);
+            tareasPendientes.Remove(tareaCompletada);
+            
+            var resultado = await tareaCompletada;
+            resultados.Add(resultado);
+            
+            Console.WriteLine($"Completada: {resultado}. Pendientes: {tareasPendientes.Count}");
+        }
+        
+        return resultados;
+    }
+    
+    private List<Task<string>> CrearTareas(int cantidad)
+    {
+        var tareas = new List<Task<string>>();
+        var random = new Random();
+        
+        for (int i = 1; i <= cantidad; i++)
+        {
+            int delay = random.Next(1000, 5000);
+            tareas.Add(SimularTareaAsync($"Tarea {i}", delay));
+        }
+        
+        return tareas;
+    }
+    
+    private async Task<string> SimularTareaAsync(string nombre, int delayMs)
+    {
+        await Task.Delay(delayMs);
+        return $"{nombre} completada en {delayMs}ms";
+    }
+}
+```
+
+## 5. MANEJO DE EXCEPCIONES ASÍNCRONAS
+
+### Try-Catch con Async/Await
+
+```csharp
+public class ManejoExcepcionesAsync
+{
+    // Manejo básico de excepciones
+    public async Task<string> OperacionConManejoExcepcionesAsync()
+    {
+        try
+        {
+            await Task.Delay(1000);
+            throw new InvalidOperationException("Error simulado");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"Error capturado: {ex.Message}");
+            return "Valor por defecto";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error general: {ex.Message}");
+            return "Error general";
+        }
+    }
+    
+    // Manejo de excepciones en múltiples tareas
+    public async Task<List<string>> ManejarExcepcionesMultiplesAsync()
+    {
+        var tareas = new List<Task<string>>
+        {
+            SimularTareaConErrorAsync("Tarea 1", true),
+            SimularTareaConErrorAsync("Tarea 2", false),
+            SimularTareaConErrorAsync("Tarea 3", true)
+        };
+        
+        var resultados = new List<string>();
+        
+        foreach (var tarea in tareas)
+        {
+            try
+            {
+                var resultado = await tarea;
+                resultados.Add(resultado);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en tarea: {ex.Message}");
+                resultados.Add("Error");
+            }
+        }
+        
+        return resultados;
+    }
+    
+    // Manejo de excepciones con WhenAll
+    public async Task<List<string>> ManejarExcepcionesWhenAllAsync()
+    {
+        var tareas = new List<Task<string>>
+        {
+            SimularTareaConErrorAsync("Tarea 1", true),
+            SimularTareaConErrorAsync("Tarea 2", false),
+            SimularTareaConErrorAsync("Tarea 3", true)
+        };
+        
+        try
+        {
+            return (await Task.WhenAll(tareas)).ToList();
+        }
+        catch (AggregateException ex)
+        {
+            Console.WriteLine($"Errores capturados: {ex.InnerExceptions.Count}");
+            foreach (var innerEx in ex.InnerExceptions)
+            {
+                Console.WriteLine($"  - {innerEx.Message}");
+            }
+            return new List<string> { "Error en múltiples tareas" };
+        }
+    }
+    
+    private async Task<string> SimularTareaConErrorAsync(string nombre, bool lanzarError)
+    {
+        await Task.Delay(500);
+        
+        if (lanzarError)
+        {
+            throw new InvalidOperationException($"Error en {nombre}");
+        }
+        
+        return $"Éxito en {nombre}";
+    }
+}
+```
+
+### Excepciones en Eventos Asíncronos
+
+```csharp
+public class EventosAsincronos
+{
+    public event Func<TemperaturaEventArgs, Task> TemperaturaCambiadaAsync;
+    
+    public async Task CambiarTemperaturaAsync(double nuevaTemperatura)
+    {
+        var args = new TemperaturaEventArgs(25.0, nuevaTemperatura);
+        
+        if (TemperaturaCambiadaAsync != null)
+        {
+            var tareas = TemperaturaCambiadaAsync.GetInvocationList()
+                .Cast<Func<TemperaturaEventArgs, Task>>()
+                .Select(handler => handler(args));
+            
+            try
+            {
+                await Task.WhenAll(tareas);
+            }
+            catch (AggregateException ex)
+            {
+                Console.WriteLine($"Errores en eventos: {ex.InnerExceptions.Count}");
+                foreach (var innerEx in ex.InnerExceptions)
+                {
+                    Console.WriteLine($"  - {innerEx.Message}");
+                }
+            }
+        }
+    }
+}
+
+public class TemperaturaEventArgs : EventArgs
+{
+    public double TemperaturaAnterior { get; }
+    public double TemperaturaActual { get; }
+    
+    public TemperaturaEventArgs(double anterior, double actual)
+    {
+        TemperaturaAnterior = anterior;
+        TemperaturaActual = actual;
+    }
+}
+```
+
+## 6. CANCELACIÓN DE OPERACIONES ASÍNCRONAS
+
+### CancellationToken
+
+```csharp
+public class CancelacionOperaciones
+{
+    // Operación cancelable básica
+    public async Task<string> OperacionCancelableAsync(CancellationToken cancellationToken)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Delay(500, cancellationToken);
+            Console.WriteLine($"Paso {i + 1} completado");
+        }
+        
+        return "Operación completada";
+    }
+    
+    // Operación con timeout
+    public async Task<string> OperacionConTimeoutAsync(int timeoutMs)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        
+        try
+        {
+            return await OperacionCancelableAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Operación cancelada por timeout";
+        }
+    }
+    
+    // Operación con cancelación manual
+    public async Task<string> OperacionConCancelacionManualAsync()
+    {
+        using var cts = new CancellationTokenSource();
+        
+        // Simular cancelación después de 3 segundos
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            cts.Cancel();
+        });
+        
+        try
+        {
+            return await OperacionCancelableAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Operación cancelada manualmente";
+        }
+    }
+    
+    // Múltiples tokens de cancelación
+    public async Task<string> OperacionConMultiplesTokensAsync(
+        CancellationToken token1, 
+        CancellationToken token2)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(token1, token2);
+        
+        try
+        {
+            return await OperacionCancelableAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Operación cancelada por uno de los tokens";
+        }
+    }
+}
+```
+
+### Cancelación con Registro
+
+```csharp
+public class CancelacionConRegistro
+{
+    public async Task<string> OperacionConRegistroAsync(CancellationToken cancellationToken)
+    {
+        using var registro = cancellationToken.Register(() =>
+        {
+            Console.WriteLine("Operación cancelada - limpiando recursos...");
+        });
+        
+        try
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(500, cancellationToken);
+                Console.WriteLine($"Paso {i + 1} completado");
+            }
+            
+            return "Operación completada";
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Operación cancelada");
+            throw;
+        }
+    }
+}
+```
+
+## 7. PATRONES AVANZADOS DE ASYNC/AWAIT
+
+### Async Streams (C# 8.0+)
+
+```csharp
+public class AsyncStreams
+{
+    // Generar secuencia asíncrona
+    public async IAsyncEnumerable<int> GenerarNumerosAsync(int cantidad)
+    {
+        for (int i = 1; i <= cantidad; i++)
+        {
+            await Task.Delay(100); // Simulación de procesamiento
+            yield return i;
+        }
+    }
+    
+    // Procesar archivos de forma asíncrona
+    public async IAsyncEnumerable<string> ProcesarArchivosAsync(string directorio)
+    {
+        var archivos = Directory.GetFiles(directorio);
+        
+        foreach (var archivo in archivos)
+        {
+            var contenido = await File.ReadAllTextAsync(archivo);
+            yield return $"Archivo: {Path.GetFileName(archivo)}, Tamaño: {contenido.Length}";
+        }
+    }
+    
+    // Consumir async streams
+    public async Task ProcesarStreamAsync()
+    {
+        await foreach (var numero in GenerarNumerosAsync(10))
+        {
+            Console.WriteLine($"Número: {numero}");
+        }
+        
+        await foreach (var archivo in ProcesarArchivosAsync(@"C:\Temp"))
+        {
+            Console.WriteLine(archivo);
+        }
+    }
+}
+```
+
+### ConfigureAwait
+
+```csharp
+public class ConfigureAwaitEjemplos
+{
+    // ConfigureAwait(false) - no capturar contexto de sincronización
+    public async Task<string> OperacionSinContextoAsync()
+    {
+        await Task.Delay(1000).ConfigureAwait(false);
+        return "Operación completada sin contexto";
+    }
+    
+    // ConfigureAwait(true) - capturar contexto de sincronización (por defecto)
+    public async Task<string> OperacionConContextoAsync()
+    {
+        await Task.Delay(1000).ConfigureAwait(true);
+        return "Operación completada con contexto";
+    }
+    
+    // Ejemplo práctico - biblioteca
+    public async Task<string> MetodoBibliotecaAsync()
+    {
+        // En bibliotecas, usar ConfigureAwait(false) para evitar deadlocks
+        await Task.Delay(1000).ConfigureAwait(false);
+        
+        // Si necesitas el contexto más adelante
+        await Task.Delay(500).ConfigureAwait(true);
+        
+        return "Resultado";
+    }
+}
+```
+
+### ValueTask para Optimización
+
+```csharp
+public class ValueTaskEjemplos
+{
+    // ValueTask para operaciones que frecuentemente completan sincrónicamente
+    public async ValueTask<string> OperacionOptimizadaAsync()
+    {
+        // Si la operación puede completar sincrónicamente
+        if (DateTime.Now.Second < 30)
+        {
+            return "Resultado inmediato";
+        }
+        
+        // Si necesita ser asíncrona
+        await Task.Delay(100);
+        return "Resultado asíncrono";
+    }
+    
+    // ValueTask con resultado inmediato
+    public ValueTask<string> ResultadoInmediatoAsync()
+    {
+        return new ValueTask<string>("Resultado inmediato");
+    }
+    
+    // ValueTask con operación asíncrona
+    public async ValueTask<int> CalcularAsync(int n)
+    {
+        if (n < 10)
+        {
+            return n * n; // Resultado inmediato
+        }
+        
+        await Task.Delay(1000); // Operación asíncrona
+        return await Task.Run(() => n * n);
+    }
+}
+```
+
+## 8. PATRONES DE DISEÑO ASÍNCRONOS
+
+### Async Factory Pattern
+
+```csharp
+public class AsyncFactoryPattern
+{
+    public class Configuracion
+    {
+        public string Servidor { get; set; }
+        public int Puerto { get; set; }
+        public string BaseDatos { get; set; }
+    }
+    
+    public class ConexionBaseDatos
+    {
+        private ConexionBaseDatos(Configuracion config)
+        {
+            // Constructor privado
+        }
+        
+        // Factory method asíncrono
+        public static async Task<ConexionBaseDatos> CrearAsync(Configuracion config)
+        {
+            var conexion = new ConexionBaseDatos(config);
+            await conexion.InicializarAsync();
+            return conexion;
+        }
+        
+        private async Task InicializarAsync()
+        {
+            await Task.Delay(1000); // Simulación de inicialización
+            Console.WriteLine("Conexión inicializada");
+        }
+        
+        public async Task<string> EjecutarConsultaAsync(string consulta)
+        {
+            await Task.Delay(500);
+            return $"Resultado de: {consulta}";
+        }
+    }
+    
+    // Uso
+    public async Task UsarFactoryAsync()
+    {
+        var config = new Configuracion
+        {
+            Servidor = "localhost",
+            Puerto = 1433,
+            BaseDatos = "MiBaseDatos"
+        };
+        
+        var conexion = await ConexionBaseDatos.CrearAsync(config);
+        var resultado = await conexion.EjecutarConsultaAsync("SELECT * FROM Usuarios");
+    }
+}
+```
+
+### Async Singleton Pattern
+
+```csharp
+public class AsyncSingletonPattern
+{
+    public class ServicioConfiguracion
+    {
+        private static ServicioConfiguracion instancia;
+        private static readonly object bloqueo = new object();
+        private static Task<ServicioConfiguracion> tareaInicializacion;
+        
+        private ServicioConfiguracion()
+        {
+            // Constructor privado
+        }
+        
+        public static async Task<ServicioConfiguracion> ObtenerInstanciaAsync()
+        {
+            if (instancia != null)
+            {
+                return instancia;
+            }
+            
+            lock (bloqueo)
+            {
+                if (tareaInicializacion == null)
+                {
+                    tareaInicializacion = InicializarAsync();
+                }
+            }
+            
+            return await tareaInicializacion;
+        }
+        
+        private static async Task<ServicioConfiguracion> InicializarAsync()
+        {
+            var servicio = new ServicioConfiguracion();
+            await servicio.CargarConfiguracionAsync();
+            instancia = servicio;
+            return servicio;
+        }
+        
+        private async Task CargarConfiguracionAsync()
+        {
+            await Task.Delay(2000); // Simulación de carga de configuración
+            Console.WriteLine("Configuración cargada");
+        }
+        
+        public async Task<string> ObtenerConfiguracionAsync(string clave)
+        {
+            await Task.Delay(100);
+            return $"Valor de {clave}";
+        }
+    }
+}
+```
+
+### Async Command Pattern
+
+```csharp
+public class AsyncCommandPattern
+{
+    public interface IComandoAsync
+    {
+        Task EjecutarAsync();
+        Task DeshacerAsync();
+        string Descripcion { get; }
+    }
+    
+    public class ComandoCrearUsuarioAsync : IComandoAsync
+    {
+        private readonly string nombre;
+        private readonly string email;
+        private int idUsuario;
+        
+        public ComandoCrearUsuarioAsync(string nombre, string email)
+        {
+            this.nombre = nombre;
+            this.email = email;
+        }
+        
+        public string Descripcion => $"Crear usuario: {nombre}";
+        
+        public async Task EjecutarAsync()
+        {
+            await Task.Delay(1000); // Simulación de creación
+            idUsuario = new Random().Next(1000, 9999);
+            Console.WriteLine($"Usuario creado con ID: {idUsuario}");
+        }
+        
+        public async Task DeshacerAsync()
+        {
+            await Task.Delay(500); // Simulación de eliminación
+            Console.WriteLine($"Usuario {idUsuario} eliminado");
+        }
+    }
+    
+    public class GestorComandosAsync
+    {
+        private readonly Stack<IComandoAsync> historial = new Stack<IComandoAsync>();
+        private readonly Stack<IComandoAsync> rehacer = new Stack<IComandoAsync>();
+        
+        public async Task EjecutarComandoAsync(IComandoAsync comando)
+        {
+            await comando.EjecutarAsync();
+            historial.Push(comando);
+            rehacer.Clear();
+            Console.WriteLine($"Comando ejecutado: {comando.Descripcion}");
+        }
+        
+        public async Task DeshacerAsync()
+        {
+            if (historial.Count > 0)
+            {
+                var comando = historial.Pop();
+                await comando.DeshacerAsync();
+                rehacer.Push(comando);
+                Console.WriteLine($"Comando deshecho: {comando.Descripcion}");
+            }
+        }
+        
+        public async Task RehacerAsync()
+        {
+            if (rehacer.Count > 0)
+            {
+                var comando = rehacer.Pop();
+                await comando.EjecutarAsync();
+                historial.Push(comando);
+                Console.WriteLine($"Comando rehecho: {comando.Descripcion}");
+            }
+        }
+    }
+}
+```
+
+## 9. MEJORES PRÁCTICAS
+
+### Patrones Recomendados
+
+```csharp
+public class MejoresPracticasAsync
+{
+    // 1. Usar async/await consistentemente
+    public async Task<string> MetodoConsistenteAsync()
+    {
+        // ✅ Correcto
+        var resultado = await ObtenerDatosAsync();
+        return resultado;
+        
+        // ❌ Incorrecto
+        // return ObtenerDatosAsync().Result;
+    }
+    
+    // 2. Evitar async void (excepto en event handlers)
+    public async Task MetodoCorrectoAsync()
+    {
+        await Task.Delay(100);
+    }
+    
+    // 3. Usar ConfigureAwait en bibliotecas
+    public async Task<string> MetodoBibliotecaAsync()
+    {
+        await Task.Delay(100).ConfigureAwait(false);
+        return "Resultado";
+    }
+    
+    // 4. Manejar excepciones apropiadamente
+    public async Task<string> MetodoConManejoExcepcionesAsync()
+    {
+        try
+        {
+            return await ObtenerDatosAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error de red: {ex.Message}");
+            return "Valor por defecto";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error general: {ex.Message}");
+            throw;
+        }
+    }
+    
+    // 5. Usar CancellationToken para operaciones largas
+    public async Task<string> MetodoCancelableAsync(CancellationToken cancellationToken)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Delay(500, cancellationToken);
+        }
+        return "Completado";
+    }
+    
+    // 6. Evitar deadlocks
+    public async Task<string> MetodoSinDeadlockAsync()
+    {
+        // ✅ Correcto
+        return await ObtenerDatosAsync();
+        
+        // ❌ Incorrecto - puede causar deadlock
+        // return ObtenerDatosAsync().Result;
+    }
+    
+    private async Task<string> ObtenerDatosAsync()
+    {
+        await Task.Delay(1000);
+        return "Datos obtenidos";
+    }
+}
+```
+
+### Anti-patrones a Evitar
+
+```csharp
+public class AntiPatronesAsync
+{
+    // ❌ Anti-patrón: async void (excepto en event handlers)
+    public async void MetodoVoidAsync()
+    {
+        await Task.Delay(1000);
+        // Las excepciones no se pueden capturar
+    }
+    
+    // ❌ Anti-patrón: .Result o .Wait()
+    public string MetodoBloqueante()
+    {
+        return ObtenerDatosAsync().Result; // Puede causar deadlock
+    }
+    
+    // ❌ Anti-patrón: Task.Run para operaciones ya asíncronas
+    public async Task<string> MetodoRedundanteAsync()
+    {
+        return await Task.Run(async () => await ObtenerDatosAsync());
+    }
+    
+    // ❌ Anti-patrón: no manejar excepciones
+    public async Task<string> MetodoSinManejoExcepcionesAsync()
+    {
+        return await ObtenerDatosAsync(); // Las excepciones se propagan
+    }
+    
+    // ❌ Anti-patrón: fire-and-forget sin manejo de errores
+    public void MetodoFireAndForget()
+    {
+        _ = ObtenerDatosAsync(); // No se espera ni maneja errores
+    }
+    
+    private async Task<string> ObtenerDatosAsync()
+    {
+        await Task.Delay(1000);
+        return "Datos";
+    }
+}
+```
+
+Esta guía completa de async/await en C# cubre desde los conceptos fundamentales hasta patrones avanzados, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo aplicar la programación asíncrona en diferentes escenarios de programación.

@@ -1,0 +1,1529 @@
+# PROGRAMACIÓN ORIENTADA A OBJETOS EN C# - GUÍA COMPLETA
+
+## 1. FUNDAMENTOS DE LA PROGRAMACIÓN ORIENTADA A OBJETOS
+
+### ¿Qué es la Programación Orientada a Objetos (POO)?
+
+La Programación Orientada a Objetos es un paradigma de programación que organiza el código en objetos que contienen datos y código. Los objetos son instancias de clases que encapsulan datos (atributos) y comportamiento (métodos).
+
+**Principios fundamentales:**
+- **Encapsulación**: Ocultar datos y exponer solo lo necesario
+- **Herencia**: Reutilizar código de clases existentes
+- **Polimorfismo**: Mismo interfaz, diferentes implementaciones
+- **Abstracción**: Simplificar la complejidad del mundo real
+
+### Ventajas de la POO
+- **Reutilización de código**: Las clases pueden ser reutilizadas
+- **Mantenibilidad**: Código más fácil de mantener y modificar
+- **Escalabilidad**: Fácil extensión de funcionalidad
+- **Organización**: Código mejor estructurado y organizado
+
+## 2. CLASES Y OBJETOS
+
+### Definición de Clases
+
+Una clase es una plantilla o molde que define las propiedades y comportamientos que tendrán los objetos creados a partir de ella.
+
+```csharp
+public class Persona
+{
+    // Campos privados (datos encapsulados)
+    private string nombre;
+    private int edad;
+    private string email;
+    private DateTime fechaNacimiento;
+
+    // Propiedades públicas (interfaz de acceso)
+    public string Nombre
+    {
+        get { return nombre; }
+        set 
+        { 
+            if (!string.IsNullOrWhiteSpace(value))
+                nombre = value;
+            else
+                throw new ArgumentException("El nombre no puede estar vacío");
+        }
+    }
+
+    public int Edad
+    {
+        get { return edad; }
+        set 
+        { 
+            if (value >= 0 && value <= 150)
+                edad = value;
+            else
+                throw new ArgumentOutOfRangeException("La edad debe estar entre 0 y 150");
+        }
+    }
+
+    public string Email
+    {
+        get { return email; }
+        set 
+        { 
+            if (EsEmailValido(value))
+                email = value;
+            else
+                throw new ArgumentException("Formato de email inválido");
+        }
+    }
+
+    public DateTime FechaNacimiento
+    {
+        get { return fechaNacimiento; }
+        set 
+        { 
+            if (value <= DateTime.Now)
+                fechaNacimiento = value;
+            else
+                throw new ArgumentException("La fecha de nacimiento no puede ser futura");
+        }
+    }
+
+    // Propiedades calculadas (solo lectura)
+    public bool EsMayorDeEdad => edad >= 18;
+    
+    public int AñosVividos => DateTime.Now.Year - fechaNacimiento.Year;
+
+    // Constructores
+    public Persona()
+    {
+        nombre = "Sin nombre";
+        edad = 0;
+        fechaNacimiento = DateTime.Now;
+    }
+
+    public Persona(string nombre, int edad)
+    {
+        Nombre = nombre;
+        Edad = edad;
+        fechaNacimiento = DateTime.Now.AddYears(-edad);
+    }
+
+    public Persona(string nombre, int edad, string email, DateTime fechaNacimiento)
+    {
+        Nombre = nombre;
+        Edad = edad;
+        Email = email;
+        FechaNacimiento = fechaNacimiento;
+    }
+
+    // Métodos privados (lógica interna)
+    private bool EsEmailValido(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Métodos públicos (comportamiento)
+    public void Saludar()
+    {
+        Console.WriteLine($"¡Hola! Soy {nombre} y tengo {edad} años.");
+    }
+
+    public void Saludar(string saludoPersonalizado)
+    {
+        Console.WriteLine($"{saludoPersonalizado}, soy {nombre}.");
+    }
+
+    public void ActualizarEdad()
+    {
+        Edad = DateTime.Now.Year - fechaNacimiento.Year;
+    }
+
+    public string ObtenerInformacion()
+    {
+        return $"Nombre: {nombre}, Edad: {edad}, Email: {email}, Fecha Nacimiento: {fechaNacimiento:dd/MM/yyyy}";
+    }
+
+    // Sobrescritura de métodos de Object
+    public override string ToString()
+    {
+        return $"Persona: {nombre} ({edad} años)";
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is Persona otraPersona)
+        {
+            return nombre == otraPersona.nombre && 
+                   fechaNacimiento == otraPersona.fechaNacimiento;
+        }
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(nombre, fechaNacimiento);
+    }
+}
+```
+
+### Creación y Uso de Objetos
+
+```csharp
+// Creación de objetos
+Persona persona1 = new Persona();
+Persona persona2 = new Persona("Juan Pérez", 25);
+Persona persona3 = new Persona("María García", 30, "maria@email.com", new DateTime(1993, 5, 15));
+
+// Uso de propiedades
+persona1.Nombre = "Ana López";
+persona1.Edad = 28;
+persona1.Email = "ana@email.com";
+
+// Uso de métodos
+persona1.Saludar();
+persona2.Saludar("Buenos días");
+Console.WriteLine(persona3.ObtenerInformacion());
+
+// Uso de propiedades calculadas
+if (persona2.EsMayorDeEdad)
+{
+    Console.WriteLine($"{persona2.Nombre} es mayor de edad");
+}
+
+Console.WriteLine($"{persona3.Nombre} ha vivido {persona3.AñosVividos} años");
+```
+
+## 3. ENCAPSULACIÓN
+
+### Concepto de Encapsulación
+
+La encapsulación es el principio que oculta los detalles internos de una clase y expone solo lo necesario para interactuar con ella.
+
+### Niveles de Acceso
+
+```csharp
+public class EjemploEncapsulacion
+{
+    // private: Solo accesible dentro de la clase
+    private string datoPrivado = "Solo visible internamente";
+    
+    // protected: Accesible en la clase y clases derivadas
+    protected string datoProtegido = "Visible en clases derivadas";
+    
+    // internal: Accesible en el mismo assembly
+    internal string datoInterno = "Visible en el mismo proyecto";
+    
+    // protected internal: Accesible en el mismo assembly o clases derivadas
+    protected internal string datoProtegidoInterno = "Combinación de protected e internal";
+    
+    // public: Accesible desde cualquier lugar
+    public string datoPublico = "Visible desde cualquier lugar";
+    
+    // private readonly: Solo lectura, se inicializa en constructor
+    private readonly string datoSoloLectura;
+    
+    public EjemploEncapsulacion()
+    {
+        datoSoloLectura = "Inicializado en constructor";
+    }
+}
+```
+
+### Propiedades con Encapsulación Avanzada
+
+```csharp
+public class CuentaBancaria
+{
+    private decimal saldo;
+    private readonly string numeroCuenta;
+    private readonly List<Transaccion> historial;
+
+    public string NumeroCuenta => numeroCuenta; // Propiedad de solo lectura
+    public decimal Saldo => saldo; // Propiedad de solo lectura
+    public IReadOnlyList<Transaccion> Historial => historial.AsReadOnly(); // Lista de solo lectura
+
+    public CuentaBancaria(string numeroCuenta, decimal saldoInicial = 0)
+    {
+        this.numeroCuenta = numeroCuenta;
+        this.saldo = saldoInicial;
+        this.historial = new List<Transaccion>();
+        
+        if (saldoInicial > 0)
+        {
+            RegistrarTransaccion("Depósito inicial", saldoInicial);
+        }
+    }
+
+    public bool Depositar(decimal monto)
+    {
+        if (monto <= 0)
+        {
+            throw new ArgumentException("El monto debe ser positivo");
+        }
+
+        saldo += monto;
+        RegistrarTransaccion("Depósito", monto);
+        return true;
+    }
+
+    public bool Retirar(decimal monto)
+    {
+        if (monto <= 0)
+        {
+            throw new ArgumentException("El monto debe ser positivo");
+        }
+
+        if (monto > saldo)
+        {
+            throw new InvalidOperationException("Saldo insuficiente");
+        }
+
+        saldo -= monto;
+        RegistrarTransaccion("Retiro", -monto);
+        return true;
+    }
+
+    private void RegistrarTransaccion(string descripcion, decimal monto)
+    {
+        var transaccion = new Transaccion
+        {
+            Fecha = DateTime.Now,
+            Descripcion = descripcion,
+            Monto = monto,
+            SaldoDespues = saldo
+        };
+        
+        historial.Add(transaccion);
+    }
+
+    public string ObtenerResumen()
+    {
+        return $"Cuenta: {numeroCuenta}, Saldo: ${saldo:F2}";
+    }
+}
+
+public class Transaccion
+{
+    public DateTime Fecha { get; set; }
+    public string Descripcion { get; set; }
+    public decimal Monto { get; set; }
+    public decimal SaldoDespues { get; set; }
+}
+```
+
+## 4. HERENCIA
+
+### Concepto de Herencia
+
+La herencia permite crear nuevas clases basadas en clases existentes, reutilizando código y estableciendo una relación jerárquica.
+
+### Herencia Simple
+
+```csharp
+public class Animal
+{
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    public double Peso { get; set; }
+
+    public Animal(string nombre, int edad, double peso)
+    {
+        Nombre = nombre;
+        Edad = edad;
+        Peso = peso;
+    }
+
+    public virtual void HacerSonido()
+    {
+        Console.WriteLine("El animal hace un sonido");
+    }
+
+    public virtual void Mover()
+    {
+        Console.WriteLine("El animal se mueve");
+    }
+
+    public void Comer()
+    {
+        Console.WriteLine($"{Nombre} está comiendo");
+    }
+
+    public virtual string ObtenerInformacion()
+    {
+        return $"Animal: {Nombre}, Edad: {Edad}, Peso: {Peso}kg";
+    }
+}
+
+public class Perro : Animal
+{
+    public string Raza { get; set; }
+    public bool EsDomestico { get; set; }
+
+    public Perro(string nombre, int edad, double peso, string raza, bool esDomestico = true)
+        : base(nombre, edad, peso)
+    {
+        Raza = raza;
+        EsDomestico = esDomestico;
+    }
+
+    public override void HacerSonido()
+    {
+        Console.WriteLine($"{Nombre} dice: ¡Guau!");
+    }
+
+    public override void Mover()
+    {
+        Console.WriteLine($"{Nombre} corre y mueve la cola");
+    }
+
+    public void Ladrar()
+    {
+        Console.WriteLine($"{Nombre} está ladrando");
+    }
+
+    public override string ObtenerInformacion()
+    {
+        return $"{base.ObtenerInformacion()}, Raza: {Raza}, Doméstico: {EsDomestico}";
+    }
+}
+
+public class Gato : Animal
+{
+    public string Color { get; set; }
+    public bool EsIndependiente { get; set; }
+
+    public Gato(string nombre, int edad, double peso, string color, bool esIndependiente = true)
+        : base(nombre, edad, peso)
+    {
+        Color = color;
+        EsIndependiente = esIndependiente;
+    }
+
+    public override void HacerSonido()
+    {
+        Console.WriteLine($"{Nombre} dice: ¡Miau!");
+    }
+
+    public override void Mover()
+    {
+        Console.WriteLine($"{Nombre} camina sigilosamente");
+    }
+
+    public void Ronronear()
+    {
+        Console.WriteLine($"{Nombre} está ronroneando");
+    }
+
+    public override string ObtenerInformacion()
+    {
+        return $"{base.ObtenerInformacion()}, Color: {Color}, Independiente: {EsIndependiente}";
+    }
+}
+```
+
+### Herencia Múltiple con Interfaces
+
+```csharp
+public interface INadador
+{
+    void Nadar();
+    int VelocidadNado { get; }
+}
+
+public interface IVolador
+{
+    void Volar();
+    int AlturaMaxima { get; }
+}
+
+public interface ICazador
+{
+    void Cazar();
+    string PresaFavorita { get; }
+}
+
+public class Aguila : Animal, IVolador, ICazador
+{
+    public double Envergadura { get; set; }
+    public int AlturaMaxima => 3000; // metros
+    public string PresaFavorita => "Roedores";
+
+    public Aguila(string nombre, int edad, double peso, double envergadura)
+        : base(nombre, edad, peso)
+    {
+        Envergadura = envergadura;
+    }
+
+    public override void HacerSonido()
+    {
+        Console.WriteLine($"{Nombre} hace un chillido agudo");
+    }
+
+    public void Volar()
+    {
+        Console.WriteLine($"{Nombre} vuela a gran altura");
+    }
+
+    public void Cazar()
+    {
+        Console.WriteLine($"{Nombre} caza desde el aire");
+    }
+
+    public override string ObtenerInformacion()
+    {
+        return $"{base.ObtenerInformacion()}, Envergadura: {Envergadura}cm";
+    }
+}
+
+public class Delfin : Animal, INadador
+{
+    public int VelocidadNado => 60; // km/h
+
+    public Delfin(string nombre, int edad, double peso)
+        : base(nombre, edad, peso)
+    {
+    }
+
+    public override void HacerSonido()
+    {
+        Console.WriteLine($"{Nombre} hace sonidos de ecolocalización");
+    }
+
+    public void Nadar()
+    {
+        Console.WriteLine($"{Nombre} nada a {VelocidadNado} km/h");
+    }
+
+    public override string ObtenerInformacion()
+    {
+        return $"{base.ObtenerInformacion()}, Velocidad de nado: {VelocidadNado} km/h";
+    }
+}
+```
+
+### Clases Abstractas
+
+```csharp
+public abstract class Vehiculo
+{
+    public string Marca { get; set; }
+    public string Modelo { get; set; }
+    public int Año { get; set; }
+    public double VelocidadMaxima { get; set; }
+
+    protected Vehiculo(string marca, string modelo, int año, double velocidadMaxima)
+    {
+        Marca = marca;
+        Modelo = modelo;
+        Año = año;
+        VelocidadMaxima = velocidadMaxima;
+    }
+
+    // Método abstracto: debe ser implementado por las clases derivadas
+    public abstract void Acelerar();
+
+    // Método virtual: puede ser sobrescrito por las clases derivadas
+    public virtual void Frenar()
+    {
+        Console.WriteLine("El vehículo está frenando");
+    }
+
+    // Método concreto: implementación común para todas las clases derivadas
+    public void Encender()
+    {
+        Console.WriteLine($"{Marca} {Modelo} se está encendiendo");
+    }
+
+    public abstract string ObtenerTipoVehiculo();
+}
+
+public class Automovil : Vehiculo
+{
+    public int NumeroPuertas { get; set; }
+    public string TipoCombustible { get; set; }
+
+    public Automovil(string marca, string modelo, int año, double velocidadMaxima, 
+                     int numeroPuertas, string tipoCombustible)
+        : base(marca, modelo, año, velocidadMaxima)
+    {
+        NumeroPuertas = numeroPuertas;
+        TipoCombustible = tipoCombustible;
+    }
+
+    public override void Acelerar()
+    {
+        Console.WriteLine($"{Marca} {Modelo} acelera en la carretera");
+    }
+
+    public override void Frenar()
+    {
+        Console.WriteLine($"{Marca} {Modelo} frena con los frenos de disco");
+    }
+
+    public override string ObtenerTipoVehiculo()
+    {
+        return "Automóvil";
+    }
+}
+
+public class Motocicleta : Vehiculo
+{
+    public int Cilindrada { get; set; }
+    public bool TieneSidecar { get; set; }
+
+    public Motocicleta(string marca, string modelo, int año, double velocidadMaxima, 
+                      int cilindrada, bool tieneSidecar = false)
+        : base(marca, modelo, año, velocidadMaxima)
+    {
+        Cilindrada = cilindrada;
+        TieneSidecar = tieneSidecar;
+    }
+
+    public override void Acelerar()
+    {
+        Console.WriteLine($"{Marca} {Modelo} acelera en la ciudad");
+    }
+
+    public override string ObtenerTipoVehiculo()
+    {
+        return "Motocicleta";
+    }
+}
+```
+
+## 5. POLIMORFISMO
+
+### Concepto de Polimorfismo
+
+El polimorfismo permite que objetos de diferentes clases respondan de manera diferente al mismo mensaje.
+
+### Polimorfismo de Inclusión (Runtime)
+
+```csharp
+public class GestorAnimales
+{
+    public static void HacerSonarAnimales(List<Animal> animales)
+    {
+        foreach (var animal in animales)
+        {
+            animal.HacerSonido(); // Cada animal hace su sonido específico
+        }
+    }
+
+    public static void MostrarInformacionAnimales(List<Animal> animales)
+    {
+        foreach (var animal in animales)
+        {
+            Console.WriteLine(animal.ObtenerInformacion());
+        }
+    }
+}
+
+// Uso del polimorfismo
+var animales = new List<Animal>
+{
+    new Perro("Rex", 5, 25.5, "Labrador"),
+    new Gato("Mittens", 3, 4.2, "Gris"),
+    new Aguila("Águila", 8, 3.1, 180.0)
+};
+
+GestorAnimales.HacerSonarAnimales(animales);
+GestorAnimales.MostrarInformacionAnimales(animales);
+```
+
+### Polimorfismo Paramétrico (Generics)
+
+```csharp
+public class Contenedor<T>
+{
+    private T elemento;
+
+    public Contenedor(T elemento)
+    {
+        this.elemento = elemento;
+    }
+
+    public T ObtenerElemento()
+    {
+        return elemento;
+    }
+
+    public void EstablecerElemento(T nuevoElemento)
+    {
+        elemento = nuevoElemento;
+    }
+
+    public bool EsIgual(T otroElemento)
+    {
+        return EqualityComparer<T>.Default.Equals(elemento, otroElemento);
+    }
+}
+
+public class GestorContenedores
+{
+    public static void ProcesarContenedor<T>(Contenedor<T> contenedor)
+    {
+        Console.WriteLine($"Contenido: {contenedor.ObtenerElemento()}");
+    }
+}
+
+// Uso
+var contenedorInt = new Contenedor<int>(42);
+var contenedorString = new Contenedor<string>("Hola Mundo");
+var contenedorPersona = new Contenedor<Persona>(new Persona("Juan", 25));
+
+GestorContenedores.ProcesarContenedor(contenedorInt);
+GestorContenedores.ProcesarContenedor(contenedorString);
+GestorContenedores.ProcesarContenedor(contenedorPersona);
+```
+
+### Polimorfismo de Sobrecarga (Compile-time)
+
+```csharp
+public class Calculadora
+{
+    // Sobrecarga de métodos
+    public int Sumar(int a, int b)
+    {
+        return a + b;
+    }
+
+    public double Sumar(double a, double b)
+    {
+        return a + b;
+    }
+
+    public int Sumar(int a, int b, int c)
+    {
+        return a + b + c;
+    }
+
+    public string Sumar(string a, string b)
+    {
+        return a + b; // Concatenación
+    }
+
+    // Sobrecarga de operadores
+    public static Calculadora operator +(Calculadora a, Calculadora b)
+    {
+        // Implementación personalizada
+        return new Calculadora();
+    }
+
+    public static bool operator ==(Calculadora a, Calculadora b)
+    {
+        return ReferenceEquals(a, b);
+    }
+
+    public static bool operator !=(Calculadora a, Calculadora b)
+    {
+        return !(a == b);
+    }
+}
+```
+
+## 6. INTERFACES
+
+### Concepto de Interfaces
+
+Las interfaces definen un contrato que las clases deben implementar, especificando qué métodos y propiedades deben tener.
+
+### Interfaces Básicas
+
+```csharp
+public interface IReproducible
+{
+    void Reproducir();
+    void Pausar();
+    void Detener();
+}
+
+public interface IEditable
+{
+    void Editar();
+    void Guardar();
+}
+
+public interface ICompartible
+{
+    void Compartir();
+    void Descargar();
+}
+
+public class Video : IReproducible, IEditable, ICompartible
+{
+    public void Reproducir() { }
+    public void Pausar() { }
+    public void Detener() { }
+    public void Editar() { }
+    public void Guardar() { }
+    public void Compartir() { }
+    public void Descargar() { }
+}
+
+public class Audio : IReproducible, ICompartible
+{
+    public void Reproducir() { }
+    public void Pausar() { }
+    public void Detener() { }
+    public void Compartir() { }
+    public void Descargar() { }
+}
+```
+
+### Interfaces con Implementación por Defecto (C# 8.0+)
+
+```csharp
+public interface ILogger
+{
+    void Log(string mensaje);
+    void LogError(string error);
+    void LogWarning(string warning);
+    
+    // Implementación por defecto
+    void LogInfo(string info)
+    {
+        Log($"[INFO] {info}");
+    }
+    
+    void LogDebug(string debug)
+    {
+        Log($"[DEBUG] {debug}");
+    }
+}
+
+public class ConsoleLogger : ILogger
+{
+    public void Log(string mensaje)
+    {
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {mensaje}");
+    }
+
+    public void LogError(string error)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"[ERROR] {error}");
+        Console.ResetColor();
+    }
+
+    public void LogWarning(string warning)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"[WARNING] {warning}");
+        Console.ResetColor();
+    }
+}
+
+public class FileLogger : ILogger
+{
+    private readonly string filePath;
+
+    public FileLogger(string filePath)
+    {
+        this.filePath = filePath;
+    }
+
+    public void Log(string mensaje)
+    {
+        File.AppendAllText(filePath, $"[{DateTime.Now:HH:mm:ss}] {mensaje}{Environment.NewLine}");
+    }
+
+    public void LogError(string error)
+    {
+        Log($"[ERROR] {error}");
+    }
+
+    public void LogWarning(string warning)
+    {
+        Log($"[WARNING] {warning}");
+    }
+}
+```
+
+## 7. DELEGADOS Y EVENTOS
+
+### Delegados
+
+Los delegados son tipos que representan referencias a métodos con una firma específica.
+
+```csharp
+// Definición de delegados
+public delegate int OperacionMatematica(int a, int b);
+public delegate void AccionSinRetorno(string mensaje);
+public delegate bool Predicado<T>(T elemento);
+
+public class CalculadoraAvanzada
+{
+    public int EjecutarOperacion(OperacionMatematica operacion, int a, int b)
+    {
+        return operacion(a, b);
+    }
+
+    public void ProcesarConAccion(AccionSinRetorno accion, string mensaje)
+    {
+        accion(mensaje);
+    }
+
+    public List<T> Filtrar<T>(List<T> elementos, Predicado<T> predicado)
+    {
+        var resultado = new List<T>();
+        foreach (var elemento in elementos)
+        {
+            if (predicado(elemento))
+            {
+                resultado.Add(elemento);
+            }
+        }
+        return resultado;
+    }
+}
+
+// Métodos que coinciden con las firmas de los delegados
+public static class OperacionesMatematicas
+{
+    public static int Sumar(int a, int b) => a + b;
+    public static int Restar(int a, int b) => a - b;
+    public static int Multiplicar(int a, int b) => a * b;
+    public static int Dividir(int a, int b) => b != 0 ? a / b : 0;
+}
+
+public static class Acciones
+{
+    public static void Imprimir(string mensaje) => Console.WriteLine(mensaje);
+    public static void ImprimirEnMayusculas(string mensaje) => Console.WriteLine(mensaje.ToUpper());
+    public static void ImprimirConTimestamp(string mensaje) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {mensaje}");
+}
+
+// Uso de delegados
+var calculadora = new CalculadoraAvanzada();
+
+// Delegado simple
+OperacionMatematica suma = OperacionesMatematicas.Sumar;
+int resultado = calculadora.EjecutarOperacion(suma, 10, 5);
+
+// Delegado con múltiples métodos (multicast)
+OperacionMatematica operaciones = OperacionesMatematicas.Sumar;
+operaciones += OperacionesMatematicas.Multiplicar;
+operaciones += OperacionesMatematicas.Restar;
+
+// Delegados con tipos genéricos
+var numeros = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+Predicado<int> esPar = n => n % 2 == 0;
+Predicado<int> esMayorQue5 = n => n > 5;
+
+var pares = calculadora.Filtrar(numeros, esPar);
+var mayoresQue5 = calculadora.Filtrar(numeros, esMayorQue5);
+```
+
+### Eventos
+
+Los eventos son una forma de implementar el patrón Observer, permitiendo que objetos se suscriban a notificaciones.
+
+```csharp
+public class SensorTemperatura
+{
+    // Definición del evento
+    public event EventHandler<TemperaturaEventArgs> TemperaturaCambiada;
+    public event EventHandler<TemperaturaEventArgs> TemperaturaCritica;
+
+    private double temperatura;
+    private const double TEMPERATURA_CRITICA = 40.0;
+
+    public double Temperatura
+    {
+        get => temperatura;
+        set
+        {
+            if (temperatura != value)
+            {
+                var temperaturaAnterior = temperatura;
+                temperatura = value;
+                
+                // Disparar evento de cambio
+                OnTemperaturaCambiada(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                
+                // Disparar evento crítico si es necesario
+                if (temperatura >= TEMPERATURA_CRITICA)
+                {
+                    OnTemperaturaCritica(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                }
+            }
+        }
+    }
+
+    // Métodos para disparar eventos
+    protected virtual void OnTemperaturaCambiada(TemperaturaEventArgs e)
+    {
+        TemperaturaCambiada?.Invoke(this, e);
+    }
+
+    protected virtual void OnTemperaturaCritica(TemperaturaEventArgs e)
+    {
+        TemperaturaCritica?.Invoke(this, e);
+    }
+}
+
+public class TemperaturaEventArgs : EventArgs
+{
+    public double TemperaturaAnterior { get; }
+    public double TemperaturaActual { get; }
+    public double Diferencia => TemperaturaActual - TemperaturaAnterior;
+
+    public TemperaturaEventArgs(double temperaturaAnterior, double temperaturaActual)
+    {
+        TemperaturaAnterior = temperaturaAnterior;
+        TemperaturaActual = temperaturaActual;
+    }
+}
+
+public class MonitorTemperatura
+{
+    private readonly SensorTemperatura sensor;
+
+    public MonitorTemperatura(SensorTemperatura sensor)
+    {
+        this.sensor = sensor;
+        
+        // Suscribirse a eventos
+        this.sensor.TemperaturaCambiada += OnTemperaturaCambiada;
+        this.sensor.TemperaturaCritica += OnTemperaturaCritica;
+    }
+
+    private void OnTemperaturaCambiada(object sender, TemperaturaEventArgs e)
+    {
+        Console.WriteLine($"Temperatura cambiada de {e.TemperaturaAnterior:F1}°C a {e.TemperaturaActual:F1}°C");
+    }
+
+    private void OnTemperaturaCritica(object sender, TemperaturaEventArgs e)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"¡ALERTA! Temperatura crítica: {e.TemperaturaActual:F1}°C");
+        Console.ResetColor();
+    }
+
+    public void Desuscribirse()
+    {
+        sensor.TemperaturaCambiada -= OnTemperaturaCambiada;
+        sensor.TemperaturaCritica -= OnTemperaturaCritica;
+    }
+}
+
+// Uso de eventos
+var sensor = new SensorTemperatura();
+var monitor = new MonitorTemperatura(sensor);
+
+// Simular cambios de temperatura
+sensor.Temperatura = 25.0;
+sensor.Temperatura = 30.0;
+sensor.Temperatura = 35.0;
+sensor.Temperatura = 42.0; // Temperatura crítica
+sensor.Temperatura = 38.0;
+```
+
+## 8. PATRONES DE DISEÑO ORIENTADOS A OBJETOS
+
+### Singleton Pattern
+
+```csharp
+public class ConfiguracionGlobal
+{
+    private static ConfiguracionGlobal instancia;
+    private static readonly object bloqueo = new object();
+    
+    private readonly Dictionary<string, object> configuraciones;
+
+    private ConfiguracionGlobal()
+    {
+        configuraciones = new Dictionary<string, object>();
+        CargarConfiguracionesPorDefecto();
+    }
+
+    public static ConfiguracionGlobal Instancia
+    {
+        get
+        {
+            if (instancia == null)
+            {
+                lock (bloqueo)
+                {
+                    if (instancia == null)
+                    {
+                        instancia = new ConfiguracionGlobal();
+                    }
+                }
+            }
+            return instancia;
+        }
+    }
+
+    private void CargarConfiguracionesPorDefecto()
+    {
+        configuraciones["Tema"] = "Claro";
+        configuraciones["Idioma"] = "Español";
+        configuraciones["TamañoFuente"] = 12;
+        configuraciones["SonidoActivado"] = true;
+    }
+
+    public T ObtenerConfiguracion<T>(string clave)
+    {
+        if (configuraciones.ContainsKey(clave))
+        {
+            return (T)configuraciones[clave];
+        }
+        return default(T);
+    }
+
+    public void EstablecerConfiguracion<T>(string clave, T valor)
+    {
+        configuraciones[clave] = valor;
+    }
+}
+
+// Uso del Singleton
+var config1 = ConfiguracionGlobal.Instancia;
+var config2 = ConfiguracionGlobal.Instancia;
+
+Console.WriteLine(ReferenceEquals(config1, config2)); // True - misma instancia
+
+config1.EstablecerConfiguracion("Tema", "Oscuro");
+string tema = config2.ObtenerConfiguracion<string>("Tema"); // "Oscuro"
+```
+
+### Factory Pattern
+
+```csharp
+public abstract class Documento
+{
+    public string Titulo { get; set; }
+    public string Contenido { get; set; }
+    public DateTime FechaCreacion { get; set; }
+
+    public abstract void Generar();
+    public abstract string ObtenerTipo();
+}
+
+public class DocumentoPDF : Documento
+{
+    public override void Generar()
+    {
+        Console.WriteLine($"Generando PDF: {Titulo}");
+    }
+
+    public override string ObtenerTipo()
+    {
+        return "PDF";
+    }
+}
+
+public class DocumentoWord : Documento
+{
+    public override void Generar()
+    {
+        Console.WriteLine($"Generando Word: {Titulo}");
+    }
+
+    public override string ObtenerTipo()
+    {
+        return "Word";
+    }
+}
+
+public class DocumentoHTML : Documento
+{
+    public override void Generar()
+    {
+        Console.WriteLine($"Generando HTML: {Titulo}");
+    }
+
+    public override string ObtenerTipo()
+    {
+        return "HTML";
+    }
+}
+
+public abstract class CreadorDocumento
+{
+    public abstract Documento CrearDocumento(string titulo, string contenido);
+
+    public Documento GenerarDocumento(string titulo, string contenido)
+    {
+        var documento = CrearDocumento(titulo, contenido);
+        documento.FechaCreacion = DateTime.Now;
+        documento.Generar();
+        return documento;
+    }
+}
+
+public class CreadorPDF : CreadorDocumento
+{
+    public override Documento CrearDocumento(string titulo, string contenido)
+    {
+        return new DocumentoPDF
+        {
+            Titulo = titulo,
+            Contenido = contenido
+        };
+    }
+}
+
+public class CreadorWord : CreadorDocumento
+{
+    public override Documento CrearDocumento(string titulo, string contenido)
+    {
+        return new DocumentoWord
+        {
+            Titulo = titulo,
+            Contenido = contenido
+        };
+    }
+}
+
+public class CreadorHTML : CreadorDocumento
+{
+    public override Documento CrearDocumento(string titulo, string contenido)
+    {
+        return new DocumentoHTML
+        {
+            Titulo = titulo,
+            Contenido = contenido
+        };
+    }
+}
+
+// Uso del Factory Pattern
+var creadorPDF = new CreadorPDF();
+var creadorWord = new CreadorWord();
+var creadorHTML = new CreadorHTML();
+
+var pdf = creadorPDF.GenerarDocumento("Reporte", "Contenido del reporte");
+var word = creadorWord.GenerarDocumento("Informe", "Contenido del informe");
+var html = creadorHTML.GenerarDocumento("Página", "Contenido de la página");
+```
+
+### Observer Pattern
+
+```csharp
+public interface IObserver
+{
+    void Actualizar(string mensaje);
+}
+
+public interface ISujeto
+{
+    void AgregarObservador(IObserver observador);
+    void RemoverObservador(IObserver observador);
+    void NotificarObservadores(string mensaje);
+}
+
+public class SujetoConcreto : ISujeto
+{
+    private readonly List<IObserver> observadores = new List<IObserver>();
+    private string estado;
+
+    public string Estado
+    {
+        get => estado;
+        set
+        {
+            estado = value;
+            NotificarObservadores($"Estado cambiado a: {estado}");
+        }
+    }
+
+    public void AgregarObservador(IObserver observador)
+    {
+        if (!observadores.Contains(observador))
+        {
+            observadores.Add(observador);
+        }
+    }
+
+    public void RemoverObservador(IObserver observador)
+    {
+        observadores.Remove(observador);
+    }
+
+    public void NotificarObservadores(string mensaje)
+    {
+        foreach (var observador in observadores)
+        {
+            observador.Actualizar(mensaje);
+        }
+    }
+}
+
+public class ObservadorConcreto : IObserver
+{
+    private readonly string nombre;
+
+    public ObservadorConcreto(string nombre)
+    {
+        this.nombre = nombre;
+    }
+
+    public void Actualizar(string mensaje)
+    {
+        Console.WriteLine($"{nombre} recibió: {mensaje}");
+    }
+}
+
+// Uso del Observer Pattern
+var sujeto = new SujetoConcreto();
+var observador1 = new ObservadorConcreto("Observador 1");
+var observador2 = new ObservadorConcreto("Observador 2");
+
+sujeto.AgregarObservador(observador1);
+sujeto.AgregarObservador(observador2);
+
+sujeto.Estado = "Activo";
+sujeto.Estado = "Inactivo";
+
+sujeto.RemoverObservador(observador1);
+sujeto.Estado = "Pendiente";
+```
+
+## 9. MEJORES PRÁCTICAS DE POO
+
+### Principios SOLID
+
+```csharp
+// Single Responsibility Principle (SRP)
+public class Usuario
+{
+    public string Nombre { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
+}
+
+public class UsuarioServicio
+{
+    public void CrearUsuario(Usuario usuario) { }
+    public void ActualizarUsuario(Usuario usuario) { }
+    public void EliminarUsuario(int id) { }
+}
+
+public class UsuarioValidacion
+{
+    public bool ValidarEmail(string email) { return true; }
+    public bool ValidarPassword(string password) { return true; }
+}
+
+public class UsuarioNotificacion
+{
+    public void EnviarEmailBienvenida(string email) { }
+    public void EnviarEmailConfirmacion(string email) { }
+}
+
+// Open/Closed Principle (OCP)
+public abstract class Forma
+{
+    public abstract double CalcularArea();
+}
+
+public class Rectangulo : Forma
+{
+    public double Ancho { get; set; }
+    public double Alto { get; set; }
+
+    public override double CalcularArea()
+    {
+        return Ancho * Alto;
+    }
+}
+
+public class Circulo : Forma
+{
+    public double Radio { get; set; }
+
+    public override double CalcularArea()
+    {
+        return Math.PI * Radio * Radio;
+    }
+}
+
+public class CalculadoraArea
+{
+    public double CalcularAreaTotal(List<Forma> formas)
+    {
+        return formas.Sum(f => f.CalcularArea());
+    }
+}
+
+// Liskov Substitution Principle (LSP)
+public class Ave
+{
+    public virtual void Volar()
+    {
+        Console.WriteLine("El ave vuela");
+    }
+}
+
+public class Aguila : Ave
+{
+    public override void Volar()
+    {
+        Console.WriteLine("El águila vuela alto");
+    }
+}
+
+public class Pinguino : Ave
+{
+    public override void Volar()
+    {
+        throw new NotImplementedException("Los pingüinos no pueden volar");
+    }
+}
+
+// Interface Segregation Principle (ISP)
+public interface IReproducible
+{
+    void Reproducir();
+    void Pausar();
+    void Detener();
+}
+
+public interface IEditable
+{
+    void Editar();
+    void Guardar();
+}
+
+public interface ICompartible
+{
+    void Compartir();
+    void Descargar();
+}
+
+public class Video : IReproducible, IEditable, ICompartible
+{
+    public void Reproducir() { }
+    public void Pausar() { }
+    public void Detener() { }
+    public void Editar() { }
+    public void Guardar() { }
+    public void Compartir() { }
+    public void Descargar() { }
+}
+
+public class Audio : IReproducible, ICompartible
+{
+    public void Reproducir() { }
+    public void Pausar() { }
+    public void Detener() { }
+    public void Compartir() { }
+    public void Descargar() { }
+}
+
+// Dependency Inversion Principle (DIP)
+public interface IRepositorio
+{
+    void Guardar(string datos);
+    string Obtener(int id);
+}
+
+public class RepositorioBaseDatos : IRepositorio
+{
+    public void Guardar(string datos) { }
+    public string Obtener(int id) { return ""; }
+}
+
+public class RepositorioArchivo : IRepositorio
+{
+    public void Guardar(string datos) { }
+    public string Obtener(int id) { return ""; }
+}
+
+public class ServicioUsuario
+{
+    private readonly IRepositorio repositorio;
+
+    public ServicioUsuario(IRepositorio repositorio)
+    {
+        this.repositorio = repositorio;
+    }
+
+    public void CrearUsuario(string datos)
+    {
+        repositorio.Guardar(datos);
+    }
+}
+```
+
+### Encapsulación y Data Hiding
+
+```csharp
+public class CuentaBancariaSegura
+{
+    private decimal saldo;
+    private readonly string numeroCuenta;
+    private readonly List<Transaccion> historial;
+    private readonly object bloqueo = new object();
+
+    public string NumeroCuenta => numeroCuenta;
+    public decimal Saldo 
+    { 
+        get 
+        { 
+            lock (bloqueo) return saldo; 
+        } 
+    }
+    public IReadOnlyList<Transaccion> Historial => historial.AsReadOnly();
+
+    public CuentaBancariaSegura(string numeroCuenta, decimal saldoInicial = 0)
+    {
+        this.numeroCuenta = numeroCuenta;
+        this.saldo = saldoInicial;
+        this.historial = new List<Transaccion>();
+    }
+
+    public bool Depositar(decimal monto)
+    {
+        if (monto <= 0)
+            return false;
+
+        lock (bloqueo)
+        {
+            saldo += monto;
+            RegistrarTransaccion("Depósito", monto);
+            return true;
+        }
+    }
+
+    public bool Retirar(decimal monto)
+    {
+        if (monto <= 0)
+            return false;
+
+        lock (bloqueo)
+        {
+            if (monto > saldo)
+                return false;
+
+            saldo -= monto;
+            RegistrarTransaccion("Retiro", -monto);
+            return true;
+        }
+    }
+
+    private void RegistrarTransaccion(string descripcion, decimal monto)
+    {
+        var transaccion = new Transaccion
+        {
+            Fecha = DateTime.Now,
+            Descripcion = descripcion,
+            Monto = monto,
+            SaldoDespues = saldo
+        };
+        
+        historial.Add(transaccion);
+    }
+}
+```
+
+Esta guía completa de Programación Orientada a Objetos en C# cubre desde los conceptos fundamentales hasta patrones avanzados, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo aplicar estos conceptos en proyectos reales. 
+Esta guía completa de Programación Orientada a Objetos en C# cubre desde los conceptos básicos hasta patrones de diseño avanzados, proporcionando ejemplos prácticos y explicaciones detalladas de cada concepto de POO. 

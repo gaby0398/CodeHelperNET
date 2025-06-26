@@ -1,0 +1,1234 @@
+# REFLECTION Y METADATA EN C# - GUÍA COMPLETA
+
+## 1. INTRODUCCIÓN A REFLECTION
+
+### ¿Qué es Reflection?
+
+Reflection es una característica de .NET que permite examinar, modificar y crear tipos, objetos y assemblies en tiempo de ejecución. Proporciona la capacidad de obtener información sobre la estructura de tipos, invocar métodos, acceder a propiedades y crear instancias dinámicamente.
+
+**Características principales de Reflection:**
+- **Inspección de tipos**: Obtener información sobre clases, métodos, propiedades
+- **Creación dinámica**: Instanciar objetos en tiempo de ejecución
+- **Invocación dinámica**: Llamar métodos y acceder a propiedades
+- **Modificación de comportamiento**: Cambiar valores y comportamientos
+- **Metadata**: Acceso a información de compilación y atributos
+
+### Ventajas y Desventajas
+
+```csharp
+public class VentajasDesventajasReflection
+{
+    // Ventajas de Reflection
+    public void Ventajas()
+    {
+        // 1. Flexibilidad - Permite crear código genérico
+        // 2. Serialización - Acceso dinámico a propiedades
+        // 3. Plugins - Carga dinámica de assemblies
+        // 4. Testing - Acceso a miembros privados
+        // 5. Frameworks - Creación de frameworks dinámicos
+    }
+    
+    // Desventajas de Reflection
+    public void Desventajas()
+    {
+        // 1. Rendimiento - Más lento que acceso directo
+        // 2. Seguridad - Puede acceder a miembros privados
+        // 3. Compilación - Errores se detectan en tiempo de ejecución
+        // 4. Complejidad - Código más difícil de entender
+        // 5. Optimización - El compilador no puede optimizar
+    }
+}
+```
+
+## 2. FUNDAMENTOS DE REFLECTION
+
+### Type Class
+
+```csharp
+public class FundamentosReflection
+{
+    // Obtener Type de diferentes formas
+    public void ObtenerType()
+    {
+        // 1. Usando typeof
+        Type tipo1 = typeof(string);
+        Type tipo2 = typeof(int);
+        Type tipo3 = typeof(Persona);
+        
+        // 2. Usando GetType() en instancia
+        string texto = "Hola";
+        Type tipo4 = texto.GetType();
+        
+        // 3. Usando Type.GetType() con nombre completo
+        Type tipo5 = Type.GetType("System.String");
+        Type tipo6 = Type.GetType("MiNamespace.MiClase");
+        
+        // 4. Usando Assembly.GetType()
+        Type tipo7 = typeof(string).Assembly.GetType("System.String");
+        
+        // 5. Obtener tipos genéricos
+        Type tipoLista = typeof(List<string>);
+        Type tipoGenerico = typeof(List<>);
+    }
+    
+    // Información básica del tipo
+    public void InformacionBasica(Type tipo)
+    {
+        Console.WriteLine($"Nombre: {tipo.Name}");
+        Console.WriteLine($"Nombre completo: {tipo.FullName}");
+        Console.WriteLine($"Namespace: {tipo.Namespace}");
+        Console.WriteLine($"Assembly: {tipo.Assembly.FullName}");
+        Console.WriteLine($"Es clase: {tipo.IsClass}");
+        Console.WriteLine($"Es interfaz: {tipo.IsInterface}");
+        Console.WriteLine($"Es enum: {tipo.IsEnum}");
+        Console.WriteLine($"Es struct: {tipo.IsValueType}");
+        Console.WriteLine($"Es genérico: {tipo.IsGenericType}");
+        Console.WriteLine($"Es público: {tipo.IsPublic}");
+        Console.WriteLine($"Es abstracto: {tipo.IsAbstract}");
+        Console.WriteLine($"Es sellado: {tipo.IsSealed}");
+    }
+    
+    // Jerarquía de tipos
+    public void JerarquiaTipos(Type tipo)
+    {
+        Console.WriteLine($"Tipo base: {tipo.BaseType?.Name ?? "Object"}");
+        
+        var interfaces = tipo.GetInterfaces();
+        Console.WriteLine("Interfaces implementadas:");
+        foreach (var interfaz in interfaces)
+        {
+            Console.WriteLine($"  - {interfaz.Name}");
+        }
+        
+        // Obtener tipos genéricos
+        if (tipo.IsGenericType)
+        {
+            var argumentosGenericos = tipo.GetGenericArguments();
+            Console.WriteLine("Argumentos genéricos:");
+            foreach (var argumento in argumentosGenericos)
+            {
+                Console.WriteLine($"  - {argumento.Name}");
+            }
+        }
+    }
+}
+```
+
+### Assembly Class
+
+```csharp
+public class AssemblyReflection
+{
+    // Obtener Assembly
+    public void ObtenerAssembly()
+    {
+        // 1. Assembly actual
+        Assembly assemblyActual = Assembly.GetExecutingAssembly();
+        
+        // 2. Assembly de un tipo
+        Assembly assemblyTipo = typeof(string).Assembly;
+        
+        // 3. Assembly por nombre
+        Assembly assemblyPorNombre = Assembly.Load("System.Private.CoreLib");
+        
+        // 4. Assembly desde archivo
+        Assembly assemblyArchivo = Assembly.LoadFrom("MiAssembly.dll");
+        
+        // 5. Assembly desde ruta completa
+        Assembly assemblyRuta = Assembly.LoadFile(@"C:\ruta\completa\MiAssembly.dll");
+    }
+    
+    // Información del Assembly
+    public void InformacionAssembly(Assembly assembly)
+    {
+        Console.WriteLine($"Nombre: {assembly.FullName}");
+        Console.WriteLine($"Ubicación: {assembly.Location}");
+        Console.WriteLine($"Versión: {assembly.GetName().Version}");
+        Console.WriteLine($"Cultura: {assembly.GetName().CultureInfo}");
+        Console.WriteLine($"Token de clave pública: {assembly.GetName().GetPublicKeyToken()}");
+        
+        // Atributos del assembly
+        var atributos = assembly.GetCustomAttributes();
+        foreach (var atributo in atributos)
+        {
+            Console.WriteLine($"Atributo: {atributo.GetType().Name}");
+        }
+    }
+    
+    // Obtener tipos del Assembly
+    public void ObtenerTiposAssembly(Assembly assembly)
+    {
+        var tipos = assembly.GetTypes();
+        Console.WriteLine($"Tipos en el assembly: {tipos.Length}");
+        
+        foreach (var tipo in tipos)
+        {
+            Console.WriteLine($"  - {tipo.FullName}");
+        }
+        
+        // Filtrar tipos
+        var tiposPublicos = assembly.GetExportedTypes();
+        var tiposConAtributo = assembly.GetTypes()
+            .Where(t => t.GetCustomAttributes(typeof(ObsoleteAttribute), false).Any());
+    }
+    
+    // Cargar tipos dinámicamente
+    public void CargarTiposDinamicamente()
+    {
+        try
+        {
+            // Cargar assembly
+            Assembly assembly = Assembly.Load("MiAssembly");
+            
+            // Obtener tipo
+            Type tipo = assembly.GetType("MiNamespace.MiClase");
+            
+            if (tipo != null)
+            {
+                // Crear instancia
+                object instancia = Activator.CreateInstance(tipo);
+                Console.WriteLine($"Instancia creada: {instancia}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar: {ex.Message}");
+        }
+    }
+}
+```
+
+## 3. INSPECCIÓN DE MIEMBROS
+
+### Métodos
+
+```csharp
+public class InspeccionMetodos
+{
+    // Obtener métodos
+    public void ObtenerMetodos(Type tipo)
+    {
+        // Todos los métodos públicos
+        var metodosPublicos = tipo.GetMethods();
+        
+        // Métodos declarados (no heredados)
+        var metodosDeclarados = tipo.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        
+        // Métodos específicos
+        var metodoEspecifico = tipo.GetMethod("ToString");
+        var metodosConNombre = tipo.GetMethods().Where(m => m.Name.Contains("Get"));
+        
+        // Mostrar información de métodos
+        foreach (var metodo in metodosPublicos)
+        {
+            Console.WriteLine($"Método: {metodo.Name}");
+            Console.WriteLine($"  Retorna: {metodo.ReturnType.Name}");
+            Console.WriteLine($"  Es público: {metodo.IsPublic}");
+            Console.WriteLine($"  Es estático: {metodo.IsStatic}");
+            Console.WriteLine($"  Es virtual: {metodo.IsVirtual}");
+            Console.WriteLine($"  Es abstracto: {metodo.IsAbstract}");
+            
+            // Parámetros
+            var parametros = metodo.GetParameters();
+            if (parametros.Length > 0)
+            {
+                Console.WriteLine("  Parámetros:");
+                foreach (var parametro in parametros)
+                {
+                    Console.WriteLine($"    {parametro.ParameterType.Name} {parametro.Name}");
+                }
+            }
+            Console.WriteLine();
+        }
+    }
+    
+    // Invocar métodos
+    public void InvocarMetodos()
+    {
+        var persona = new Persona { Nombre = "Juan", Edad = 30 };
+        Type tipo = persona.GetType();
+        
+        // Invocar método sin parámetros
+        var metodoToString = tipo.GetMethod("ToString");
+        var resultado = metodoToString.Invoke(persona, null);
+        Console.WriteLine($"ToString: {resultado}");
+        
+        // Invocar método con parámetros
+        var metodoSetEdad = tipo.GetMethod("SetEdad");
+        metodoSetEdad.Invoke(persona, new object[] { 25 });
+        
+        // Invocar método genérico
+        var metodoGenerico = tipo.GetMethod("MetodoGenerico");
+        var metodoGenericoCerrado = metodoGenerico.MakeGenericMethod(typeof(string));
+        metodoGenericoCerrado.Invoke(persona, new object[] { "Parámetro" });
+        
+        // Invocar método estático
+        var metodoEstatico = tipo.GetMethod("MetodoEstatico", BindingFlags.Public | BindingFlags.Static);
+        metodoEstatico.Invoke(null, new object[] { "Parámetro" });
+    }
+    
+    // Crear delegados dinámicamente
+    public void CrearDelegados()
+    {
+        var persona = new Persona { Nombre = "Ana", Edad = 25 };
+        Type tipo = persona.GetType();
+        
+        // Crear delegado para método
+        var metodo = tipo.GetMethod("GetNombre");
+        var delegado = Delegate.CreateDelegate(typeof(Func<string>), persona, metodo);
+        var resultado = ((Func<string>)delegado)();
+        
+        Console.WriteLine($"Resultado del delegado: {resultado}");
+    }
+}
+```
+
+### Propiedades
+
+```csharp
+public class InspeccionPropiedades
+{
+    // Obtener propiedades
+    public void ObtenerPropiedades(Type tipo)
+    {
+        // Todas las propiedades públicas
+        var propiedadesPublicas = tipo.GetProperties();
+        
+        // Propiedades con flags específicos
+        var todasLasPropiedades = tipo.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        
+        // Propiedades específicas
+        var propiedadEspecifica = tipo.GetProperty("Nombre");
+        var propiedadesConNombre = tipo.GetProperties().Where(p => p.Name.Contains("Edad"));
+        
+        // Mostrar información de propiedades
+        foreach (var propiedad in propiedadesPublicas)
+        {
+            Console.WriteLine($"Propiedad: {propiedad.Name}");
+            Console.WriteLine($"  Tipo: {propiedad.PropertyType.Name}");
+            Console.WriteLine($"  Es pública: {propiedad.GetGetMethod()?.IsPublic}");
+            Console.WriteLine($"  Es estática: {propiedad.GetGetMethod()?.IsStatic}");
+            Console.WriteLine($"  Es de solo lectura: {propiedad.CanRead && !propiedad.CanWrite}");
+            Console.WriteLine($"  Es de solo escritura: {!propiedad.CanRead && propiedad.CanWrite}");
+            Console.WriteLine($"  Es indexada: {propiedad.GetIndexParameters().Length > 0}");
+            Console.WriteLine();
+        }
+    }
+    
+    // Acceder a propiedades
+    public void AccederPropiedades()
+    {
+        var persona = new Persona { Nombre = "María", Edad = 28 };
+        Type tipo = persona.GetType();
+        
+        // Obtener valor de propiedad
+        var propiedadNombre = tipo.GetProperty("Nombre");
+        var valorNombre = propiedadNombre.GetValue(persona);
+        Console.WriteLine($"Nombre: {valorNombre}");
+        
+        // Establecer valor de propiedad
+        var propiedadEdad = tipo.GetProperty("Edad");
+        propiedadEdad.SetValue(persona, 30);
+        Console.WriteLine($"Nueva edad: {persona.Edad}");
+        
+        // Propiedades indexadas
+        var lista = new List<string> { "Uno", "Dos", "Tres" };
+        Type tipoLista = lista.GetType();
+        var propiedadItem = tipoLista.GetProperty("Item");
+        var valorItem = propiedadItem.GetValue(lista, new object[] { 1 });
+        Console.WriteLine($"Item[1]: {valorItem}");
+        
+        // Propiedades estáticas
+        var tipoDateTime = typeof(DateTime);
+        var propiedadNow = tipoDateTime.GetProperty("Now");
+        var valorNow = propiedadNow.GetValue(null);
+        Console.WriteLine($"DateTime.Now: {valorNow}");
+    }
+    
+    // Crear objetos dinámicamente
+    public void CrearObjetosDinamicamente()
+    {
+        Type tipo = typeof(Persona);
+        
+        // Crear instancia usando constructor por defecto
+        var persona1 = Activator.CreateInstance(tipo);
+        
+        // Crear instancia usando constructor con parámetros
+        var persona2 = Activator.CreateInstance(tipo, "Juan", 25);
+        
+        // Crear instancia usando constructor específico
+        var constructores = tipo.GetConstructors();
+        var constructorConParametros = constructores.First(c => c.GetParameters().Length == 2);
+        var persona3 = constructorConParametros.Invoke(new object[] { "Ana", 30 });
+        
+        // Crear array dinámicamente
+        var array = Array.CreateInstance(tipo, 5);
+        for (int i = 0; i < 5; i++)
+        {
+            array.SetValue(Activator.CreateInstance(tipo), i);
+        }
+    }
+}
+```
+
+### Campos
+
+```csharp
+public class InspeccionCampos
+{
+    // Obtener campos
+    public void ObtenerCampos(Type tipo)
+    {
+        // Todos los campos públicos
+        var camposPublicos = tipo.GetFields();
+        
+        // Campos con flags específicos
+        var todosLosCampos = tipo.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        
+        // Campos privados
+        var camposPrivados = tipo.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+        
+        // Campos estáticos
+        var camposEstaticos = tipo.GetFields(BindingFlags.Public | BindingFlags.Static);
+        
+        // Mostrar información de campos
+        foreach (var campo in todosLosCampos)
+        {
+            Console.WriteLine($"Campo: {campo.Name}");
+            Console.WriteLine($"  Tipo: {campo.FieldType.Name}");
+            Console.WriteLine($"  Es público: {campo.IsPublic}");
+            Console.WriteLine($"  Es privado: {campo.IsPrivate}");
+            Console.WriteLine($"  Es estático: {campo.IsStatic}");
+            Console.WriteLine($"  Es constante: {campo.IsLiteral}");
+            Console.WriteLine($"  Es readonly: {campo.IsInitOnly}");
+            Console.WriteLine();
+        }
+    }
+    
+    // Acceder a campos
+    public void AccederCampos()
+    {
+        var persona = new Persona { Nombre = "Carlos", Edad = 35 };
+        Type tipo = persona.GetType();
+        
+        // Obtener valor de campo público
+        var campoPublico = tipo.GetField("CampoPublico");
+        if (campoPublico != null)
+        {
+            var valor = campoPublico.GetValue(persona);
+            Console.WriteLine($"Campo público: {valor}");
+        }
+        
+        // Obtener valor de campo privado
+        var campoPrivado = tipo.GetField("campoPrivado", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (campoPrivado != null)
+        {
+            var valorPrivado = campoPrivado.GetValue(persona);
+            Console.WriteLine($"Campo privado: {valorPrivado}");
+            
+            // Modificar campo privado
+            campoPrivado.SetValue(persona, "Nuevo valor");
+        }
+        
+        // Campos estáticos
+        var campoEstatico = tipo.GetField("CampoEstatico", BindingFlags.Public | BindingFlags.Static);
+        if (campoEstatico != null)
+        {
+            var valorEstatico = campoEstatico.GetValue(null);
+            Console.WriteLine($"Campo estático: {valorEstatico}");
+        }
+    }
+}
+```
+
+## 4. ATRIBUTOS Y METADATA
+
+### Atributos Personalizados
+
+```csharp
+public class AtributosPersonalizados
+{
+    // Definir atributo personalizado
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Property)]
+    public class MiAtributo : Attribute
+    {
+        public string Descripcion { get; set; }
+        public int Version { get; set; }
+        
+        public MiAtributo(string descripcion, int version = 1)
+        {
+            Descripcion = descripcion;
+            Version = version;
+        }
+    }
+    
+    // Atributo para validación
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ValidacionAtributo : Attribute
+    {
+        public int Minimo { get; set; }
+        public int Maximo { get; set; }
+        public bool Requerido { get; set; }
+        
+        public ValidacionAtributo(int minimo = 0, int maximo = 100, bool requerido = false)
+        {
+            Minimo = minimo;
+            Maximo = maximo;
+            Requerido = requerido;
+        }
+    }
+    
+    // Atributo para serialización
+    [AttributeUsage(AttributeTargets.Property)]
+    public class SerializarAtributo : Attribute
+    {
+        public string NombreCampo { get; set; }
+        public bool Ignorar { get; set; }
+        
+        public SerializarAtributo(string nombreCampo = null, bool ignorar = false)
+        {
+            NombreCampo = nombreCampo;
+            Ignorar = ignorar;
+        }
+    }
+    
+    // Clase con atributos
+    [MiAtributo("Clase de ejemplo", 2)]
+    public class ClaseConAtributos
+    {
+        [ValidacionAtributo(1, 100, true)]
+        [SerializarAtributo("nombre_usuario")]
+        public string Nombre { get; set; }
+        
+        [ValidacionAtributo(0, 150)]
+        [SerializarAtributo("edad_persona")]
+        public int Edad { get; set; }
+        
+        [SerializarAtributo(ignorar: true)]
+        public string InformacionInterna { get; set; }
+        
+        [MiAtributo("Método importante")]
+        public void MetodoImportante()
+        {
+            Console.WriteLine("Método ejecutado");
+        }
+    }
+}
+```
+
+### Inspección de Atributos
+
+```csharp
+public class InspeccionAtributos
+{
+    // Obtener atributos de un tipo
+    public void ObtenerAtributosTipo(Type tipo)
+    {
+        // Todos los atributos
+        var atributos = tipo.GetCustomAttributes();
+        
+        // Atributos de un tipo específico
+        var misAtributos = tipo.GetCustomAttributes(typeof(MiAtributo), false);
+        
+        // Atributos heredados
+        var atributosHeredados = tipo.GetCustomAttributes(typeof(MiAtributo), true);
+        
+        // Mostrar información de atributos
+        foreach (var atributo in atributos)
+        {
+            Console.WriteLine($"Atributo: {atributo.GetType().Name}");
+            
+            if (atributo is MiAtributo miAtributo)
+            {
+                Console.WriteLine($"  Descripción: {miAtributo.Descripcion}");
+                Console.WriteLine($"  Versión: {miAtributo.Version}");
+            }
+        }
+    }
+    
+    // Obtener atributos de miembros
+    public void ObtenerAtributosMiembros(Type tipo)
+    {
+        // Atributos de propiedades
+        var propiedades = tipo.GetProperties();
+        foreach (var propiedad in propiedades)
+        {
+            var atributos = propiedad.GetCustomAttributes();
+            if (atributos.Any())
+            {
+                Console.WriteLine($"Propiedad: {propiedad.Name}");
+                foreach (var atributo in atributos)
+                {
+                    Console.WriteLine($"  Atributo: {atributo.GetType().Name}");
+                }
+            }
+        }
+        
+        // Atributos de métodos
+        var metodos = tipo.GetMethods();
+        foreach (var metodo in metodos)
+        {
+            var atributos = metodo.GetCustomAttributes();
+            if (atributos.Any())
+            {
+                Console.WriteLine($"Método: {metodo.Name}");
+                foreach (var atributo in atributos)
+                {
+                    Console.WriteLine($"  Atributo: {atributo.GetType().Name}");
+                }
+            }
+        }
+    }
+    
+    // Validación basada en atributos
+    public bool ValidarObjeto(object obj)
+    {
+        Type tipo = obj.GetType();
+        var propiedades = tipo.GetProperties();
+        
+        foreach (var propiedad in propiedades)
+        {
+            var atributoValidacion = propiedad.GetCustomAttribute<ValidacionAtributo>();
+            if (atributoValidacion != null)
+            {
+                var valor = propiedad.GetValue(obj);
+                
+                // Validar requerido
+                if (atributoValidacion.Requerido && valor == null)
+                {
+                    Console.WriteLine($"Error: {propiedad.Name} es requerido");
+                    return false;
+                }
+                
+                // Validar rango
+                if (valor is int valorInt)
+                {
+                    if (valorInt < atributoValidacion.Minimo || valorInt > atributoValidacion.Maximo)
+                    {
+                        Console.WriteLine($"Error: {propiedad.Name} debe estar entre {atributoValidacion.Minimo} y {atributoValidacion.Maximo}");
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    // Serialización basada en atributos
+    public Dictionary<string, object> SerializarObjeto(object obj)
+    {
+        var resultado = new Dictionary<string, object>();
+        Type tipo = obj.GetType();
+        var propiedades = tipo.GetProperties();
+        
+        foreach (var propiedad in propiedades)
+        {
+            var atributoSerializacion = propiedad.GetCustomAttribute<SerializarAtributo>();
+            
+            // Saltar si está marcado para ignorar
+            if (atributoSerializacion?.Ignorar == true)
+                continue;
+            
+            var valor = propiedad.GetValue(obj);
+            var nombreCampo = atributoSerializacion?.NombreCampo ?? propiedad.Name;
+            
+            resultado[nombreCampo] = valor;
+        }
+        
+        return resultado;
+    }
+}
+```
+
+## 5. GENERACIÓN DINÁMICA DE CÓDIGO
+
+### DynamicMethod
+
+```csharp
+public class GeneracionDinamica
+{
+    // Crear método dinámico
+    public void CrearMetodoDinamico()
+    {
+        // Crear método que suma dos enteros
+        var metodoSuma = new DynamicMethod("Suma", typeof(int), new Type[] { typeof(int), typeof(int) });
+        var il = metodoSuma.GetILGenerator();
+        
+        // Cargar parámetros
+        il.Emit(OpCodes.Ldarg_0); // Cargar primer parámetro
+        il.Emit(OpCodes.Ldarg_1); // Cargar segundo parámetro
+        il.Emit(OpCodes.Add);     // Sumar
+        il.Emit(OpCodes.Ret);     // Retornar
+        
+        // Crear delegado
+        var delegadoSuma = (Func<int, int, int>)metodoSuma.CreateDelegate(typeof(Func<int, int, int>));
+        
+        // Usar el método
+        var resultado = delegadoSuma(5, 3);
+        Console.WriteLine($"5 + 3 = {resultado}");
+    }
+    
+    // Crear método que accede a propiedad
+    public void CrearMetodoAccesoPropiedad()
+    {
+        var tipo = typeof(Persona);
+        var propiedad = tipo.GetProperty("Nombre");
+        
+        // Crear método que obtiene el valor de la propiedad
+        var metodoGet = new DynamicMethod("GetNombre", typeof(string), new Type[] { typeof(Persona) });
+        var il = metodoGet.GetILGenerator();
+        
+        il.Emit(OpCodes.Ldarg_0); // Cargar instancia
+        il.EmitCall(OpCodes.Call, propiedad.GetGetMethod(), null); // Llamar getter
+        il.Emit(OpCodes.Ret); // Retornar
+        
+        var delegadoGet = (Func<Persona, string>)metodoGet.CreateDelegate(typeof(Func<Persona, string>));
+        
+        var persona = new Persona { Nombre = "Juan" };
+        var nombre = delegadoGet(persona);
+        Console.WriteLine($"Nombre: {nombre}");
+    }
+    
+    // Crear método que establece propiedad
+    public void CrearMetodoEstablecerPropiedad()
+    {
+        var tipo = typeof(Persona);
+        var propiedad = tipo.GetProperty("Edad");
+        
+        // Crear método que establece el valor de la propiedad
+        var metodoSet = new DynamicMethod("SetEdad", typeof(void), new Type[] { typeof(Persona), typeof(int) });
+        var il = metodoSet.GetILGenerator();
+        
+        il.Emit(OpCodes.Ldarg_0); // Cargar instancia
+        il.Emit(OpCodes.Ldarg_1); // Cargar valor
+        il.EmitCall(OpCodes.Call, propiedad.GetSetMethod(), null); // Llamar setter
+        il.Emit(OpCodes.Ret); // Retornar
+        
+        var delegadoSet = (Action<Persona, int>)metodoSet.CreateDelegate(typeof(Action<Persona, int>));
+        
+        var persona = new Persona();
+        delegadoSet(persona, 25);
+        Console.WriteLine($"Edad establecida: {persona.Edad}");
+    }
+}
+```
+
+### Expression Trees
+
+```csharp
+public class ExpressionTrees
+{
+    // Crear expresión simple
+    public void CrearExpresionSimple()
+    {
+        // Crear expresión: x => x + 1
+        var parametro = Expression.Parameter(typeof(int), "x");
+        var constante = Expression.Constant(1);
+        var suma = Expression.Add(parametro, constante);
+        var lambda = Expression.Lambda<Func<int, int>>(suma, parametro);
+        
+        var funcion = lambda.Compile();
+        var resultado = funcion(5);
+        Console.WriteLine($"5 + 1 = {resultado}");
+    }
+    
+    // Crear expresión de comparación
+    public void CrearExpresionComparacion()
+    {
+        // Crear expresión: x => x > 10
+        var parametro = Expression.Parameter(typeof(int), "x");
+        var constante = Expression.Constant(10);
+        var comparacion = Expression.GreaterThan(parametro, constante);
+        var lambda = Expression.Lambda<Func<int, bool>>(comparacion, parametro);
+        
+        var predicado = lambda.Compile();
+        Console.WriteLine($"15 > 10: {predicado(15)}");
+        Console.WriteLine($"5 > 10: {predicado(5)}");
+    }
+    
+    // Crear expresión de acceso a propiedad
+    public void CrearExpresionPropiedad()
+    {
+        // Crear expresión: p => p.Nombre
+        var parametro = Expression.Parameter(typeof(Persona), "p");
+        var propiedad = Expression.Property(parametro, "Nombre");
+        var lambda = Expression.Lambda<Func<Persona, string>>(propiedad, parametro);
+        
+        var funcion = lambda.Compile();
+        var persona = new Persona { Nombre = "Ana" };
+        var nombre = funcion(persona);
+        Console.WriteLine($"Nombre: {nombre}");
+    }
+    
+    // Crear expresión de asignación
+    public void CrearExpresionAsignacion()
+    {
+        // Crear expresión: p => p.Edad = 30
+        var parametro = Expression.Parameter(typeof(Persona), "p");
+        var propiedad = Expression.Property(parametro, "Edad");
+        var valor = Expression.Constant(30);
+        var asignacion = Expression.Assign(propiedad, valor);
+        var lambda = Expression.Lambda<Action<Persona>>(asignacion, parametro);
+        
+        var accion = lambda.Compile();
+        var persona = new Persona();
+        accion(persona);
+        Console.WriteLine($"Edad establecida: {persona.Edad}");
+    }
+    
+    // Crear expresión compleja
+    public void CrearExpresionCompleja()
+    {
+        // Crear expresión: p => p.Edad > 18 && p.Nombre.StartsWith("A")
+        var parametro = Expression.Parameter(typeof(Persona), "p");
+        
+        // p.Edad > 18
+        var edad = Expression.Property(parametro, "Edad");
+        var constante18 = Expression.Constant(18);
+        var comparacionEdad = Expression.GreaterThan(edad, constante18);
+        
+        // p.Nombre.StartsWith("A")
+        var nombre = Expression.Property(parametro, "Nombre");
+        var constanteA = Expression.Constant("A");
+        var metodoStartsWith = typeof(string).GetMethod("StartsWith", new Type[] { typeof(string) });
+        var llamadaStartsWith = Expression.Call(nombre, metodoStartsWith, constanteA);
+        
+        // Combinar con AND
+        var expresionCompleta = Expression.AndAlso(comparacionEdad, llamadaStartsWith);
+        var lambda = Expression.Lambda<Func<Persona, bool>>(expresionCompleta, parametro);
+        
+        var predicado = lambda.Compile();
+        
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Ana", Edad = 25 },
+            new Persona { Nombre = "Juan", Edad = 20 },
+            new Persona { Nombre = "Alberto", Edad = 16 }
+        };
+        
+        var filtradas = personas.Where(predicado).ToList();
+        foreach (var persona in filtradas)
+        {
+            Console.WriteLine($"{persona.Nombre} ({persona.Edad} años)");
+        }
+    }
+}
+```
+
+## 6. REFLECTION EN PRÁCTICA
+
+### Serialización Dinámica
+
+```csharp
+public class SerializacionDinamica
+{
+    // Serializar objeto a JSON usando reflection
+    public string SerializarAJson(object obj)
+    {
+        var json = new StringBuilder();
+        json.Append("{");
+        
+        Type tipo = obj.GetType();
+        var propiedades = tipo.GetProperties();
+        
+        for (int i = 0; i < propiedades.Length; i++)
+        {
+            var propiedad = propiedades[i];
+            var valor = propiedad.GetValue(obj);
+            
+            json.Append($"\"{propiedad.Name}\":");
+            
+            if (valor == null)
+            {
+                json.Append("null");
+            }
+            else if (valor is string)
+            {
+                json.Append($"\"{valor}\"");
+            }
+            else if (valor is bool)
+            {
+                json.Append(valor.ToString().ToLower());
+            }
+            else if (valor is int || valor is double || valor is decimal)
+            {
+                json.Append(valor);
+            }
+            else
+            {
+                json.Append($"\"{valor}\"");
+            }
+            
+            if (i < propiedades.Length - 1)
+            {
+                json.Append(",");
+            }
+        }
+        
+        json.Append("}");
+        return json.ToString();
+    }
+    
+    // Deserializar JSON a objeto usando reflection
+    public T DeserializarDeJson<T>(string json) where T : new()
+    {
+        var obj = new T();
+        Type tipo = typeof(T);
+        
+        // Parsear JSON simple (sin anidación)
+        var pares = json.Trim('{', '}').Split(',');
+        
+        foreach (var par in pares)
+        {
+            var partes = par.Split(':');
+            if (partes.Length == 2)
+            {
+                var nombre = partes[0].Trim('"');
+                var valor = partes[1].Trim('"');
+                
+                var propiedad = tipo.GetProperty(nombre);
+                if (propiedad != null && propiedad.CanWrite)
+                {
+                    var valorConvertido = Convert.ChangeType(valor, propiedad.PropertyType);
+                    propiedad.SetValue(obj, valorConvertido);
+                }
+            }
+        }
+        
+        return obj;
+    }
+}
+```
+
+### Inyección de Dependencias Simple
+
+```csharp
+public class InyeccionDependencias
+{
+    private readonly Dictionary<Type, Type> registro = new Dictionary<Type, Type>();
+    private readonly Dictionary<Type, object> instancias = new Dictionary<Type, object>();
+    
+    // Registrar tipo
+    public void Registrar<TInterface, TImplementacion>() where TImplementacion : TInterface
+    {
+        registro[typeof(TInterface)] = typeof(TImplementacion);
+    }
+    
+    // Registrar singleton
+    public void RegistrarSingleton<TInterface, TImplementacion>() where TImplementacion : TInterface
+    {
+        registro[typeof(TInterface)] = typeof(TImplementacion);
+        var instancia = CrearInstancia<TImplementacion>();
+        instancias[typeof(TInterface)] = instancia;
+    }
+    
+    // Resolver tipo
+    public T Resolver<T>()
+    {
+        return (T)Resolver(typeof(T));
+    }
+    
+    private object Resolver(Type tipo)
+    {
+        // Verificar si es singleton
+        if (instancias.ContainsKey(tipo))
+        {
+            return instancias[tipo];
+        }
+        
+        // Obtener tipo de implementación
+        var tipoImplementacion = registro.ContainsKey(tipo) ? registro[tipo] : tipo;
+        
+        // Crear instancia
+        var instancia = CrearInstancia(tipoImplementacion);
+        
+        // Guardar singleton si es necesario
+        if (instancias.ContainsKey(tipo))
+        {
+            instancias[tipo] = instancia;
+        }
+        
+        return instancia;
+    }
+    
+    private T CrearInstancia<T>()
+    {
+        return (T)CrearInstancia(typeof(T));
+    }
+    
+    private object CrearInstancia(Type tipo)
+    {
+        // Obtener constructor con más parámetros
+        var constructores = tipo.GetConstructors();
+        var constructor = constructores.OrderByDescending(c => c.GetParameters().Length).First();
+        
+        // Resolver parámetros del constructor
+        var parametros = constructor.GetParameters();
+        var argumentos = new object[parametros.Length];
+        
+        for (int i = 0; i < parametros.Length; i++)
+        {
+            argumentos[i] = Resolver(parametros[i].ParameterType);
+        }
+        
+        // Crear instancia
+        return Activator.CreateInstance(tipo, argumentos);
+    }
+}
+```
+
+### Validación Dinámica
+
+```csharp
+public class ValidacionDinamica
+{
+    // Validar objeto usando atributos
+    public List<string> ValidarObjeto(object obj)
+    {
+        var errores = new List<string>();
+        Type tipo = obj.GetType();
+        
+        var propiedades = tipo.GetProperties();
+        foreach (var propiedad in propiedades)
+        {
+            var atributos = propiedad.GetCustomAttributes();
+            
+            foreach (var atributo in atributos)
+            {
+                var error = ValidarAtributo(propiedad, obj, atributo);
+                if (!string.IsNullOrEmpty(error))
+                {
+                    errores.Add(error);
+                }
+            }
+        }
+        
+        return errores;
+    }
+    
+    private string ValidarAtributo(PropertyInfo propiedad, object obj, Attribute atributo)
+    {
+        var valor = propiedad.GetValue(obj);
+        
+        if (atributo is RequiredAttribute required)
+        {
+            if (valor == null || (valor is string str && string.IsNullOrEmpty(str)))
+            {
+                return $"{propiedad.Name} es requerido";
+            }
+        }
+        
+        if (atributo is RangeAttribute range)
+        {
+            if (valor is IComparable comparable)
+            {
+                if (comparable.CompareTo(range.Minimum) < 0 || comparable.CompareTo(range.Maximum) > 0)
+                {
+                    return $"{propiedad.Name} debe estar entre {range.Minimum} y {range.Maximum}";
+                }
+            }
+        }
+        
+        if (atributo is StringLengthAttribute stringLength)
+        {
+            if (valor is string str)
+            {
+                if (str.Length > stringLength.MaximumLength)
+                {
+                    return $"{propiedad.Name} no puede tener más de {stringLength.MaximumLength} caracteres";
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // Atributos de validación
+    public class RequiredAttribute : Attribute { }
+    
+    public class RangeAttribute : Attribute
+    {
+        public object Minimum { get; set; }
+        public object Maximum { get; set; }
+        
+        public RangeAttribute(object minimum, object maximum)
+        {
+            Minimum = minimum;
+            Maximum = maximum;
+        }
+    }
+    
+    public class StringLengthAttribute : Attribute
+    {
+        public int MaximumLength { get; set; }
+        
+        public StringLengthAttribute(int maximumLength)
+        {
+            MaximumLength = maximumLength;
+        }
+    }
+}
+```
+
+## 7. MEJORES PRÁCTICAS
+
+### Patrones Recomendados
+
+```csharp
+public class MejoresPracticas
+{
+    // 1. Cachear información de reflection
+    private static readonly Dictionary<Type, PropertyInfo[]> cachePropiedades = new Dictionary<Type, PropertyInfo[]>();
+    
+    public PropertyInfo[] ObtenerPropiedadesCacheadas(Type tipo)
+    {
+        if (!cachePropiedades.ContainsKey(tipo))
+        {
+            cachePropiedades[tipo] = tipo.GetProperties();
+        }
+        
+        return cachePropiedades[tipo];
+    }
+    
+    // 2. Usar BindingFlags específicos
+    public void UsarBindingFlagsEspecificos()
+    {
+        var tipo = typeof(Persona);
+        
+        // Solo métodos públicos de instancia
+        var metodosPublicos = tipo.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+        
+        // Solo métodos privados
+        var metodosPrivados = tipo.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
+        
+        // Solo métodos estáticos
+        var metodosEstaticos = tipo.GetMethods(BindingFlags.Public | BindingFlags.Static);
+    }
+    
+    // 3. Manejar excepciones apropiadamente
+    public object InvocarMetodoSeguro(object obj, string nombreMetodo, params object[] parametros)
+    {
+        try
+        {
+            Type tipo = obj.GetType();
+            var metodo = tipo.GetMethod(nombreMetodo);
+            
+            if (metodo == null)
+            {
+                throw new ArgumentException($"Método {nombreMetodo} no encontrado");
+            }
+            
+            return metodo.Invoke(obj, parametros);
+        }
+        catch (TargetInvocationException ex)
+        {
+            // Re-lanzar la excepción original
+            throw ex.InnerException;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al invocar método: {ex.Message}");
+            return null;
+        }
+    }
+    
+    // 4. Usar expresiones lambda cuando sea posible
+    public void UsarExpresionesLambda()
+    {
+        // ❌ Reflection lento
+        var persona = new Persona { Nombre = "Juan" };
+        Type tipo = persona.GetType();
+        var propiedad = tipo.GetProperty("Nombre");
+        var valor = propiedad.GetValue(persona);
+        
+        // ✅ Expresión lambda más rápida
+        Expression<Func<Persona, string>> expresion = p => p.Nombre;
+        var funcion = expresion.Compile();
+        var valor2 = funcion(persona);
+    }
+    
+    // 5. Evitar reflection en bucles críticos
+    public void EvitarReflectionEnBucles()
+    {
+        var personas = new List<Persona>();
+        
+        // ❌ Malo - reflection en cada iteración
+        foreach (var persona in personas)
+        {
+            var tipo = persona.GetType();
+            var propiedad = tipo.GetProperty("Nombre");
+            var valor = propiedad.GetValue(persona);
+        }
+        
+        // ✅ Bueno - cachear información
+        var tipo = typeof(Persona);
+        var propiedad = tipo.GetProperty("Nombre");
+        
+        foreach (var persona in personas)
+        {
+            var valor = propiedad.GetValue(persona);
+        }
+    }
+}
+```
+
+### Anti-patrones a Evitar
+
+```csharp
+public class AntiPatrones
+{
+    // ❌ Anti-patrón: Reflection innecesario
+    public void ReflectionInnecesario()
+    {
+        var persona = new Persona { Nombre = "Juan" };
+        
+        // Usar reflection para acceder a propiedad pública
+        Type tipo = persona.GetType();
+        var propiedad = tipo.GetProperty("Nombre");
+        var valor = propiedad.GetValue(persona);
+        
+        // En lugar de usar acceso directo
+        var valorDirecto = persona.Nombre;
+    }
+    
+    // ❌ Anti-patrón: No cachear información
+    public void NoCachearInformacion()
+    {
+        var personas = new List<Persona>();
+        
+        foreach (var persona in personas)
+        {
+            // Obtener información de reflection en cada iteración
+            Type tipo = persona.GetType();
+            var propiedades = tipo.GetProperties();
+            // ...
+        }
+    }
+    
+    // ❌ Anti-patrón: Ignorar excepciones
+    public void IgnorarExcepciones()
+    {
+        try
+        {
+            var tipo = Type.GetType("TipoInexistente");
+            var instancia = Activator.CreateInstance(tipo);
+        }
+        catch
+        {
+            // Ignorar todas las excepciones
+        }
+    }
+    
+    // ❌ Anti-patrón: Usar reflection para bypass de seguridad
+    public void BypassSeguridad()
+    {
+        var tipo = typeof(string);
+        var campo = tipo.GetField("_firstChar", BindingFlags.NonPublic | BindingFlags.Instance);
+        var str = "Hola";
+        campo.SetValue(str, 'X'); // Modificar string inmutable
+    }
+}
+```
+
+Esta guía completa de reflection y metadata en C# cubre desde los conceptos fundamentales hasta técnicas avanzadas, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo usar reflection efectivamente en diferentes escenarios de programación. 

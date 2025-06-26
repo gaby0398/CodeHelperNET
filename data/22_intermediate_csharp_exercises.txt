@@ -1,0 +1,715 @@
+# Ejercicios Prácticos de C# Intermedios
+
+## Introducción a los Ejercicios Intermedios
+
+Esta guía contiene ejercicios prácticos de nivel intermedio en C#. Los ejercicios están diseñados para desarrolladores que ya dominan los conceptos básicos y quieren profundizar en características más avanzadas del lenguaje.
+
+### Ejercicios de LINQ y Colecciones
+
+#### Ejercicio 1: Sistema de Gestión de Empleados
+**Objetivo**: Practicar LINQ con colecciones complejas y operaciones de agrupación.
+
+```csharp
+class Empleado
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public string Departamento { get; set; }
+    public decimal Salario { get; set; }
+    public DateTime FechaContratacion { get; set; }
+    public bool Activo { get; set; }
+}
+
+class GestorEmpleados
+{
+    private List<Empleado> empleados;
+    
+    public GestorEmpleados()
+    {
+        empleados = new List<Empleado>
+        {
+            new Empleado { Id = 1, Nombre = "Juan Pérez", Departamento = "IT", Salario = 45000, FechaContratacion = new DateTime(2020, 3, 15), Activo = true },
+            new Empleado { Id = 2, Nombre = "María García", Departamento = "RRHH", Salario = 38000, FechaContratacion = new DateTime(2019, 7, 22), Activo = true },
+            new Empleado { Id = 3, Nombre = "Carlos López", Departamento = "IT", Salario = 52000, FechaContratacion = new DateTime(2018, 11, 8), Activo = true },
+            new Empleado { Id = 4, Nombre = "Ana Martínez", Departamento = "Ventas", Salario = 42000, FechaContratacion = new DateTime(2021, 1, 10), Activo = false },
+            new Empleado { Id = 5, Nombre = "Luis Rodríguez", Departamento = "IT", Salario = 48000, FechaContratacion = new DateTime(2020, 9, 3), Activo = true },
+            new Empleado { Id = 6, Nombre = "Elena Sánchez", Departamento = "Ventas", Salario = 39000, FechaContratacion = new DateTime(2021, 5, 18), Activo = true }
+        };
+    }
+    
+    public void MostrarEmpleadosActivos()
+    {
+        var empleadosActivos = empleados.Where(e => e.Activo)
+                                       .OrderBy(e => e.Nombre);
+        
+        Console.WriteLine("Empleados Activos:");
+        foreach (var emp in empleadosActivos)
+        {
+            Console.WriteLine($"- {emp.Nombre} ({emp.Departamento})");
+        }
+    }
+    
+    public void MostrarSalariosPorDepartamento()
+    {
+        var salariosPorDepto = empleados.Where(e => e.Activo)
+                                       .GroupBy(e => e.Departamento)
+                                       .Select(g => new
+                                       {
+                                           Departamento = g.Key,
+                                           SalarioPromedio = g.Average(e => e.Salario),
+                                           Empleados = g.Count()
+                                       });
+        
+        Console.WriteLine("\nSalarios por Departamento:");
+        foreach (var depto in salariosPorDepto)
+        {
+            Console.WriteLine($"{depto.Departamento}: ${depto.SalarioPromedio:F2} (avg) - {depto.Empleados} empleados");
+        }
+    }
+    
+    public void MostrarEmpleadosAntiguos()
+    {
+        var fechaLimite = DateTime.Now.AddYears(-2);
+        var empleadosAntiguos = empleados.Where(e => e.FechaContratacion < fechaLimite)
+                                        .OrderByDescending(e => e.FechaContratacion);
+        
+        Console.WriteLine("\nEmpleados con más de 2 años:");
+        foreach (var emp in empleadosAntiguos)
+        {
+            var antiguedad = DateTime.Now - emp.FechaContratacion;
+            Console.WriteLine($"- {emp.Nombre}: {antiguedad.Days / 365} años");
+        }
+    }
+    
+    public void BuscarEmpleados(string criterio)
+    {
+        var resultados = empleados.Where(e => e.Nombre.Contains(criterio, StringComparison.OrdinalIgnoreCase) ||
+                                             e.Departamento.Contains(criterio, StringComparison.OrdinalIgnoreCase))
+                                 .OrderBy(e => e.Nombre);
+        
+        Console.WriteLine($"\nResultados de búsqueda para '{criterio}':");
+        foreach (var emp in resultados)
+        {
+            Console.WriteLine($"- {emp.Nombre} ({emp.Departamento}) - ${emp.Salario:F2}");
+        }
+    }
+}
+
+// Programa principal
+var gestor = new GestorEmpleados();
+gestor.MostrarEmpleadosActivos();
+gestor.MostrarSalariosPorDepartamento();
+gestor.MostrarEmpleadosAntiguos();
+gestor.BuscarEmpleados("IT");
+```
+
+#### Ejercicio 2: Sistema de Inventario
+**Objetivo**: Practicar operaciones complejas de LINQ y proyecciones.
+
+```csharp
+class Producto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public string Categoria { get; set; }
+    public decimal Precio { get; set; }
+    public int Stock { get; set; }
+    public bool Disponible { get; set; }
+}
+
+class Inventario
+{
+    private List<Producto> productos;
+    
+    public Inventario()
+    {
+        productos = new List<Producto>
+        {
+            new Producto { Id = 1, Nombre = "Laptop HP", Categoria = "Electrónicos", Precio = 899.99m, Stock = 15, Disponible = true },
+            new Producto { Id = 2, Nombre = "Mouse Inalámbrico", Categoria = "Electrónicos", Precio = 25.50m, Stock = 50, Disponible = true },
+            new Producto { Id = 3, Nombre = "Libro C#", Categoria = "Libros", Precio = 45.00m, Stock = 8, Disponible = true },
+            new Producto { Id = 4, Nombre = "Mesa de Oficina", Categoria = "Muebles", Precio = 299.99m, Stock = 0, Disponible = false },
+            new Producto { Id = 5, Nombre = "Silla Ergonómica", Categoria = "Muebles", Precio = 199.99m, Stock = 12, Disponible = true },
+            new Producto { Id = 6, Nombre = "Monitor 24\"", Categoria = "Electrónicos", Precio = 249.99m, Stock = 20, Disponible = true }
+        };
+    }
+    
+    public void MostrarProductosDisponibles()
+    {
+        var disponibles = productos.Where(p => p.Disponible && p.Stock > 0)
+                                  .OrderBy(p => p.Categoria)
+                                  .ThenBy(p => p.Nombre);
+        
+        Console.WriteLine("Productos Disponibles:");
+        foreach (var prod in disponibles)
+        {
+            Console.WriteLine($"- {prod.Nombre} ({prod.Categoria}): ${prod.Precio:F2} - Stock: {prod.Stock}");
+        }
+    }
+    
+    public void MostrarValorPorCategoria()
+    {
+        var valorPorCategoria = productos.Where(p => p.Disponible)
+                                        .GroupBy(p => p.Categoria)
+                                        .Select(g => new
+                                        {
+                                            Categoria = g.Key,
+                                            ValorTotal = g.Sum(p => p.Precio * p.Stock),
+                                            Productos = g.Count(),
+                                            StockTotal = g.Sum(p => p.Stock)
+                                        })
+                                        .OrderByDescending(x => x.ValorTotal);
+        
+        Console.WriteLine("\nValor del Inventario por Categoría:");
+        foreach (var cat in valorPorCategoria)
+        {
+            Console.WriteLine($"{cat.Categoria}: ${cat.ValorTotal:F2} ({cat.Productos} productos, {cat.StockTotal} unidades)");
+        }
+    }
+    
+    public void MostrarProductosAgotados()
+    {
+        var agotados = productos.Where(p => p.Stock == 0)
+                               .Select(p => new { p.Nombre, p.Categoria, p.Precio });
+        
+        Console.WriteLine("\nProductos Agotados:");
+        foreach (var prod in agotados)
+        {
+            Console.WriteLine($"- {prod.Nombre} ({prod.Categoria}): ${prod.Precio:F2}");
+        }
+    }
+    
+    public void BuscarProductosPorPrecio(decimal precioMin, decimal precioMax)
+    {
+        var productosEnRango = productos.Where(p => p.Precio >= precioMin && p.Precio <= precioMax)
+                                       .OrderBy(p => p.Precio);
+        
+        Console.WriteLine($"\nProductos entre ${precioMin:F2} y ${precioMax:F2}:");
+        foreach (var prod in productosEnRango)
+        {
+            Console.WriteLine($"- {prod.Nombre}: ${prod.Precio:F2}");
+        }
+    }
+}
+
+// Programa principal
+var inventario = new Inventario();
+inventario.MostrarProductosDisponibles();
+inventario.MostrarValorPorCategoria();
+inventario.MostrarProductosAgotados();
+inventario.BuscarProductosPorPrecio(50, 300);
+```
+
+### Ejercicios de Delegados y Eventos
+
+#### Ejercicio 3: Sistema de Notificaciones
+**Objetivo**: Practicar el uso de delegados y eventos.
+
+```csharp
+// Delegados
+public delegate void NotificacionHandler(string mensaje);
+public delegate void LogHandler(string evento, DateTime timestamp);
+
+class SistemaNotificaciones
+{
+    // Eventos
+    public event NotificacionHandler NotificacionEnviada;
+    public event LogHandler EventoRegistrado;
+    
+    private List<string> notificaciones;
+    
+    public SistemaNotificaciones()
+    {
+        notificaciones = new List<string>();
+    }
+    
+    public void EnviarNotificacion(string mensaje)
+    {
+        notificaciones.Add(mensaje);
+        
+        // Disparar eventos
+        NotificacionEnviada?.Invoke(mensaje);
+        EventoRegistrado?.Invoke("Notificación enviada", DateTime.Now);
+    }
+    
+    public void MostrarHistorial()
+    {
+        Console.WriteLine("Historial de Notificaciones:");
+        foreach (var notif in notificaciones)
+        {
+            Console.WriteLine($"- {notif}");
+        }
+    }
+}
+
+class NotificadorEmail
+{
+    public void EnviarEmail(string mensaje)
+    {
+        Console.WriteLine($"Email enviado: {mensaje}");
+    }
+}
+
+class NotificadorSMS
+{
+    public void EnviarSMS(string mensaje)
+    {
+        Console.WriteLine($"SMS enviado: {mensaje}");
+    }
+}
+
+class Logger
+{
+    public void RegistrarEvento(string evento, DateTime timestamp)
+    {
+        Console.WriteLine($"[{timestamp:yyyy-MM-dd HH:mm:ss}] {evento}");
+    }
+}
+
+// Programa principal
+var sistema = new SistemaNotificaciones();
+var emailNotifier = new NotificadorEmail();
+var smsNotifier = new NotificadorSMS();
+var logger = new Logger();
+
+// Suscribir a eventos
+sistema.NotificacionEnviada += emailNotifier.EnviarEmail;
+sistema.NotificacionEnviada += smsNotifier.EnviarSMS;
+sistema.EventoRegistrado += logger.RegistrarEvento;
+
+// Enviar notificaciones
+sistema.EnviarNotificacion("Bienvenido al sistema!");
+sistema.EnviarNotificacion("Su cuenta ha sido creada exitosamente.");
+
+sistema.MostrarHistorial();
+```
+
+#### Ejercicio 4: Sistema de Filtros Dinámicos
+**Objetivo**: Practicar delegados como parámetros y filtros dinámicos.
+
+```csharp
+class Persona
+{
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    public string Ciudad { get; set; }
+    public decimal Ingresos { get; set; }
+}
+
+class FiltradorPersonas
+{
+    private List<Persona> personas;
+    
+    public FiltradorPersonas()
+    {
+        personas = new List<Persona>
+        {
+            new Persona { Nombre = "Ana", Edad = 25, Ciudad = "Madrid", Ingresos = 35000 },
+            new Persona { Nombre = "Carlos", Edad = 35, Ciudad = "Barcelona", Ingresos = 45000 },
+            new Persona { Nombre = "Elena", Edad = 28, Ciudad = "Madrid", Ingresos = 38000 },
+            new Persona { Nombre = "David", Edad = 42, Ciudad = "Valencia", Ingresos = 52000 },
+            new Persona { Nombre = "Laura", Edad = 31, Ciudad = "Madrid", Ingresos = 41000 }
+        };
+    }
+    
+    // Delegado para filtros
+    public delegate bool FiltroPersona(Persona persona);
+    
+    public List<Persona> Filtrar(FiltroPersona filtro)
+    {
+        return personas.Where(p => filtro(p)).ToList();
+    }
+    
+    public void MostrarPersonas(List<Persona> lista)
+    {
+        foreach (var persona in lista)
+        {
+            Console.WriteLine($"- {persona.Nombre}, {persona.Edad} años, {persona.Ciudad}, ${persona.Ingresos:F0}");
+        }
+    }
+}
+
+// Programa principal
+var filtrador = new FiltradorPersonas();
+
+Console.WriteLine("Todas las personas:");
+filtrador.MostrarPersonas(filtrador.personas);
+
+Console.WriteLine("\nPersonas de Madrid:");
+var madrid = filtrador.Filtrar(p => p.Ciudad == "Madrid");
+filtrador.MostrarPersonas(madrid);
+
+Console.WriteLine("\nPersonas mayores de 30 años:");
+var mayores30 = filtrador.Filtrar(p => p.Edad > 30);
+filtrador.MostrarPersonas(mayores30);
+
+Console.WriteLine("\nPersonas con ingresos altos (>40000):");
+var ingresosAltos = filtrador.Filtrar(p => p.Ingresos > 40000);
+filtrador.MostrarPersonas(ingresosAltos);
+
+Console.WriteLine("\nPersonas de Madrid con ingresos altos:");
+var madridIngresosAltos = filtrador.Filtrar(p => p.Ciudad == "Madrid" && p.Ingresos > 40000);
+filtrador.MostrarPersonas(madridIngresosAltos);
+```
+
+### Ejercicios de Programación Asíncrona
+
+#### Ejercicio 5: Descargador de Archivos Simulado
+**Objetivo**: Practicar async/await y operaciones asíncronas.
+
+```csharp
+class DescargadorArchivos
+{
+    public async Task<string> DescargarArchivoAsync(string url, int tamañoMB)
+    {
+        Console.WriteLine($"Iniciando descarga de {url} ({tamañoMB}MB)...");
+        
+        // Simular tiempo de descarga basado en el tamaño
+        int tiempoDescarga = tamañoMB * 100; // 100ms por MB
+        await Task.Delay(tiempoDescarga);
+        
+        Console.WriteLine($"Descarga completada: {url}");
+        return $"contenido_del_archivo_{url}";
+    }
+    
+    public async Task<List<string>> DescargarArchivosParaleloAsync(List<(string url, int tamaño)> archivos)
+    {
+        var tareas = archivos.Select(archivo => 
+            DescargarArchivoAsync(archivo.url, archivo.tamaño));
+        
+        var resultados = await Task.WhenAll(tareas);
+        return resultados.ToList();
+    }
+    
+    public async Task<string> DescargarArchivoConProgresoAsync(string url, int tamañoMB, IProgress<int> progreso)
+    {
+        Console.WriteLine($"Iniciando descarga con progreso: {url}");
+        
+        for (int i = 0; i <= 100; i += 10)
+        {
+            await Task.Delay(tamañoMB * 10); // Simular progreso
+            progreso.Report(i);
+        }
+        
+        Console.WriteLine($"Descarga con progreso completada: {url}");
+        return $"contenido_progreso_{url}";
+    }
+}
+
+class ProgresoDescarga : IProgress<int>
+{
+    public void Report(int value)
+    {
+        Console.WriteLine($"Progreso: {value}%");
+    }
+}
+
+// Programa principal
+async Task EjecutarDescargas()
+{
+    var descargador = new DescargadorArchivos();
+    
+    // Descarga simple
+    Console.WriteLine("=== Descarga Simple ===");
+    var resultado = await descargador.DescargarArchivoAsync("archivo1.txt", 5);
+    Console.WriteLine($"Resultado: {resultado}");
+    
+    // Descargas paralelas
+    Console.WriteLine("\n=== Descargas Paralelas ===");
+    var archivos = new List<(string, int)>
+    {
+        ("archivo1.txt", 3),
+        ("archivo2.txt", 5),
+        ("archivo3.txt", 2)
+    };
+    
+    var resultados = await descargador.DescargarArchivosParaleloAsync(archivos);
+    Console.WriteLine($"Descargas completadas: {resultados.Count}");
+    
+    // Descarga con progreso
+    Console.WriteLine("\n=== Descarga con Progreso ===");
+    var progreso = new ProgresoDescarga();
+    var resultadoProgreso = await descargador.DescargarArchivoConProgresoAsync("archivo_grande.zip", 10, progreso);
+    Console.WriteLine($"Resultado: {resultadoProgreso}");
+}
+
+// Ejecutar el programa asíncrono
+await EjecutarDescargas();
+```
+
+#### Ejercicio 6: Sistema de Cache Asíncrono
+**Objetivo**: Practicar operaciones asíncronas con cache y concurrencia.
+
+```csharp
+class CacheAsincrono<TKey, TValue>
+{
+    private readonly Dictionary<TKey, TValue> cache;
+    private readonly SemaphoreSlim semaphore;
+    
+    public CacheAsincrono()
+    {
+        cache = new Dictionary<TKey, TValue>();
+        semaphore = new SemaphoreSlim(1, 1);
+    }
+    
+    public async Task<TValue> ObtenerOAgregarAsync(TKey key, Func<Task<TValue>> factory)
+    {
+        // Verificar si ya existe en cache
+        if (cache.ContainsKey(key))
+        {
+            Console.WriteLine($"Cache hit para {key}");
+            return cache[key];
+        }
+        
+        // Adquirir semáforo para evitar condiciones de carrera
+        await semaphore.WaitAsync();
+        
+        try
+        {
+            // Verificar nuevamente después de adquirir el semáforo
+            if (cache.ContainsKey(key))
+            {
+                Console.WriteLine($"Cache hit para {key} (después de semáforo)");
+                return cache[key];
+            }
+            
+            Console.WriteLine($"Cache miss para {key}, cargando...");
+            
+            // Simular carga asíncrona
+            var valor = await factory();
+            
+            // Agregar al cache
+            cache[key] = valor;
+            
+            Console.WriteLine($"Valor cargado y cacheado para {key}");
+            return valor;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+    
+    public void Limpiar()
+    {
+        cache.Clear();
+        Console.WriteLine("Cache limpiado");
+    }
+    
+    public int CantidadElementos => cache.Count;
+}
+
+// Simulador de servicio de datos
+class ServicioDatos
+{
+    public async Task<string> ObtenerDatosAsync(string id)
+    {
+        // Simular tiempo de carga
+        await Task.Delay(1000);
+        return $"Datos para {id} - {DateTime.Now:HH:mm:ss}";
+    }
+}
+
+// Programa principal
+async Task EjecutarCache()
+{
+    var cache = new CacheAsincrono<string, string>();
+    var servicio = new ServicioDatos();
+    
+    Console.WriteLine("=== Prueba de Cache Asíncrono ===");
+    
+    // Primera carga (cache miss)
+    var resultado1 = await cache.ObtenerOAgregarAsync("usuario1", 
+        () => servicio.ObtenerDatosAsync("usuario1"));
+    Console.WriteLine($"Resultado 1: {resultado1}");
+    
+    // Segunda carga (cache hit)
+    var resultado2 = await cache.ObtenerOAgregarAsync("usuario1", 
+        () => servicio.ObtenerDatosAsync("usuario1"));
+    Console.WriteLine($"Resultado 2: {resultado2}");
+    
+    // Carga paralela del mismo elemento
+    Console.WriteLine("\n=== Carga Paralela ===");
+    var tareas = Enumerable.Range(1, 3).Select(async i =>
+    {
+        var resultado = await cache.ObtenerOAgregarAsync("usuario2", 
+            () => servicio.ObtenerDatosAsync("usuario2"));
+        Console.WriteLine($"Tarea {i}: {resultado}");
+        return resultado;
+    });
+    
+    await Task.WhenAll(tareas);
+    
+    Console.WriteLine($"\nElementos en cache: {cache.CantidadElementos}");
+}
+
+await EjecutarCache();
+```
+
+### Ejercicios de Manejo de Excepciones
+
+#### Ejercicio 7: Sistema de Validación Robusto
+**Objetivo**: Practicar manejo de excepciones y validaciones complejas.
+
+```csharp
+class ValidacionException : Exception
+{
+    public string Campo { get; }
+    
+    public ValidacionException(string campo, string mensaje) : base(mensaje)
+    {
+        Campo = campo;
+    }
+}
+
+class Usuario
+{
+    public string Email { get; set; }
+    public string Password { get; set; }
+    public int Edad { get; set; }
+    public string Telefono { get; set; }
+}
+
+class ValidadorUsuario
+{
+    public void ValidarUsuario(Usuario usuario)
+    {
+        var errores = new List<string>();
+        
+        try
+        {
+            ValidarEmail(usuario.Email);
+        }
+        catch (ValidacionException ex)
+        {
+            errores.Add($"Email: {ex.Message}");
+        }
+        
+        try
+        {
+            ValidarPassword(usuario.Password);
+        }
+        catch (ValidacionException ex)
+        {
+            errores.Add($"Password: {ex.Message}");
+        }
+        
+        try
+        {
+            ValidarEdad(usuario.Edad);
+        }
+        catch (ValidacionException ex)
+        {
+            errores.Add($"Edad: {ex.Message}");
+        }
+        
+        try
+        {
+            ValidarTelefono(usuario.Telefono);
+        }
+        catch (ValidacionException ex)
+        {
+            errores.Add($"Teléfono: {ex.Message}");
+        }
+        
+        if (errores.Count > 0)
+        {
+            throw new AggregateException("Múltiples errores de validación", 
+                errores.Select(e => new Exception(e)));
+        }
+    }
+    
+    private void ValidarEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ValidacionException("Email", "El email no puede estar vacío");
+        
+        if (!email.Contains("@"))
+            throw new ValidacionException("Email", "El email debe contener @");
+        
+        if (email.Length < 5)
+            throw new ValidacionException("Email", "El email debe tener al menos 5 caracteres");
+    }
+    
+    private void ValidarPassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            throw new ValidacionException("Password", "La contraseña no puede estar vacía");
+        
+        if (password.Length < 8)
+            throw new ValidacionException("Password", "La contraseña debe tener al menos 8 caracteres");
+        
+        if (!password.Any(char.IsUpper))
+            throw new ValidacionException("Password", "La contraseña debe contener al menos una mayúscula");
+        
+        if (!password.Any(char.IsDigit))
+            throw new ValidacionException("Password", "La contraseña debe contener al menos un número");
+    }
+    
+    private void ValidarEdad(int edad)
+    {
+        if (edad < 13)
+            throw new ValidacionException("Edad", "La edad debe ser al menos 13 años");
+        
+        if (edad > 120)
+            throw new ValidacionException("Edad", "La edad no puede ser mayor a 120 años");
+    }
+    
+    private void ValidarTelefono(string telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono))
+            throw new ValidacionException("Telefono", "El teléfono no puede estar vacío");
+        
+        if (!telefono.All(char.IsDigit))
+            throw new ValidacionException("Telefono", "El teléfono debe contener solo números");
+        
+        if (telefono.Length < 9)
+            throw new ValidacionException("Telefono", "El teléfono debe tener al menos 9 dígitos");
+    }
+}
+
+// Programa principal
+var validador = new ValidadorUsuario();
+
+var usuarios = new List<Usuario>
+{
+    new Usuario { Email = "usuario@test.com", Password = "Password123", Edad = 25, Telefono = "123456789" },
+    new Usuario { Email = "invalid-email", Password = "weak", Edad = 10, Telefono = "abc" },
+    new Usuario { Email = "", Password = "", Edad = 150, Telefono = "" }
+};
+
+foreach (var usuario in usuarios)
+{
+    Console.WriteLine($"\nValidando usuario: {usuario.Email}");
+    
+    try
+    {
+        validador.ValidarUsuario(usuario);
+        Console.WriteLine("✓ Usuario válido");
+    }
+    catch (AggregateException ex)
+    {
+        Console.WriteLine("✗ Errores de validación:");
+        foreach (var error in ex.InnerExceptions)
+        {
+            Console.WriteLine($"  - {error.Message}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"✗ Error inesperado: {ex.Message}");
+    }
+}
+```
+
+### Conclusión
+
+Estos ejercicios intermedios cubren características más avanzadas de C# como LINQ, delegados, eventos, programación asíncrona y manejo robusto de excepciones. Es importante practicar cada concepto hasta dominarlo completamente.
+
+**Próximos pasos para nivel avanzado**:
+- Patrones de diseño (Singleton, Factory, Observer, etc.)
+- Reflection y metaprogramación
+- Expresiones lambda avanzadas
+- Optimización de rendimiento
+- Testing unitario y mocking
+- Arquitectura de aplicaciones

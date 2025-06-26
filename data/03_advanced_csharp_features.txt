@@ -1,0 +1,932 @@
+# CARACTERÍSTICAS AVANZADAS DE C# - GUÍA COMPLETA
+
+## 1. GENERICS AVANZADOS
+
+### Restricciones de Generics
+
+Los generics permiten crear código reutilizable que funciona con diferentes tipos de datos. Las restricciones limitan qué tipos pueden ser utilizados.
+
+```csharp
+// Restricción de tipo de clase
+public class Repositorio<T> where T : class
+{
+    private List<T> elementos = new List<T>();
+    
+    public void Agregar(T elemento)
+    {
+        elementos.Add(elemento);
+    }
+    
+    public T Obtener(int indice)
+    {
+        return elementos[indice];
+    }
+}
+
+// Restricción de interfaz
+public class Servicio<T> where T : IComparable<T>
+{
+    public T ObtenerMaximo(T a, T b)
+    {
+        return a.CompareTo(b) > 0 ? a : b;
+    }
+}
+
+// Restricción de constructor
+public class Factory<T> where T : new()
+{
+    public T CrearInstancia()
+    {
+        return new T();
+    }
+}
+
+// Restricción de tipo de valor
+public class Cache<T> where T : struct
+{
+    private T? valor;
+    
+    public void Establecer(T nuevoValor)
+    {
+        valor = nuevoValor;
+    }
+    
+    public T? Obtener()
+    {
+        return valor;
+    }
+}
+
+// Múltiples restricciones
+public class Procesador<T> where T : class, IComparable<T>, new()
+{
+    public void Procesar(T elemento)
+    {
+        // Implementación
+    }
+}
+
+// Restricción de herencia
+public class Gestor<T> where T : Animal
+{
+    public void Alimentar(T animal)
+    {
+        animal.Comer();
+    }
+}
+```
+
+### Generics con Covarianza y Contravarianza
+
+```csharp
+// Covarianza (out) - permite usar un tipo más derivado
+public interface IProductor<out T>
+{
+    T Producir();
+}
+
+public class ProductorAnimal : IProductor<Animal>
+{
+    public Animal Producir() => new Animal();
+}
+
+public class ProductorPerro : IProductor<Perro>
+{
+    public Perro Producir() => new Perro();
+}
+
+// Contravarianza (in) - permite usar un tipo menos derivado
+public interface IConsumidor<in T>
+{
+    void Consumir(T elemento);
+}
+
+public class ConsumidorAnimal : IConsumidor<Animal>
+{
+    public void Consumir(Animal animal) { }
+}
+
+public class ConsumidorPerro : IConsumidor<Perro>
+{
+    public void Consumir(Perro perro) { }
+}
+
+// Uso
+IProductor<Animal> productorAnimal = new ProductorPerro(); // Covarianza
+IConsumidor<Perro> consumidorPerro = new ConsumidorAnimal(); // Contravarianza
+```
+
+## 2. LINQ AVANZADO
+
+### Operadores de Consulta Personalizados
+
+```csharp
+public static class LinqExtensions
+{
+    public static IEnumerable<T> WhereIf<T>(
+        this IEnumerable<T> source, 
+        bool condition, 
+        Func<T, bool> predicate)
+    {
+        return condition ? source.Where(predicate) : source;
+    }
+    
+    public static IEnumerable<T> Paginar<T>(
+        this IEnumerable<T> source, 
+        int pagina, 
+        int elementosPorPagina)
+    {
+        return source.Skip((pagina - 1) * elementosPorPagina)
+                    .Take(elementosPorPagina);
+    }
+    
+    public static IEnumerable<T> DistinctBy<T, TKey>(
+        this IEnumerable<T> source, 
+        Func<T, TKey> keySelector)
+    {
+        var seenKeys = new HashSet<TKey>();
+        return source.Where(element => seenKeys.Add(keySelector(element)));
+    }
+    
+    public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
+    {
+        var random = new Random();
+        return source.OrderBy(x => random.Next());
+    }
+}
+
+// Uso
+var numeros = Enumerable.Range(1, 100);
+var pares = numeros.WhereIf(true, n => n % 2 == 0);
+var pagina1 = numeros.Paginar(1, 10);
+var unicos = personas.DistinctBy(p => p.Edad);
+var aleatorios = numeros.Shuffle();
+```
+
+### Consultas Complejas con Múltiples Fuentes
+
+```csharp
+public class ConsultasAvanzadas
+{
+    public static void EjecutarConsultasComplejas()
+    {
+        var clientes = new List<Cliente>
+        {
+            new Cliente { Id = 1, Nombre = "Juan", Ciudad = "Madrid" },
+            new Cliente { Id = 2, Nombre = "Ana", Ciudad = "Barcelona" },
+            new Cliente { Id = 3, Nombre = "Carlos", Ciudad = "Madrid" }
+        };
+        
+        var pedidos = new List<Pedido>
+        {
+            new Pedido { Id = 1, ClienteId = 1, Monto = 100, Fecha = DateTime.Now.AddDays(-5) },
+            new Pedido { Id = 2, ClienteId = 1, Monto = 200, Fecha = DateTime.Now.AddDays(-3) },
+            new Pedido { Id = 3, ClienteId = 2, Monto = 150, Fecha = DateTime.Now.AddDays(-1) },
+            new Pedido { Id = 4, ClienteId = 3, Monto = 300, Fecha = DateTime.Now }
+        };
+        
+        var productos = new List<Producto>
+        {
+            new Producto { Id = 1, Nombre = "Laptop", Categoria = "Electrónicos" },
+            new Producto { Id = 2, Nombre = "Libro", Categoria = "Educación" },
+            new Producto { Id = 3, Nombre = "Mesa", Categoria = "Muebles" }
+        };
+
+        // Consulta compleja con múltiples joins
+        var consultaCompleja = from c in clientes
+                              join p in pedidos on c.Id equals p.ClienteId
+                              join prod in productos on p.ProductoId equals prod.Id
+                              where p.Fecha >= DateTime.Now.AddDays(-7)
+                              group new { c, p, prod } by c.Ciudad into g
+                              select new
+                              {
+                                  Ciudad = g.Key,
+                                  TotalVentas = g.Sum(x => x.p.Monto),
+                                  NumeroPedidos = g.Count(),
+                                  Clientes = g.Select(x => x.c.Nombre).Distinct()
+                              };
+
+        foreach (var resultado in consultaCompleja)
+        {
+            Console.WriteLine($"Ciudad: {resultado.Ciudad}");
+            Console.WriteLine($"Total Ventas: ${resultado.TotalVentas}");
+            Console.WriteLine($"Número de Pedidos: {resultado.NumeroPedidos}");
+            Console.WriteLine($"Clientes: {string.Join(", ", resultado.Clientes)}");
+            Console.WriteLine();
+        }
+    }
+}
+```
+
+## 3. ASYNC/AWAIT AVANZADO
+
+### Patrones Avanzados de Programación Asíncrona
+
+```csharp
+public class ServiciosAsincronos
+{
+    public async Task<string> ObtenerDatosConTimeoutAsync(int timeoutMs = 5000)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        
+        try
+        {
+            return await ObtenerDatosAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Timeout: No se pudieron obtener los datos";
+        }
+    }
+    
+    public async Task<List<string>> ObtenerDatosParalelosAsync()
+    {
+        var tareas = new List<Task<string>>();
+        
+        for (int i = 1; i <= 10; i++)
+        {
+            tareas.Add(ObtenerDatosAsync(i));
+        }
+        
+        // Ejecutar todas las tareas en paralelo
+        var resultados = await Task.WhenAll(tareas);
+        return resultados.ToList();
+    }
+    
+    public async Task<string> ObtenerPrimerResultadoAsync()
+    {
+        var tareas = new List<Task<string>>
+        {
+            ObtenerDatosAsync(1),
+            ObtenerDatosAsync(2),
+            ObtenerDatosAsync(3)
+        };
+        
+        // Retornar el primer resultado que complete
+        var resultado = await Task.WhenAny(tareas);
+        return await resultado;
+    }
+    
+    public async Task ProcesarConRetryAsync(Func<Task> operacion, int maxIntentos = 3)
+    {
+        for (int intento = 1; intento <= maxIntentos; intento++)
+        {
+            try
+            {
+                await operacion();
+                return; // Éxito
+            }
+            catch (Exception ex) when (intento < maxIntentos)
+            {
+                Console.WriteLine($"Intento {intento} falló: {ex.Message}");
+                await Task.Delay(1000 * intento); // Backoff exponencial
+            }
+        }
+        
+        throw new InvalidOperationException($"La operación falló después de {maxIntentos} intentos");
+    }
+    
+    private async Task<string> ObtenerDatosAsync(int id, CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(1000, cancellationToken); // Simulación de operación asíncrona
+        return $"Datos {id} obtenidos en {DateTime.Now:HH:mm:ss}";
+    }
+    
+    private async Task<string> ObtenerDatosAsync(int id)
+    {
+        await Task.Delay(1000); // Simulación de operación asíncrona
+        return $"Datos {id} obtenidos en {DateTime.Now:HH:mm:ss}";
+    }
+}
+```
+
+### Async Streams (C# 8.0+)
+
+```csharp
+public class GeneradorDatosAsincrono
+{
+    public async IAsyncEnumerable<int> GenerarNumerosAsync(int cantidad)
+    {
+        for (int i = 1; i <= cantidad; i++)
+        {
+            await Task.Delay(100); // Simulación de procesamiento
+            yield return i;
+        }
+    }
+    
+    public async IAsyncEnumerable<string> ProcesarArchivosAsync(string directorio)
+    {
+        var archivos = Directory.GetFiles(directorio);
+        
+        foreach (var archivo in archivos)
+        {
+            var contenido = await File.ReadAllTextAsync(archivo);
+            yield return $"Archivo: {Path.GetFileName(archivo)}, Tamaño: {contenido.Length}";
+        }
+    }
+}
+
+// Uso de async streams
+public async Task ProcesarDatosAsincronosAsync()
+{
+    var generador = new GeneradorDatosAsincrono();
+    
+    await foreach (var numero in generador.GenerarNumerosAsync(10))
+    {
+        Console.WriteLine($"Número: {numero}");
+    }
+    
+    await foreach (var archivo in generador.ProcesarArchivosAsync(@"C:\Temp"))
+    {
+        Console.WriteLine(archivo);
+    }
+}
+```
+
+## 4. PATRONES DE DISEÑO AVANZADOS
+
+### Repository Pattern con Generics
+
+```csharp
+public interface IRepository<T> where T : class
+{
+    Task<T> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+}
+
+public class Repository<T> : IRepository<T> where T : class
+{
+    private readonly DbContext context;
+    private readonly DbSet<T> dbSet;
+    
+    public Repository(DbContext context)
+    {
+        this.context = context;
+        this.dbSet = context.Set<T>();
+    }
+    
+    public async Task<T> GetByIdAsync(int id)
+    {
+        return await dbSet.FindAsync(id);
+    }
+    
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await dbSet.ToListAsync();
+    }
+    
+    public async Task<T> AddAsync(T entity)
+    {
+        var result = await dbSet.AddAsync(entity);
+        await context.SaveChangesAsync();
+        return result.Entity;
+    }
+    
+    public async Task UpdateAsync(T entity)
+    {
+        dbSet.Update(entity);
+        await context.SaveChangesAsync();
+    }
+    
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await GetByIdAsync(id);
+        if (entity != null)
+        {
+            dbSet.Remove(entity);
+            await context.SaveChangesAsync();
+        }
+    }
+    
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await dbSet.Where(predicate).ToListAsync();
+    }
+}
+```
+
+### Unit of Work Pattern
+
+```csharp
+public interface IUnitOfWork : IDisposable
+{
+    IRepository<Cliente> Clientes { get; }
+    IRepository<Pedido> Pedidos { get; }
+    IRepository<Producto> Productos { get; }
+    Task<int> SaveChangesAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly DbContext context;
+    private IRepository<Cliente> clientes;
+    private IRepository<Pedido> pedidos;
+    private IRepository<Producto> productos;
+    
+    public UnitOfWork(DbContext context)
+    {
+        this.context = context;
+    }
+    
+    public IRepository<Cliente> Clientes => 
+        clientes ??= new Repository<Cliente>(context);
+    
+    public IRepository<Pedido> Pedidos => 
+        pedidos ??= new Repository<Pedido>(context);
+    
+    public IRepository<Producto> Productos => 
+        productos ??= new Repository<Producto>(context);
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        return await context.SaveChangesAsync();
+    }
+    
+    public void Dispose()
+    {
+        context?.Dispose();
+    }
+}
+```
+
+### Strategy Pattern
+
+```csharp
+public interface ICalculadoraDescuento
+{
+    decimal CalcularDescuento(decimal monto);
+}
+
+public class DescuentoPorcentaje : ICalculadoraDescuento
+{
+    private readonly decimal porcentaje;
+    
+    public DescuentoPorcentaje(decimal porcentaje)
+    {
+        this.porcentaje = porcentaje;
+    }
+    
+    public decimal CalcularDescuento(decimal monto)
+    {
+        return monto * (porcentaje / 100);
+    }
+}
+
+public class DescuentoFijo : ICalculadoraDescuento
+{
+    private readonly decimal descuento;
+    
+    public DescuentoFijo(decimal descuento)
+    {
+        this.descuento = descuento;
+    }
+    
+    public decimal CalcularDescuento(decimal monto)
+    {
+        return Math.Min(descuento, monto);
+    }
+}
+
+public class CalculadoraPrecio
+{
+    private readonly ICalculadoraDescuento calculadoraDescuento;
+    
+    public CalculadoraPrecio(ICalculadoraDescuento calculadoraDescuento)
+    {
+        this.calculadoraDescuento = calculadoraDescuento;
+    }
+    
+    public decimal CalcularPrecioFinal(decimal precioOriginal)
+    {
+        var descuento = calculadoraDescuento.CalcularDescuento(precioOriginal);
+        return precioOriginal - descuento;
+    }
+}
+```
+
+## 5. REFLECTION Y METADATA AVANZADO
+
+### Análisis Dinámico de Tipos
+
+```csharp
+public class AnalizadorTipos
+{
+    public static void AnalizarTipo<T>()
+    {
+        var tipo = typeof(T);
+        
+        Console.WriteLine($"=== Análisis del tipo: {tipo.Name} ===");
+        Console.WriteLine($"Namespace: {tipo.Namespace}");
+        Console.WriteLine($"Assembly: {tipo.Assembly.GetName().Name}");
+        Console.WriteLine($"Es clase: {tipo.IsClass}");
+        Console.WriteLine($"Es interfaz: {tipo.IsInterface}");
+        Console.WriteLine($"Es abstracto: {tipo.IsAbstract}");
+        Console.WriteLine($"Es genérico: {tipo.IsGenericType}");
+        
+        // Interfaces implementadas
+        var interfaces = tipo.GetInterfaces();
+        if (interfaces.Length > 0)
+        {
+            Console.WriteLine("Interfaces implementadas:");
+            foreach (var interfaz in interfaces)
+            {
+                Console.WriteLine($"  - {interfaz.Name}");
+            }
+        }
+        
+        // Propiedades
+        var propiedades = tipo.GetProperties();
+        Console.WriteLine($"Propiedades ({propiedades.Length}):");
+        foreach (var prop in propiedades)
+        {
+            Console.WriteLine($"  - {prop.Name}: {prop.PropertyType.Name} " +
+                            $"{{ get; {(prop.CanWrite ? "set; " : "")}}}");
+        }
+        
+        // Métodos
+        var metodos = tipo.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        Console.WriteLine($"Métodos públicos ({metodos.Length}):");
+        foreach (var metodo in metodos)
+        {
+            var parametros = string.Join(", ", metodo.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
+            Console.WriteLine($"  - {metodo.Name}({parametros}): {metodo.ReturnType.Name}");
+        }
+        
+        // Constructores
+        var constructores = tipo.GetConstructors();
+        Console.WriteLine($"Constructores ({constructores.Length}):");
+        foreach (var constructor in constructores)
+        {
+            var parametros = string.Join(", ", constructor.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
+            Console.WriteLine($"  - {tipo.Name}({parametros})");
+        }
+    }
+    
+    public static T CrearInstancia<T>(params object[] parametros)
+    {
+        var tipo = typeof(T);
+        var constructor = tipo.GetConstructor(parametros.Select(p => p.GetType()).ToArray());
+        
+        if (constructor == null)
+        {
+            throw new InvalidOperationException($"No se encontró un constructor apropiado para {tipo.Name}");
+        }
+        
+        return (T)constructor.Invoke(parametros);
+    }
+    
+    public static void InvocarMetodo<T>(T instancia, string nombreMetodo, params object[] parametros)
+    {
+        var tipo = typeof(T);
+        var metodo = tipo.GetMethod(nombreMetodo, parametros.Select(p => p.GetType()).ToArray());
+        
+        if (metodo == null)
+        {
+            throw new InvalidOperationException($"No se encontró el método {nombreMetodo} en {tipo.Name}");
+        }
+        
+        var resultado = metodo.Invoke(instancia, parametros);
+        if (resultado != null)
+        {
+            Console.WriteLine($"Resultado: {resultado}");
+        }
+    }
+}
+```
+
+### Atributos Personalizados Avanzados
+
+```csharp
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Property)]
+public class ValidacionAttribute : Attribute
+{
+    public string MensajeError { get; set; }
+    public bool EsObligatorio { get; set; }
+    public int LongitudMinima { get; set; }
+    public int LongitudMaxima { get; set; }
+    
+    public ValidacionAttribute(string mensajeError = "Campo inválido")
+    {
+        MensajeError = mensajeError;
+    }
+}
+
+[AttributeUsage(AttributeTargets.Method)]
+public class LogAttribute : Attribute
+{
+    public string Nivel { get; set; }
+    
+    public LogAttribute(string nivel = "Info")
+    {
+        Nivel = nivel;
+    }
+}
+
+[Validacion("La información del usuario es inválida")]
+public class Usuario
+{
+    [Validacion("El nombre es obligatorio", EsObligatorio = true, LongitudMinima = 2, LongitudMaxima = 50)]
+    public string Nombre { get; set; }
+    
+    [Validacion("El email debe ser válido", EsObligatorio = true)]
+    public string Email { get; set; }
+    
+    [Log("Debug")]
+    public void ActualizarPerfil()
+    {
+        Console.WriteLine("Perfil actualizado");
+    }
+}
+
+public class ValidadorReflection
+{
+    public static List<string> ValidarObjeto(object obj)
+    {
+        var errores = new List<string>();
+        var tipo = obj.GetType();
+        
+        // Validar atributos de clase
+        var atributosClase = tipo.GetCustomAttributes(typeof(ValidacionAttribute), false);
+        foreach (ValidacionAttribute atributo in atributosClase)
+        {
+            // Lógica de validación de clase
+        }
+        
+        // Validar propiedades
+        var propiedades = tipo.GetProperties();
+        foreach (var propiedad in propiedades)
+        {
+            var atributos = propiedad.GetCustomAttributes(typeof(ValidacionAttribute), false);
+            foreach (ValidacionAttribute atributo in atributos)
+            {
+                var valor = propiedad.GetValue(obj);
+                
+                if (atributo.EsObligatorio && (valor == null || string.IsNullOrWhiteSpace(valor.ToString())))
+                {
+                    errores.Add($"{propiedad.Name}: {atributo.MensajeError}");
+                }
+                
+                if (valor is string str)
+                {
+                    if (str.Length < atributo.LongitudMinima)
+                    {
+                        errores.Add($"{propiedad.Name}: Longitud mínima {atributo.LongitudMinima}");
+                    }
+                    
+                    if (atributo.LongitudMaxima > 0 && str.Length > atributo.LongitudMaxima)
+                    {
+                        errores.Add($"{propiedad.Name}: Longitud máxima {atributo.LongitudMaxima}");
+                    }
+                }
+            }
+        }
+        
+        return errores;
+    }
+}
+```
+
+## 6. EXPRESSION TREES AVANZADAS
+
+### Construcción Dinámica de Expresiones
+
+```csharp
+public class GeneradorExpresionesAvanzado
+{
+    public static Expression<Func<T, bool>> CrearFiltroDinamico<T>(
+        string propiedad, 
+        string operador, 
+        object valor)
+    {
+        var parametro = Expression.Parameter(typeof(T), "x");
+        var propiedadExp = Expression.Property(parametro, propiedad);
+        var valorExp = Expression.Constant(valor);
+        
+        BinaryExpression comparacion = operador.ToLower() switch
+        {
+            "equals" => Expression.Equal(propiedadExp, valorExp),
+            "notequals" => Expression.NotEqual(propiedadExp, valorExp),
+            "greaterthan" => Expression.GreaterThan(propiedadExp, valorExp),
+            "lessthan" => Expression.LessThan(propiedadExp, valorExp),
+            "greaterthanorequal" => Expression.GreaterThanOrEqual(propiedadExp, valorExp),
+            "lessthanorequal" => Expression.LessThanOrEqual(propiedadExp, valorExp),
+            "contains" => Expression.Call(propiedadExp, typeof(string).GetMethod("Contains", new[] { typeof(string) }), valorExp),
+            _ => throw new ArgumentException($"Operador no soportado: {operador}")
+        };
+        
+        return Expression.Lambda<Func<T, bool>>(comparacion, parametro);
+    }
+    
+    public static Expression<Func<T, object>> CrearSelectorDinamico<T>(string propiedad)
+    {
+        var parametro = Expression.Parameter(typeof(T), "x");
+        var propiedadExp = Expression.Property(parametro, propiedad);
+        var conversion = Expression.Convert(propiedadExp, typeof(object));
+        
+        return Expression.Lambda<Func<T, object>>(conversion, parametro);
+    }
+    
+    public static Expression<Func<T, TKey>> CrearOrdenadorDinamico<T, TKey>(string propiedad)
+    {
+        var parametro = Expression.Parameter(typeof(T), "x");
+        var propiedadExp = Expression.Property(parametro, propiedad);
+        
+        return Expression.Lambda<Func<T, TKey>>(propiedadExp, parametro);
+    }
+}
+
+// Uso
+public class ConsultaDinamica
+{
+    public static List<T> Filtrar<T>(List<T> elementos, string propiedad, string operador, object valor)
+    {
+        var filtro = GeneradorExpresionesAvanzado.CrearFiltroDinamico<T>(propiedad, operador, valor);
+        var funcion = filtro.Compile();
+        
+        return elementos.Where(funcion).ToList();
+    }
+    
+    public static List<object> Seleccionar<T>(List<T> elementos, string propiedad)
+    {
+        var selector = GeneradorExpresionesAvanzado.CrearSelectorDinamico<T>(propiedad);
+        var funcion = selector.Compile();
+        
+        return elementos.Select(funcion).ToList();
+    }
+    
+    public static List<T> Ordenar<T, TKey>(List<T> elementos, string propiedad)
+    {
+        var ordenador = GeneradorExpresionesAvanzado.CrearOrdenadorDinamico<T, TKey>(propiedad);
+        var funcion = ordenador.Compile();
+        
+        return elementos.OrderBy(funcion).ToList();
+    }
+}
+```
+
+## 7. MEMORY MANAGEMENT AVANZADO
+
+### Gestión Manual de Memoria
+
+```csharp
+public class GestorMemoriaAvanzado : IDisposable
+{
+    private bool disposed = false;
+    private IntPtr handle;
+    private SafeHandle safeHandle = new SafeFileHandle(IntPtr.Zero, true);
+    
+    public GestorMemoriaAvanzado()
+    {
+        // Simulación de recursos no administrados
+        handle = Marshal.AllocHGlobal(1024);
+    }
+    
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Liberar recursos administrados
+                safeHandle?.Dispose();
+            }
+            
+            // Liberar recursos no administrados
+            if (handle != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(handle);
+                handle = IntPtr.Zero;
+            }
+            
+            disposed = true;
+        }
+    }
+    
+    ~GestorMemoriaAvanzado()
+    {
+        Dispose(false);
+    }
+}
+
+public class PoolDeObjetos<T> where T : class, new()
+{
+    private readonly ConcurrentQueue<T> pool;
+    private readonly int maxSize;
+    private int currentSize;
+    
+    public PoolDeObjetos(int maxSize = 100)
+    {
+        this.maxSize = maxSize;
+        this.pool = new ConcurrentQueue<T>();
+    }
+    
+    public T Obtener()
+    {
+        if (pool.TryDequeue(out T item))
+        {
+            return item;
+        }
+        
+        if (currentSize < maxSize)
+        {
+            Interlocked.Increment(ref currentSize);
+            return new T();
+        }
+        
+        // Esperar hasta que haya un elemento disponible
+        while (!pool.TryDequeue(out item))
+        {
+            Thread.Sleep(1);
+        }
+        
+        return item;
+    }
+    
+    public void Devolver(T item)
+    {
+        if (item != null && pool.Count < maxSize)
+        {
+            pool.Enqueue(item);
+        }
+    }
+}
+```
+
+### WeakReference y Memory Pressure
+
+```csharp
+public class CacheInteligente<TKey, TValue> where TValue : class
+{
+    private readonly ConcurrentDictionary<TKey, WeakReference<TValue>> cache;
+    private readonly int maxSize;
+    
+    public CacheInteligente(int maxSize = 1000)
+    {
+        this.maxSize = maxSize;
+        this.cache = new ConcurrentDictionary<TKey, WeakReference<TValue>>();
+    }
+    
+    public TValue Obtener(TKey clave)
+    {
+        if (cache.TryGetValue(clave, out WeakReference<TValue> weakRef))
+        {
+            if (weakRef.TryGetTarget(out TValue valor))
+            {
+                return valor;
+            }
+            else
+            {
+                // El objeto fue recolectado por el GC
+                cache.TryRemove(clave, out _);
+            }
+        }
+        
+        return null;
+    }
+    
+    public void Establecer(TKey clave, TValue valor)
+    {
+        if (cache.Count >= maxSize)
+        {
+            LimpiarCache();
+        }
+        
+        cache[clave] = new WeakReference<TValue>(valor);
+    }
+    
+    private void LimpiarCache()
+    {
+        var clavesAEliminar = new List<TKey>();
+        
+        foreach (var kvp in cache)
+        {
+            if (!kvp.Value.TryGetTarget(out _))
+            {
+                clavesAEliminar.Add(kvp.Key);
+            }
+        }
+        
+        foreach (var clave in clavesAEliminar)
+        {
+            cache.TryRemove(clave, out _);
+        }
+    }
+    
+    public int ContarElementosVivos()
+    {
+        return cache.Count(kvp => kvp.Value.TryGetTarget(out _));
+    }
+}
+```
+
+Esta guía completa de características avanzadas de C# cubre desde generics avanzados hasta gestión de memoria, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo aplicar estas características en proyectos reales. 

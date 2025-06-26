@@ -1,0 +1,699 @@
+# Interoperabilidad y Integración con Sistemas Externos en .NET
+
+## Introducción
+La interoperabilidad es fundamental para integrar aplicaciones .NET con sistemas externos, APIs, servicios legacy y diferentes tecnologías.
+
+### 1. COM Interop
+```csharp
+public class ComInteropService
+{
+    private readonly ILogger<ComInteropService> _logger;
+    
+    public ComInteropService(ILogger<ComInteropService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public void InteractWithExcel()
+    {
+        try
+        {
+            // Crear instancia de Excel
+            dynamic excel = Activator.CreateInstance(Type.GetTypeFromProgID("Excel.Application"));
+            
+            excel.Visible = false;
+            excel.DisplayAlerts = false;
+            
+            // Crear nuevo workbook
+            dynamic workbook = excel.Workbooks.Add();
+            dynamic worksheet = workbook.Sheets[1];
+            
+            // Escribir datos
+            worksheet.Cells[1, 1] = "Name";
+            worksheet.Cells[1, 2] = "Email";
+            worksheet.Cells[1, 3] = "Age";
+            
+            // Agregar datos de ejemplo
+            worksheet.Cells[2, 1] = "John Doe";
+            worksheet.Cells[2, 2] = "john@example.com";
+            worksheet.Cells[2, 3] = 30;
+            
+            // Guardar archivo
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "data.xlsx");
+            workbook.SaveAs(filePath);
+            
+            // Cerrar Excel
+            workbook.Close();
+            excel.Quit();
+            
+            // Liberar recursos COM
+            Marshal.ReleaseComObject(worksheet);
+            Marshal.ReleaseComObject(workbook);
+            Marshal.ReleaseComObject(excel);
+            
+            _logger.LogInformation("Excel file created successfully at {FilePath}", filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Excel file");
+            throw;
+        }
+    }
+    
+    public void InteractWithWord()
+    {
+        try
+        {
+            // Crear instancia de Word
+            dynamic word = Activator.CreateInstance(Type.GetTypeFromProgID("Word.Application"));
+            
+            word.Visible = false;
+            
+            // Crear nuevo documento
+            dynamic document = word.Documents.Add();
+            
+            // Agregar contenido
+            dynamic range = document.Content;
+            range.Text = "Hello from .NET!";
+            
+            // Aplicar formato
+            range.Font.Size = 16;
+            range.Font.Bold = true;
+            
+            // Guardar documento
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "document.docx");
+            document.SaveAs(filePath);
+            
+            // Cerrar Word
+            document.Close();
+            word.Quit();
+            
+            // Liberar recursos COM
+            Marshal.ReleaseComObject(range);
+            Marshal.ReleaseComObject(document);
+            Marshal.ReleaseComObject(word);
+            
+            _logger.LogInformation("Word document created successfully at {FilePath}", filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Word document");
+            throw;
+        }
+    }
+}
+```
+
+### 2. P/Invoke para APIs de Windows
+```csharp
+public class WindowsApiInterop
+{
+    private readonly ILogger<WindowsApiInterop> _logger;
+    
+    public WindowsApiInterop(ILogger<WindowsApiInterop> logger)
+    {
+        _logger = logger;
+    }
+    
+    // Importar funciones de Windows API
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GetCurrentProcess();
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetProcessMemoryInfo(IntPtr hProcess, out PROCESS_MEMORY_COUNTERS_EX ppsmemCounters, uint cb);
+    
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowText(IntPtr hWnd, string lpString);
+    
+    [DllImport("user32.dll")]
+    private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    
+    [DllImport("kernel32.dll")]
+    private static extern uint GetTickCount();
+    
+    public ProcessMemoryInfo GetProcessMemoryInfo()
+    {
+        var process = GetCurrentProcess();
+        var memoryInfo = new PROCESS_MEMORY_COUNTERS_EX();
+        
+        if (GetProcessMemoryInfo(process, out memoryInfo, (uint)Marshal.SizeOf(memoryInfo)))
+        {
+            return new ProcessMemoryInfo
+            {
+                WorkingSetSize = memoryInfo.WorkingSetSize,
+                PeakWorkingSetSize = memoryInfo.PeakWorkingSetSize,
+                PagefileUsage = memoryInfo.PagefileUsage,
+                PeakPagefileUsage = memoryInfo.PeakPagefileUsage,
+                PrivateUsage = memoryInfo.PrivateUsage
+            };
+        }
+        
+        throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
+    
+    public void SetWindowTitle(string windowName, string newTitle)
+    {
+        var windowHandle = FindWindow(null, windowName);
+        if (windowHandle != IntPtr.Zero)
+        {
+            SetWindowText(windowHandle, newTitle);
+            _logger.LogInformation("Window title changed for {WindowName}", windowName);
+        }
+        else
+        {
+            _logger.LogWarning("Window {WindowName} not found", windowName);
+        }
+    }
+    
+    public uint GetSystemUptime()
+    {
+        return GetTickCount();
+    }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct PROCESS_MEMORY_COUNTERS_EX
+{
+    public uint cb;
+    public uint PageFaultCount;
+    public UIntPtr PeakWorkingSetSize;
+    public UIntPtr WorkingSetSize;
+    public UIntPtr QuotaPeakPagedPoolUsage;
+    public UIntPtr QuotaPagedPoolUsage;
+    public UIntPtr QuotaPeakNonPagedPoolUsage;
+    public UIntPtr QuotaNonPagedPoolUsage;
+    public UIntPtr PagefileUsage;
+    public UIntPtr PeakPagefileUsage;
+    public UIntPtr PrivateUsage;
+}
+
+public class ProcessMemoryInfo
+{
+    public UIntPtr WorkingSetSize { get; set; }
+    public UIntPtr PeakWorkingSetSize { get; set; }
+    public UIntPtr PagefileUsage { get; set; }
+    public UIntPtr PeakPagefileUsage { get; set; }
+    public UIntPtr PrivateUsage { get; set; }
+}
+```
+
+### 3. Interoperabilidad con Python
+```csharp
+public class PythonInteropService
+{
+    private readonly ILogger<PythonInteropService> _logger;
+    private readonly string _pythonPath;
+    
+    public PythonInteropService(ILogger<PythonInteropService> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _pythonPath = configuration["Python:Path"] ?? "python";
+    }
+    
+    public async Task<string> ExecutePythonScriptAsync(string scriptPath, params string[] arguments)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _pythonPath,
+                Arguments = $"{scriptPath} {string.Join(" ", arguments)}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            using var process = new Process { StartInfo = startInfo };
+            process.Start();
+            
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
+            
+            await process.WaitForExitAsync();
+            
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError("Python script failed: {Error}", error);
+                throw new Exception($"Python script failed with exit code {process.ExitCode}: {error}");
+            }
+            
+            _logger.LogInformation("Python script executed successfully");
+            return output;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing Python script");
+            throw;
+        }
+    }
+    
+    public async Task<string> ExecutePythonCodeAsync(string pythonCode)
+    {
+        var tempFile = Path.GetTempFileName() + ".py";
+        
+        try
+        {
+            await File.WriteAllTextAsync(tempFile, pythonCode);
+            return await ExecutePythonScriptAsync(tempFile);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+    
+    public async Task<Dictionary<string, object>> CallPythonFunctionAsync(string functionName, params object[] parameters)
+    {
+        var pythonCode = $@"
+import json
+import sys
+import {functionName}
+
+# Convertir parámetros a JSON
+params = json.loads('{JsonSerializer.Serialize(parameters)}')
+
+# Llamar función
+result = {functionName}.{functionName}(*params)
+
+# Retornar resultado como JSON
+print(json.dumps(result))
+";
+        
+        var output = await ExecutePythonCodeAsync(pythonCode);
+        return JsonSerializer.Deserialize<Dictionary<string, object>>(output);
+    }
+}
+
+// Ejemplo de script Python
+public class PythonScripts
+{
+    public static string DataAnalysisScript = @"
+import pandas as pd
+import numpy as np
+import json
+import sys
+
+def analyze_data(data):
+    df = pd.DataFrame(data)
+    
+    analysis = {
+        'count': len(df),
+        'mean': df.mean().to_dict(),
+        'std': df.std().to_dict(),
+        'min': df.min().to_dict(),
+        'max': df.max().to_dict()
+    }
+    
+    print(json.dumps(analysis))
+
+if __name__ == '__main__':
+    data = json.loads(sys.argv[1])
+    analyze_data(data)
+";
+}
+```
+
+### 4. Interoperabilidad con Java
+```csharp
+public class JavaInteropService
+{
+    private readonly ILogger<JavaInteropService> _logger;
+    private readonly string _javaPath;
+    private readonly string _jarPath;
+    
+    public JavaInteropService(ILogger<JavaInteropService> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _javaPath = configuration["Java:Path"] ?? "java";
+        _jarPath = configuration["Java:JarPath"];
+    }
+    
+    public async Task<string> ExecuteJavaProgramAsync(string className, params string[] arguments)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _javaPath,
+                Arguments = $"-cp {_jarPath} {className} {string.Join(" ", arguments)}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            using var process = new Process { StartInfo = startInfo };
+            process.Start();
+            
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
+            
+            await process.WaitForExitAsync();
+            
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError("Java program failed: {Error}", error);
+                throw new Exception($"Java program failed with exit code {process.ExitCode}: {error}");
+            }
+            
+            _logger.LogInformation("Java program executed successfully");
+            return output;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing Java program");
+            throw;
+        }
+    }
+    
+    public async Task<object> CallJavaMethodAsync(string className, string methodName, params object[] parameters)
+    {
+        var jsonParams = JsonSerializer.Serialize(parameters);
+        var javaCode = $@"
+import com.fasterxml.jackson.databind.ObjectMapper;
+import {className};
+
+public class JavaBridge {{
+    public static void main(String[] args) {{
+        try {{
+            ObjectMapper mapper = new ObjectMapper();
+            Object[] params = mapper.readValue(args[0], Object[].class);
+            
+            {className} instance = new {className}();
+            Object result = instance.{methodName}(params);
+            
+            System.out.println(mapper.writeValueAsString(result));
+        }} catch (Exception e) {{
+            e.printStackTrace();
+            System.exit(1);
+        }}
+    }}
+}}
+";
+        
+        var tempFile = Path.GetTempFileName() + ".java";
+        var classFile = Path.GetTempFileName();
+        
+        try
+        {
+            await File.WriteAllTextAsync(tempFile, javaCode);
+            
+            // Compilar
+            await CompileJavaFileAsync(tempFile, classFile);
+            
+            // Ejecutar
+            var output = await ExecuteJavaProgramAsync("JavaBridge", jsonParams);
+            return JsonSerializer.Deserialize<object>(output);
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+            if (File.Exists(classFile)) File.Delete(classFile);
+        }
+    }
+    
+    private async Task CompileJavaFileAsync(string sourceFile, string outputFile)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "javac",
+            Arguments = $"-cp {_jarPath} -d {Path.GetDirectoryName(outputFile)} {sourceFile}",
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        
+        using var process = new Process { StartInfo = startInfo };
+        process.Start();
+        
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        
+        if (process.ExitCode != 0)
+        {
+            throw new Exception($"Java compilation failed: {error}");
+        }
+    }
+}
+```
+
+### 5. Interoperabilidad con REST APIs
+```csharp
+public class RestApiInteropService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<RestApiInteropService> _logger;
+    
+    public RestApiInteropService(HttpClient httpClient, ILogger<RestApiInteropService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+    
+    public async Task<T> GetAsync<T>(string url, Dictionary<string, string> headers = null)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                {
+                    request.Headers.Add(header.Key, header.Value);
+                }
+            }
+            
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<T>(content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling GET {Url}", url);
+            throw;
+        }
+    }
+    
+    public async Task<T> PostAsync<T>(string url, object data, Dictionary<string, string> headers = null)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(data);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+            
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                {
+                    request.Headers.Add(header.Key, header.Value);
+                }
+            }
+            
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            var responseContent = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<T>(responseContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling POST {Url}", url);
+            throw;
+        }
+    }
+    
+    public async Task<Stream> DownloadFileAsync(string url)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            
+            return await response.Content.ReadAsStreamAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading file from {Url}", url);
+            throw;
+        }
+    }
+}
+```
+
+### 6. Interoperabilidad con Base de Datos Legacy
+```csharp
+public class LegacyDatabaseInteropService
+{
+    private readonly string _connectionString;
+    private readonly ILogger<LegacyDatabaseInteropService> _logger;
+    
+    public LegacyDatabaseInteropService(IConfiguration configuration, ILogger<LegacyDatabaseInteropService> logger)
+    {
+        _connectionString = configuration.GetConnectionString("LegacyDatabase");
+        _logger = logger;
+    }
+    
+    public async Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string query, Dictionary<string, object> parameters = null)
+    {
+        using var connection = new OleDbConnection(_connectionString);
+        await connection.OpenAsync();
+        
+        using var command = new OleDbCommand(query, connection);
+        
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        
+        var results = new List<Dictionary<string, object>>();
+        
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var row = new Dictionary<string, object>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                row[reader.GetName(i)] = reader.GetValue(i);
+            }
+            results.Add(row);
+        }
+        
+        return results;
+    }
+    
+    public async Task<int> ExecuteNonQueryAsync(string command, Dictionary<string, object> parameters = null)
+    {
+        using var connection = new OleDbConnection(_connectionString);
+        await connection.OpenAsync();
+        
+        using var cmd = new OleDbCommand(command, connection);
+        
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                cmd.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        
+        return await cmd.ExecuteNonQueryAsync();
+    }
+    
+    public async Task<object> ExecuteScalarAsync(string query, Dictionary<string, object> parameters = null)
+    {
+        using var connection = new OleDbConnection(_connectionString);
+        await connection.OpenAsync();
+        
+        using var command = new OleDbCommand(query, connection);
+        
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        
+        return await command.ExecuteScalarAsync();
+    }
+}
+```
+
+### 7. Interoperabilidad con Web Services SOAP
+```csharp
+public class SoapWebServiceInterop
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<SoapWebServiceInterop> _logger;
+    
+    public SoapWebServiceInterop(HttpClient httpClient, ILogger<SoapWebServiceInterop> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+    
+    public async Task<string> CallSoapServiceAsync(string url, string soapAction, string soapBody)
+    {
+        try
+        {
+            var content = new StringContent(soapBody, Encoding.UTF8, "text/xml");
+            
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = content
+            };
+            
+            request.Headers.Add("SOAPAction", soapAction);
+            
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            return await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling SOAP service {Url}", url);
+            throw;
+        }
+    }
+    
+    public string CreateSoapEnvelope(string methodName, Dictionary<string, string> parameters)
+    {
+        var parametersXml = string.Join("", parameters.Select(p => $"<{p.Key}>{p.Value}</{p.Key}>"));
+        
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
+  <soap:Body>
+    <{methodName} xmlns=""http://tempuri.org/"">
+      {parametersXml}
+    </{methodName}>
+  </soap:Body>
+</soap:Envelope>";
+    }
+}
+
+// Ejemplo de uso
+public class SoapExample
+{
+    public static async Task CallWeatherServiceAsync()
+    {
+        var soapService = new SoapWebServiceInterop(new HttpClient(), null);
+        
+        var parameters = new Dictionary<string, string>
+        {
+            ["zipCode"] = "12345"
+        };
+        
+        var soapBody = soapService.CreateSoapEnvelope("GetWeather", parameters);
+        var result = await soapService.CallSoapServiceAsync(
+            "http://example.com/weather.asmx",
+            "http://tempuri.org/GetWeather",
+            soapBody);
+        
+        Console.WriteLine(result);
+    }
+}
+```
+
+### Conclusión
+La interoperabilidad en .NET permite:
+- Integración con sistemas legacy
+- Comunicación con diferentes tecnologías
+- Reutilización de código existente
+- Migración gradual de sistemas
+
+### Recursos
+- [COM Interop](https://docs.microsoft.com/dotnet/framework/interop/)
+- [P/Invoke](https://docs.microsoft.com/dotnet/standard/native-interop/pinvoke)
+- [Python.NET](https://github.com/pythonnet/pythonnet)
+- [Java Interop](https://docs.microsoft.com/dotnet/framework/interop/java-interoperability)

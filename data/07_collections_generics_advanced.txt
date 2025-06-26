@@ -1,0 +1,1060 @@
+# COLECCIONES Y GENERICS AVANZADOS EN C# - GUÍA COMPLETA
+
+## 1. INTRODUCCIÓN A GENERICS
+
+### ¿Qué son los Generics?
+
+Los generics son una característica de C# que permite crear clases, interfaces, métodos y delegados que pueden trabajar con diferentes tipos de datos sin comprometer la seguridad de tipos. Los generics proporcionan reutilización de código, type safety y mejor rendimiento al evitar el boxing/unboxing.
+
+**Ventajas de los Generics:**
+- **Type Safety**: Verificación de tipos en tiempo de compilación
+- **Reutilización**: Un solo código para múltiples tipos
+- **Rendimiento**: Evita boxing/unboxing de tipos de valor
+- **Flexibilidad**: Permite trabajar con cualquier tipo
+- **IntelliSense**: Soporte completo en el IDE
+
+### Conceptos Fundamentales
+
+```csharp
+// Clase genérica básica
+public class Contenedor<T>
+{
+    private T elemento;
+    
+    public Contenedor(T elemento)
+    {
+        this.elemento = elemento;
+    }
+    
+    public T ObtenerElemento()
+    {
+        return elemento;
+    }
+    
+    public void EstablecerElemento(T nuevoElemento)
+    {
+        elemento = nuevoElemento;
+    }
+}
+
+// Uso de clase genérica
+var contenedorInt = new Contenedor<int>(42);
+var contenedorString = new Contenedor<string>("Hola Mundo");
+var contenedorPersona = new Contenedor<Persona>(new Persona { Nombre = "Juan" });
+
+// Método genérico
+public class Utilidades
+{
+    public static void Intercambiar<T>(ref T a, ref T b)
+    {
+        T temporal = a;
+        a = b;
+        b = temporal;
+    }
+    
+    public static T Maximo<T>(T a, T b) where T : IComparable<T>
+    {
+        return a.CompareTo(b) > 0 ? a : b;
+    }
+}
+```
+
+## 2. RESTRICCIONES DE GENERICS
+
+### Tipos de Restricciones
+
+```csharp
+public class RestriccionesGenerics
+{
+    // Restricción de tipo de referencia
+    public class ClaseReferencia<T> where T : class
+    {
+        public T Elemento { get; set; }
+        
+        public bool EsNull()
+        {
+            return Elemento == null;
+        }
+    }
+    
+    // Restricción de tipo de valor
+    public class ClaseValor<T> where T : struct
+    {
+        public T Valor { get; set; }
+        
+        public T ValorPorDefecto()
+        {
+            return default(T);
+        }
+    }
+    
+    // Restricción de constructor
+    public class ClaseConstructor<T> where T : new()
+    {
+        public T CrearInstancia()
+        {
+            return new T();
+        }
+    }
+    
+    // Restricción de interfaz
+    public class ClaseInterfaz<T> where T : IComparable<T>
+    {
+        public T Maximo(T a, T b)
+        {
+            return a.CompareTo(b) > 0 ? a : b;
+        }
+        
+        public void Ordenar(List<T> lista)
+        {
+            lista.Sort();
+        }
+    }
+    
+    // Restricción de clase base
+    public class ClaseBase<T> where T : Persona
+    {
+        public string ObtenerNombre(T persona)
+        {
+            return persona.Nombre;
+        }
+    }
+    
+    // Restricción de tipo de enumeración
+    public class ClaseEnum<T> where T : Enum
+    {
+        public T[] ObtenerValores()
+        {
+            return Enum.GetValues<T>();
+        }
+        
+        public string ObtenerNombre(T valor)
+        {
+            return Enum.GetName(valor);
+        }
+    }
+    
+    // Restricción de delegado
+    public class ClaseDelegado<T> where T : Delegate
+    {
+        public T Delegado { get; set; }
+        
+        public void Invocar(params object[] parametros)
+        {
+            Delegado.DynamicInvoke(parametros);
+        }
+    }
+    
+    // Restricción de unmanaged
+    public class ClaseUnmanaged<T> where T : unmanaged
+    {
+        public unsafe void ProcesarPuntero(T* puntero)
+        {
+            // Procesamiento con punteros
+        }
+    }
+}
+```
+
+### Restricciones Múltiples
+
+```csharp
+public class RestriccionesMultiples
+{
+    // Múltiples restricciones
+    public class ClaseMultiple<T> where T : class, IComparable<T>, new()
+    {
+        public T CrearYComparar(T elemento1, T elemento2)
+        {
+            var nuevo = new T();
+            return elemento1.CompareTo(elemento2) > 0 ? elemento1 : elemento2;
+        }
+    }
+    
+    // Restricciones en métodos genéricos
+    public static T CrearYConfigurar<T>(Action<T> configurador) 
+        where T : class, new()
+    {
+        var instancia = new T();
+        configurador(instancia);
+        return instancia;
+    }
+    
+    // Restricciones con tipos derivados
+    public class ClaseDerivada<T, U> 
+        where T : Persona 
+        where U : T
+    {
+        public void Procesar(U elemento)
+        {
+            Console.WriteLine($"Procesando: {elemento.Nombre}");
+        }
+    }
+}
+```
+
+## 3. COLECCIONES GENÉRICAS BÁSICAS
+
+### List<T>
+
+```csharp
+public class EjemplosList
+{
+    public static void DemostrarList()
+    {
+        // Creación y inicialización
+        var numeros = new List<int> { 1, 2, 3, 4, 5 };
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Ana", Edad = 25 },
+            new Persona { Nombre = "Juan", Edad = 30 },
+            new Persona { Nombre = "María", Edad = 22 }
+        };
+        
+        // Operaciones básicas
+        numeros.Add(6);
+        numeros.Insert(0, 0);
+        numeros.Remove(3);
+        numeros.RemoveAt(2);
+        
+        // Búsqueda
+        var existe = numeros.Contains(5);
+        var indice = numeros.IndexOf(4);
+        var ultimoIndice = numeros.LastIndexOf(2);
+        
+        // Ordenamiento
+        numeros.Sort();
+        personas.Sort((p1, p2) => p1.Edad.CompareTo(p2.Edad));
+        
+        // Filtrado y transformación
+        var pares = numeros.Where(n => n % 2 == 0).ToList();
+        var nombres = personas.Select(p => p.Nombre).ToList();
+        var adultos = personas.Where(p => p.Edad >= 18).ToList();
+        
+        // Agregación
+        var suma = numeros.Sum();
+        var promedio = numeros.Average();
+        var maximo = numeros.Max();
+        var minimo = numeros.Min();
+        var cantidad = numeros.Count;
+        
+        // Conversión
+        var array = numeros.ToArray();
+        var hashSet = numeros.ToHashSet();
+        var diccionario = personas.ToDictionary(p => p.Nombre, p => p.Edad);
+    }
+    
+    // Métodos personalizados para List<T>
+    public static List<T> Filtrar<T>(List<T> lista, Predicate<T> predicado)
+    {
+        return lista.FindAll(predicado);
+    }
+    
+    public static List<TResult> Transformar<T, TResult>(List<T> lista, Func<T, TResult> transformador)
+    {
+        return lista.Select(transformador).ToList();
+    }
+    
+    public static void OrdenarPor<T, TKey>(List<T> lista, Func<T, TKey> selector)
+    {
+        lista.Sort((a, b) => Comparer<TKey>.Default.Compare(selector(a), selector(b)));
+    }
+}
+```
+
+### Dictionary<TKey, TValue>
+
+```csharp
+public class EjemplosDictionary
+{
+    public static void DemostrarDictionary()
+    {
+        // Creación y inicialización
+        var diccionario = new Dictionary<string, int>
+        {
+            ["Uno"] = 1,
+            ["Dos"] = 2,
+            ["Tres"] = 3
+        };
+        
+        var personasPorId = new Dictionary<int, Persona>
+        {
+            [1] = new Persona { Nombre = "Ana", Edad = 25 },
+            [2] = new Persona { Nombre = "Juan", Edad = 30 },
+            [3] = new Persona { Nombre = "María", Edad = 22 }
+        };
+        
+        // Operaciones básicas
+        diccionario.Add("Cuatro", 4);
+        diccionario["Cinco"] = 5; // Asignación directa
+        
+        // Verificación y obtención
+        if (diccionario.ContainsKey("Uno"))
+        {
+            var valor = diccionario["Uno"];
+        }
+        
+        // TryGetValue - forma segura de obtener valores
+        if (diccionario.TryGetValue("Seis", out int valorSeis))
+        {
+            Console.WriteLine($"Valor encontrado: {valorSeis}");
+        }
+        
+        // Eliminación
+        diccionario.Remove("Uno");
+        diccionario.Clear();
+        
+        // Iteración
+        foreach (var kvp in diccionario)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+        }
+        
+        foreach (var clave in diccionario.Keys)
+        {
+            Console.WriteLine($"Clave: {clave}");
+        }
+        
+        foreach (var valor in diccionario.Values)
+        {
+            Console.WriteLine($"Valor: {valor}");
+        }
+        
+        // Conversión
+        var listaClaves = diccionario.Keys.ToList();
+        var listaValores = diccionario.Values.ToList();
+        var listaPares = diccionario.ToList();
+    }
+    
+    // Métodos personalizados para Dictionary
+    public static Dictionary<TKey, TValue> Filtrar<TKey, TValue>(
+        Dictionary<TKey, TValue> diccionario, 
+        Func<KeyValuePair<TKey, TValue>, bool> predicado)
+    {
+        return diccionario.Where(predicado).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
+    
+    public static Dictionary<TKey, TResult> Transformar<TKey, TValue, TResult>(
+        Dictionary<TKey, TValue> diccionario, 
+        Func<TValue, TResult> transformador)
+    {
+        return diccionario.ToDictionary(kvp => kvp.Key, kvp => transformador(kvp.Value));
+    }
+    
+    public static void AgregarSiNoExiste<TKey, TValue>(
+        Dictionary<TKey, TValue> diccionario, 
+        TKey clave, 
+        TValue valor)
+    {
+        if (!diccionario.ContainsKey(clave))
+        {
+            diccionario.Add(clave, valor);
+        }
+    }
+}
+```
+
+### HashSet<T>
+
+```csharp
+public class EjemplosHashSet
+{
+    public static void DemostrarHashSet()
+    {
+        // Creación y inicialización
+        var numeros = new HashSet<int> { 1, 2, 3, 4, 5 };
+        var nombres = new HashSet<string> { "Ana", "Juan", "María" };
+        
+        // Operaciones básicas
+        numeros.Add(6);
+        var agregado = numeros.Add(1); // Retorna false si ya existe
+        
+        numeros.Remove(3);
+        numeros.Clear();
+        
+        // Verificación
+        var contiene = numeros.Contains(5);
+        var cantidad = numeros.Count;
+        var estaVacio = numeros.Count == 0;
+        
+        // Operaciones de conjunto
+        var conjunto1 = new HashSet<int> { 1, 2, 3, 4 };
+        var conjunto2 = new HashSet<int> { 3, 4, 5, 6 };
+        
+        // Unión
+        var union = new HashSet<int>(conjunto1);
+        union.UnionWith(conjunto2);
+        
+        // Intersección
+        var interseccion = new HashSet<int>(conjunto1);
+        interseccion.IntersectWith(conjunto2);
+        
+        // Diferencia
+        var diferencia = new HashSet<int>(conjunto1);
+        diferencia.ExceptWith(conjunto2);
+        
+        // Diferencia simétrica
+        var diferenciaSimetrica = new HashSet<int>(conjunto1);
+        diferenciaSimetrica.SymmetricExceptWith(conjunto2);
+        
+        // Verificación de subconjuntos
+        var esSubconjunto = conjunto1.IsSubsetOf(union);
+        var esSuperconjunto = union.IsSupersetOf(conjunto1);
+        var seSolapan = conjunto1.Overlaps(conjunto2);
+        
+        // Iteración
+        foreach (var numero in numeros)
+        {
+            Console.WriteLine(numero);
+        }
+    }
+    
+    // Métodos personalizados para HashSet
+    public static HashSet<T> CrearDesdeEnumerable<T>(IEnumerable<T> elementos)
+    {
+        return new HashSet<T>(elementos);
+    }
+    
+    public static bool SonIguales<T>(HashSet<T> conjunto1, HashSet<T> conjunto2)
+    {
+        return conjunto1.SetEquals(conjunto2);
+    }
+    
+    public static HashSet<T> Combinar<T>(params HashSet<T>[] conjuntos)
+    {
+        var resultado = new HashSet<T>();
+        foreach (var conjunto in conjuntos)
+        {
+            resultado.UnionWith(conjunto);
+        }
+        return resultado;
+    }
+}
+```
+
+## 4. COLECCIONES GENÉRICAS AVANZADAS
+
+### Queue<T>
+
+```csharp
+public class EjemplosQueue
+{
+    public static void DemostrarQueue()
+    {
+        // Creación
+        var cola = new Queue<string>();
+        
+        // Operaciones básicas
+        cola.Enqueue("Primero");
+        cola.Enqueue("Segundo");
+        cola.Enqueue("Tercero");
+        
+        // Obtener elementos
+        var primerElemento = cola.Peek(); // Ver sin remover
+        var elementoRemovido = cola.Dequeue(); // Obtener y remover
+        
+        // Verificación
+        var cantidad = cola.Count;
+        var estaVacio = cola.Count == 0;
+        
+        // Iteración
+        foreach (var elemento in cola)
+        {
+            Console.WriteLine(elemento);
+        }
+        
+        // Conversión
+        var array = cola.ToArray();
+        var lista = cola.ToList();
+    }
+    
+    // Implementación de un procesador de tareas
+    public class ProcesadorTareas<T>
+    {
+        private readonly Queue<T> tareas = new Queue<T>();
+        private readonly Action<T> procesador;
+        
+        public ProcesadorTareas(Action<T> procesador)
+        {
+            this.procesador = procesador;
+        }
+        
+        public void AgregarTarea(T tarea)
+        {
+            tareas.Enqueue(tarea);
+        }
+        
+        public void ProcesarTodas()
+        {
+            while (tareas.Count > 0)
+            {
+                var tarea = tareas.Dequeue();
+                procesador(tarea);
+            }
+        }
+        
+        public async Task ProcesarTodasAsync(Func<T, Task> procesadorAsync)
+        {
+            while (tareas.Count > 0)
+            {
+                var tarea = tareas.Dequeue();
+                await procesadorAsync(tarea);
+            }
+        }
+    }
+}
+```
+
+### Stack<T>
+
+```csharp
+public class EjemplosStack
+{
+    public static void DemostrarStack()
+    {
+        // Creación
+        var pila = new Stack<int>();
+        
+        // Operaciones básicas
+        pila.Push(1);
+        pila.Push(2);
+        pila.Push(3);
+        
+        // Obtener elementos
+        var elementoSuperior = pila.Peek(); // Ver sin remover
+        var elementoRemovido = pila.Pop(); // Obtener y remover
+        
+        // Verificación
+        var cantidad = pila.Count;
+        var estaVacio = pila.Count == 0;
+        
+        // Iteración
+        foreach (var elemento in pila)
+        {
+            Console.WriteLine(elemento);
+        }
+        
+        // Conversión
+        var array = pila.ToArray();
+        var lista = pila.ToList();
+    }
+    
+    // Implementación de un historial de navegación
+    public class HistorialNavegacion<T>
+    {
+        private readonly Stack<T> historial = new Stack<T>();
+        private readonly Stack<T> rehacer = new Stack<T>();
+        
+        public void Navegar(T pagina)
+        {
+            historial.Push(pagina);
+            rehacer.Clear(); // Limpiar rehacer al navegar
+        }
+        
+        public T Retroceder()
+        {
+            if (historial.Count > 1)
+            {
+                var paginaActual = historial.Pop();
+                rehacer.Push(paginaActual);
+                return historial.Peek();
+            }
+            throw new InvalidOperationException("No se puede retroceder más");
+        }
+        
+        public T Avanzar()
+        {
+            if (rehacer.Count > 0)
+            {
+                var pagina = rehacer.Pop();
+                historial.Push(pagina);
+                return pagina;
+            }
+            throw new InvalidOperationException("No se puede avanzar más");
+        }
+        
+        public T PaginaActual => historial.Count > 0 ? historial.Peek() : default(T);
+        
+        public bool PuedeRetroceder => historial.Count > 1;
+        public bool PuedeAvanzar => rehacer.Count > 0;
+    }
+}
+```
+
+### LinkedList<T>
+
+```csharp
+public class EjemplosLinkedList
+{
+    public static void DemostrarLinkedList()
+    {
+        // Creación
+        var lista = new LinkedList<string>();
+        
+        // Operaciones básicas
+        var nodo1 = lista.AddFirst("Primero");
+        var nodo2 = lista.AddLast("Último");
+        var nodo3 = lista.AddAfter(nodo1, "Segundo");
+        var nodo4 = lista.AddBefore(nodo2, "Tercero");
+        
+        // Navegación
+        var primerNodo = lista.First;
+        var ultimoNodo = lista.Last;
+        var siguiente = nodo1.Next;
+        var anterior = nodo2.Previous;
+        
+        // Eliminación
+        lista.Remove(nodo3);
+        lista.RemoveFirst();
+        lista.RemoveLast();
+        
+        // Búsqueda
+        var nodoEncontrado = lista.Find("Segundo");
+        var nodoUltimo = lista.FindLast("Segundo");
+        
+        // Verificación
+        var cantidad = lista.Count;
+        var estaVacio = lista.Count == 0;
+        
+        // Iteración
+        foreach (var elemento in lista)
+        {
+            Console.WriteLine(elemento);
+        }
+        
+        // Iteración por nodos
+        for (var nodo = lista.First; nodo != null; nodo = nodo.Next)
+        {
+            Console.WriteLine(nodo.Value);
+        }
+    }
+    
+    // Implementación de un cache LRU
+    public class CacheLRU<TKey, TValue>
+    {
+        private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> cache;
+        private readonly LinkedList<KeyValuePair<TKey, TValue>> lru;
+        private readonly int capacidad;
+        
+        public CacheLRU(int capacidad)
+        {
+            this.capacidad = capacidad;
+            cache = new Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>>();
+            lru = new LinkedList<KeyValuePair<TKey, TValue>>();
+        }
+        
+        public TValue Obtener(TKey clave)
+        {
+            if (cache.TryGetValue(clave, out var nodo))
+            {
+                // Mover al final (más recientemente usado)
+                lru.Remove(nodo);
+                lru.AddLast(nodo);
+                return nodo.Value.Value;
+            }
+            throw new KeyNotFoundException($"Clave {clave} no encontrada");
+        }
+        
+        public void Agregar(TKey clave, TValue valor)
+        {
+            if (cache.ContainsKey(clave))
+            {
+                // Actualizar valor existente
+                var nodo = cache[clave];
+                lru.Remove(nodo);
+                nodo.Value = new KeyValuePair<TKey, TValue>(clave, valor);
+                lru.AddLast(nodo);
+            }
+            else
+            {
+                // Agregar nuevo elemento
+                if (cache.Count >= capacidad)
+                {
+                    // Remover el menos recientemente usado
+                    var lruNodo = lru.First;
+                    lru.RemoveFirst();
+                    cache.Remove(lruNodo.Value.Key);
+                }
+                
+                var nuevoNodo = lru.AddLast(new KeyValuePair<TKey, TValue>(clave, valor));
+                cache[clave] = nuevoNodo;
+            }
+        }
+        
+        public bool Contiene(TKey clave)
+        {
+            return cache.ContainsKey(clave);
+        }
+        
+        public int Cantidad => cache.Count;
+    }
+}
+```
+
+## 5. COLECCIONES ESPECIALIZADAS
+
+### SortedList<TKey, TValue>
+
+```csharp
+public class EjemplosSortedList
+{
+    public static void DemostrarSortedList()
+    {
+        // Creación
+        var listaOrdenada = new SortedList<string, int>();
+        
+        // Operaciones básicas
+        listaOrdenada.Add("Zebra", 26);
+        listaOrdenada.Add("Abeja", 1);
+        listaOrdenada.Add("Casa", 3);
+        listaOrdenada.Add("Barco", 2);
+        
+        // Los elementos se mantienen ordenados por clave
+        foreach (var kvp in listaOrdenada)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+        }
+        
+        // Acceso por índice
+        var primeraClave = listaOrdenada.Keys[0];
+        var primerValor = listaOrdenada.Values[0];
+        
+        // Búsqueda
+        var indice = listaOrdenada.IndexOfKey("Casa");
+        var indiceValor = listaOrdenada.IndexOfValue(3);
+        
+        // Eliminación
+        listaOrdenada.Remove("Abeja");
+        listaOrdenada.RemoveAt(0);
+        
+        // Verificación
+        var cantidad = listaOrdenada.Count;
+        var estaVacio = listaOrdenada.Count == 0;
+    }
+    
+    // Implementación de un diccionario con orden personalizado
+    public class DiccionarioOrdenado<TKey, TValue>
+    {
+        private readonly SortedList<TKey, TValue> lista;
+        
+        public DiccionarioOrdenado(IComparer<TKey> comparador = null)
+        {
+            lista = new SortedList<TKey, TValue>(comparador);
+        }
+        
+        public void Agregar(TKey clave, TValue valor)
+        {
+            lista[clave] = valor;
+        }
+        
+        public TValue Obtener(TKey clave)
+        {
+            return lista[clave];
+        }
+        
+        public bool TryGetValue(TKey clave, out TValue valor)
+        {
+            return lista.TryGetValue(clave, out valor);
+        }
+        
+        public void Eliminar(TKey clave)
+        {
+            lista.Remove(clave);
+        }
+        
+        public IEnumerable<TKey> Claves => lista.Keys;
+        public IEnumerable<TValue> Valores => lista.Values;
+        public int Cantidad => lista.Count;
+    }
+}
+```
+
+### SortedDictionary<TKey, TValue>
+
+```csharp
+public class EjemplosSortedDictionary
+{
+    public static void DemostrarSortedDictionary()
+    {
+        // Creación
+        var diccionarioOrdenado = new SortedDictionary<string, int>();
+        
+        // Operaciones básicas
+        diccionarioOrdenado.Add("Zebra", 26);
+        diccionarioOrdenado.Add("Abeja", 1);
+        diccionarioOrdenado.Add("Casa", 3);
+        diccionarioOrdenado.Add("Barco", 2);
+        
+        // Los elementos se mantienen ordenados por clave
+        foreach (var kvp in diccionarioOrdenado)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+        }
+        
+        // Acceso
+        var valor = diccionarioOrdenado["Casa"];
+        diccionarioOrdenado["Nuevo"] = 100;
+        
+        // Búsqueda
+        var contiene = diccionarioOrdenado.ContainsKey("Abeja");
+        var contieneValor = diccionarioOrdenado.ContainsValue(3);
+        
+        // Eliminación
+        diccionarioOrdenado.Remove("Abeja");
+        
+        // Verificación
+        var cantidad = diccionarioOrdenado.Count;
+        var estaVacio = diccionarioOrdenado.Count == 0;
+        
+        // Obtener rangos
+        var claves = diccionarioOrdenado.Keys;
+        var valores = diccionarioOrdenado.Values;
+    }
+    
+    // Implementación de un contador de frecuencias ordenado
+    public class ContadorFrecuencias<T> where T : IComparable<T>
+    {
+        private readonly SortedDictionary<T, int> frecuencias;
+        
+        public ContadorFrecuencias()
+        {
+            frecuencias = new SortedDictionary<T, int>();
+        }
+        
+        public void Agregar(T elemento)
+        {
+            if (frecuencias.ContainsKey(elemento))
+            {
+                frecuencias[elemento]++;
+            }
+            else
+            {
+                frecuencias[elemento] = 1;
+            }
+        }
+        
+        public void AgregarRango(IEnumerable<T> elementos)
+        {
+            foreach (var elemento in elementos)
+            {
+                Agregar(elemento);
+            }
+        }
+        
+        public int ObtenerFrecuencia(T elemento)
+        {
+            return frecuencias.TryGetValue(elemento, out int frecuencia) ? frecuencia : 0;
+        }
+        
+        public IEnumerable<KeyValuePair<T, int>> ObtenerFrecuenciasOrdenadas()
+        {
+            return frecuencias.OrderByDescending(kvp => kvp.Value);
+        }
+        
+        public T ElementoMasFrecuente()
+        {
+            return frecuencias.OrderByDescending(kvp => kvp.Value).First().Key;
+        }
+        
+        public int CantidadElementosUnicos => frecuencias.Count;
+    }
+}
+```
+
+### SortedSet<T>
+
+```csharp
+public class EjemplosSortedSet
+{
+    public static void DemostrarSortedSet()
+    {
+        // Creación
+        var conjuntoOrdenado = new SortedSet<int> { 5, 2, 8, 1, 9, 3 };
+        
+        // Los elementos se mantienen ordenados
+        foreach (var elemento in conjuntoOrdenado)
+        {
+            Console.WriteLine(elemento);
+        }
+        
+        // Operaciones básicas
+        conjuntoOrdenado.Add(4);
+        var agregado = conjuntoOrdenado.Add(2); // Retorna false si ya existe
+        
+        conjuntoOrdenado.Remove(5);
+        
+        // Verificación
+        var contiene = conjuntoOrdenado.Contains(3);
+        var cantidad = conjuntoOrdenado.Count;
+        var estaVacio = conjuntoOrdenado.Count == 0;
+        
+        // Obtener rangos
+        var elementos = conjuntoOrdenado.ToList();
+        var min = conjuntoOrdenado.Min;
+        var max = conjuntoOrdenado.Max;
+        
+        // Operaciones de conjunto
+        var conjunto1 = new SortedSet<int> { 1, 2, 3, 4 };
+        var conjunto2 = new SortedSet<int> { 3, 4, 5, 6 };
+        
+        var union = new SortedSet<int>(conjunto1);
+        union.UnionWith(conjunto2);
+        
+        var interseccion = new SortedSet<int>(conjunto1);
+        interseccion.IntersectWith(conjunto2);
+        
+        var diferencia = new SortedSet<int>(conjunto1);
+        diferencia.ExceptWith(conjunto2);
+    }
+    
+    // Implementación de un conjunto con orden personalizado
+    public class ConjuntoOrdenadoPersonalizado<T>
+    {
+        private readonly SortedSet<T> conjunto;
+        
+        public ConjuntoOrdenadoPersonalizado(IComparer<T> comparador = null)
+        {
+            conjunto = new SortedSet<T>(comparador);
+        }
+        
+        public void Agregar(T elemento)
+        {
+            conjunto.Add(elemento);
+        }
+        
+        public void AgregarRango(IEnumerable<T> elementos)
+        {
+            foreach (var elemento in elementos)
+            {
+                conjunto.Add(elemento);
+            }
+        }
+        
+        public bool Contiene(T elemento)
+        {
+            return conjunto.Contains(elemento);
+        }
+        
+        public void Eliminar(T elemento)
+        {
+            conjunto.Remove(elemento);
+        }
+        
+        public T Minimo => conjunto.Min;
+        public T Maximo => conjunto.Max;
+        public int Cantidad => conjunto.Count;
+        
+        public IEnumerable<T> ObtenerElementos() => conjunto;
+    }
+}
+```
+
+## 6. COLECCIONES CONCURRENTES
+
+### ConcurrentQueue<T>
+
+```csharp
+public class EjemplosConcurrentQueue
+{
+    public static void DemostrarConcurrentQueue()
+    {
+        // Creación
+        var colaConcurrente = new ConcurrentQueue<string>();
+        
+        // Operaciones básicas
+        colaConcurrente.Enqueue("Primero");
+        colaConcurrente.Enqueue("Segundo");
+        colaConcurrente.Enqueue("Tercero");
+        
+        // Obtener elementos
+        var primerElemento = colaConcurrente.TryPeek(out var elemento);
+        var elementoRemovido = colaConcurrente.TryDequeue(out var elementoRemovido);
+        
+        // Verificación
+        var cantidad = colaConcurrente.Count;
+        var estaVacio = colaConcurrente.IsEmpty;
+        
+        // Iteración
+        foreach (var elemento in colaConcurrente)
+        {
+            Console.WriteLine(elemento);
+        }
+        
+        // Conversión
+        var array = colaConcurrente.ToArray();
+        var lista = colaConcurrente.ToList();
+    }
+    
+    // Implementación de un productor-consumidor
+    public class ProductorConsumidor<T>
+    {
+        private readonly ConcurrentQueue<T> cola = new ConcurrentQueue<T>();
+        private readonly int maxElementos;
+        private volatile bool detener = false;
+        
+        public ProductorConsumidor(int maxElementos = 100)
+        {
+            this.maxElementos = maxElementos;
+        }
+        
+        public async Task ProducirAsync(IEnumerable<T> elementos)
+        {
+            foreach (var elemento in elementos)
+            {
+                while (cola.Count >= maxElementos && !detener)
+                {
+                    await Task.Delay(10);
+                }
+                
+                if (detener) break;
+                
+                cola.Enqueue(elemento);
+            }
+        }
+        
+        public async Task ConsumirAsync(Action<T> procesador)
+        {
+            while (!detener || !cola.IsEmpty)
+            {
+                if (cola.TryDequeue(out var elemento))
+                {
+                    procesador(elemento);
+                }
+                else
+                {
+                    await Task.Delay(10);
+                }
+            }
+        }
+        
+        public void Detener()
+        {
+            detener = true;
+        }
+        
+        public int CantidadElementos => cola.Count;
+    }
+}
+```
+
+### ConcurrentDictionary<TKey, TValue>
+
+```csharp
+public class EjemplosConcurrentDictionary
+{
+    public static void DemostrarConcurrentDictionary()
+    {
+        // Creación
+        var diccionarioConcurrente = new ConcurrentDictionary<string, int>();
+        
+        // Operaciones básicas
+        diccionarioConcurrente.TryAdd("Uno", 1);
+        diccionarioConcurrente.TryAdd("Dos", 2);
+        diccionarioConcurrente.TryAdd("Tres", 3);
+        
+        // Obtener o agregar
+        var valor = diccionarioConcurrente.GetOrAdd("Cuatro", 4);
+        var valorExistente = diccionarioConcurrente.GetOrAdd("Uno", 10); // No cambia el valor existente
+        
+        // Agregar o actualizar
+Esta guía completa de colecciones y genéricos avanzados cubre desde los conceptos básicos hasta patrones avanzados, proporcionando ejemplos prácticos y casos de uso reales para el desarrollo eficiente en C#. 

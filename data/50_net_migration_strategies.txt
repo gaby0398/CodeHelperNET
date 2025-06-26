@@ -1,0 +1,705 @@
+# Estrategias de Migración y Actualización en .NET
+
+## Introducción
+Las migraciones son fundamentales para mantener aplicaciones actualizadas y evolucionar sistemas. .NET proporciona herramientas robustas para manejar migraciones de código, datos y arquitectura.
+
+### 1. Entity Framework Migrations
+```csharp
+public class InitialCreate : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.CreateTable(
+            name: "Users",
+            columns: table => new
+            {
+                Id = table.Column<int>(type: "int", nullable: false)
+                    .Annotation("SqlServer:Identity", "1, 1"),
+                Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_Users", x => x.Id);
+            });
+
+        migrationBuilder.CreateIndex(
+            name: "IX_Users_Email",
+            table: "Users",
+            column: "Email",
+            unique: true);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropTable(name: "Users");
+    }
+}
+
+public class AddUserProfile : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<string>(
+            name: "PhoneNumber",
+            table: "Users",
+            type: "nvarchar(20)",
+            maxLength: 20,
+            nullable: true);
+
+        migrationBuilder.AddColumn<string>(
+            name: "Address",
+            table: "Users",
+            type: "nvarchar(500)",
+            maxLength: 500,
+            nullable: true);
+
+        migrationBuilder.CreateTable(
+            name: "UserProfiles",
+            columns: table => new
+            {
+                Id = table.Column<int>(type: "int", nullable: false)
+                    .Annotation("SqlServer:Identity", "1, 1"),
+                UserId = table.Column<int>(type: "int", nullable: false),
+                Bio = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                AvatarUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_UserProfiles", x => x.Id);
+                table.ForeignKey(
+                    name: "FK_UserProfiles_Users_UserId",
+                    column: x => x.UserId,
+                    principalTable: "Users",
+                    principalColumn: "Id",
+                    onDelete: ReferentialAction.Cascade);
+            });
+
+        migrationBuilder.CreateIndex(
+            name: "IX_UserProfiles_UserId",
+            table: "UserProfiles",
+            column: "UserId",
+            unique: true);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropTable(name: "UserProfiles");
+
+        migrationBuilder.DropColumn(
+            name: "PhoneNumber",
+            table: "Users");
+
+        migrationBuilder.DropColumn(
+            name: "Address",
+            table: "Users");
+    }
+}
+
+// Migración con datos
+public class SeedInitialData : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.InsertData(
+            table: "Users",
+            columns: new[] { "Name", "Email", "CreatedAt", "IsActive" },
+            values: new object[,]
+            {
+                { "Admin User", "admin@example.com", DateTime.UtcNow, true },
+                { "Test User", "test@example.com", DateTime.UtcNow, true }
+            });
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DeleteData(
+            table: "Users",
+            keyColumn: "Email",
+            keyValues: new object[] { "admin@example.com", "test@example.com" });
+    }
+}
+```
+
+### 2. Migración de Datos Compleja
+```csharp
+public class ComplexDataMigration : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        // Crear tabla temporal
+        migrationBuilder.CreateTable(
+            name: "Users_Temp",
+            columns: table => new
+            {
+                Id = table.Column<int>(type: "int", nullable: false),
+                Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                IsActive = table.Column<bool>(type: "bit", nullable: false)
+            });
+
+        // Copiar datos existentes
+        migrationBuilder.Sql(@"
+            INSERT INTO Users_Temp (Id, Name, Email, PhoneNumber, CreatedAt, IsActive)
+            SELECT Id, Name, Email, PhoneNumber, CreatedAt, IsActive
+            FROM Users
+        ");
+
+        // Eliminar tabla original
+        migrationBuilder.DropTable(name: "Users");
+
+        // Renombrar tabla temporal
+        migrationBuilder.RenameTable(
+            name: "Users_Temp",
+            newName: "Users");
+
+        // Recrear índices y constraints
+        migrationBuilder.AddPrimaryKey(
+            name: "PK_Users",
+            table: "Users",
+            column: "Id");
+
+        migrationBuilder.CreateIndex(
+            name: "IX_Users_Email",
+            table: "Users",
+            column: "Email",
+            unique: true);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        // Implementar rollback si es necesario
+        throw new NotImplementedException("Rollback not implemented for this migration");
+    }
+}
+```
+
+### 3. Migración de Configuración
+```csharp
+public class ConfigurationMigrationService
+{
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ConfigurationMigrationService> _logger;
+    
+    public ConfigurationMigrationService(
+        IConfiguration configuration,
+        ILogger<ConfigurationMigrationService> logger)
+    {
+        _configuration = configuration;
+        _logger = logger;
+    }
+    
+    public async Task MigrateConfigurationAsync()
+    {
+        var currentVersion = _configuration["AppVersion"];
+        var targetVersion = "2.0.0";
+        
+        if (currentVersion != targetVersion)
+        {
+            _logger.LogInformation("Migrating configuration from {CurrentVersion} to {TargetVersion}", 
+                currentVersion, targetVersion);
+            
+            await MigrateFromV1ToV2Async();
+            
+            // Actualizar versión
+            await UpdateAppVersionAsync(targetVersion);
+        }
+    }
+    
+    private async Task MigrateFromV1ToV2Async()
+    {
+        // Migrar configuraciones específicas
+        var oldConnectionString = _configuration["ConnectionStrings:DefaultConnection"];
+        if (!string.IsNullOrEmpty(oldConnectionString))
+        {
+            // Migrar a nueva estructura
+            await UpdateConnectionStringAsync(oldConnectionString);
+        }
+        
+        // Migrar configuraciones de logging
+        var oldLogLevel = _configuration["Logging:LogLevel:Default"];
+        if (oldLogLevel != null)
+        {
+            await UpdateLoggingConfigurationAsync(oldLogLevel);
+        }
+    }
+    
+    private async Task UpdateConnectionStringAsync(string oldConnectionString)
+    {
+        // Lógica para actualizar connection string
+        _logger.LogInformation("Updating connection string configuration");
+        await Task.CompletedTask;
+    }
+    
+    private async Task UpdateLoggingConfigurationAsync(string oldLogLevel)
+    {
+        // Lógica para actualizar configuración de logging
+        _logger.LogInformation("Updating logging configuration");
+        await Task.CompletedTask;
+    }
+    
+    private async Task UpdateAppVersionAsync(string version)
+    {
+        // Actualizar versión en configuración
+        _logger.LogInformation("Updating app version to {Version}", version);
+        await Task.CompletedTask;
+    }
+}
+```
+
+### 4. Migración de API Versiones
+```csharp
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiController]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+    
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+    
+    // API v1.0
+    [HttpGet]
+    [MapToApiVersion("1.0")]
+    public async Task<ActionResult<List<UserV1Dto>>> GetUsersV1()
+    {
+        var users = await _userService.GetUsersAsync();
+        var v1Users = users.Select(u => new UserV1Dto
+        {
+            Id = u.Id,
+            Name = u.Name,
+            Email = u.Email
+        }).ToList();
+        
+        return Ok(v1Users);
+    }
+    
+    // API v2.0
+    [HttpGet]
+    [MapToApiVersion("2.0")]
+    public async Task<ActionResult<List<UserV2Dto>>> GetUsersV2()
+    {
+        var users = await _userService.GetUsersAsync();
+        var v2Users = users.Select(u => new UserV2Dto
+        {
+            Id = u.Id,
+            Name = u.Name,
+            Email = u.Email,
+            PhoneNumber = u.PhoneNumber,
+            CreatedAt = u.CreatedAt,
+            IsActive = u.IsActive
+        }).ToList();
+        
+        return Ok(v2Users);
+    }
+    
+    // Endpoint deprecado
+    [HttpGet("deprecated")]
+    [MapToApiVersion("1.0")]
+    [Obsolete("This endpoint is deprecated. Use GET /api/v2/users instead.")]
+    public async Task<ActionResult<List<UserV1Dto>>> GetUsersDeprecated()
+    {
+        _logger.LogWarning("Deprecated endpoint called: GET /api/v1/users/deprecated");
+        return await GetUsersV1();
+    }
+}
+
+// DTOs para diferentes versiones
+public class UserV1Dto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+
+public class UserV2Dto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string PhoneNumber { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
+}
+
+// Configuración de versionado en Program.cs
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(2, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
+
+builder.Services.AddVersionedApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+```
+
+### 5. Migración de Base de Datos con Scripts Personalizados
+```csharp
+public class CustomMigrationService
+{
+    private readonly DbContext _context;
+    private readonly ILogger<CustomMigrationService> _logger;
+    
+    public CustomMigrationService(DbContext context, ILogger<CustomMigrationService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+    
+    public async Task MigrateDataAsync()
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        
+        try
+        {
+            await MigrateUserDataAsync();
+            await MigrateProductDataAsync();
+            await UpdateIndexesAsync();
+            
+            await transaction.CommitAsync();
+            _logger.LogInformation("Data migration completed successfully");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Data migration failed");
+            throw;
+        }
+    }
+    
+    private async Task MigrateUserDataAsync()
+    {
+        // Migrar datos de usuarios
+        var usersWithoutPhone = await _context.Users
+            .Where(u => string.IsNullOrEmpty(u.PhoneNumber))
+            .ToListAsync();
+        
+        foreach (var user in usersWithoutPhone)
+        {
+            user.PhoneNumber = "N/A";
+        }
+        
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Migrated {Count} users", usersWithoutPhone.Count);
+    }
+    
+    private async Task MigrateProductDataAsync()
+    {
+        // Migrar datos de productos
+        var products = await _context.Products.ToListAsync();
+        
+        foreach (var product in products)
+        {
+            if (product.Price <= 0)
+            {
+                product.Price = 0.01m; // Precio mínimo
+            }
+        }
+        
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Migrated {Count} products", products.Count);
+    }
+    
+    private async Task UpdateIndexesAsync()
+    {
+        // Actualizar índices para mejor rendimiento
+        await _context.Database.ExecuteSqlRawAsync(@"
+            CREATE INDEX IF NOT EXISTS IX_Users_Email_Active 
+            ON Users (Email) WHERE IsActive = 1
+        ");
+        
+        await _context.Database.ExecuteSqlRawAsync(@"
+            CREATE INDEX IF NOT EXISTS IX_Products_Price_Category 
+            ON Products (Price, CategoryId)
+        ");
+        
+        _logger.LogInformation("Database indexes updated");
+    }
+}
+```
+
+### 6. Migración de Dependencias y Paquetes
+```csharp
+public class PackageMigrationService
+{
+    private readonly ILogger<PackageMigrationService> _logger;
+    
+    public PackageMigrationService(ILogger<PackageMigrationService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task MigratePackagesAsync()
+    {
+        var migrations = new List<IPackageMigration>
+        {
+            new EntityFrameworkMigration(),
+            new NewtonsoftJsonMigration(),
+            new LoggingMigration()
+        };
+        
+        foreach (var migration in migrations)
+        {
+            try
+            {
+                await migration.MigrateAsync();
+                _logger.LogInformation("Package migration {MigrationType} completed", 
+                    migration.GetType().Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Package migration {MigrationType} failed", 
+                    migration.GetType().Name);
+                throw;
+            }
+        }
+    }
+}
+
+public interface IPackageMigration
+{
+    Task MigrateAsync();
+}
+
+public class EntityFrameworkMigration : IPackageMigration
+{
+    public async Task MigrateAsync()
+    {
+        // Lógica para migrar Entity Framework
+        // Actualizar connection strings, configuraciones, etc.
+        await Task.CompletedTask;
+    }
+}
+
+public class NewtonsoftJsonMigration : IPackageMigration
+{
+    public async Task MigrateAsync()
+    {
+        // Migrar de Newtonsoft.Json a System.Text.Json
+        // Actualizar serialización/deserialización
+        await Task.CompletedTask;
+    }
+}
+```
+
+### 7. Migración de Configuración de Logging
+```csharp
+public class LoggingMigrationService
+{
+    private readonly ILogger<LoggingMigrationService> _logger;
+    
+    public LoggingMigrationService(ILogger<LoggingMigrationService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task MigrateLoggingConfigurationAsync()
+    {
+        // Migrar configuración de logging
+        var oldLoggingConfig = GetOldLoggingConfiguration();
+        var newLoggingConfig = ConvertToNewFormat(oldLoggingConfig);
+        
+        await SaveNewLoggingConfigurationAsync(newLoggingConfig);
+        
+        _logger.LogInformation("Logging configuration migrated successfully");
+    }
+    
+    private LoggingConfiguration GetOldLoggingConfiguration()
+    {
+        // Obtener configuración antigua
+        return new LoggingConfiguration
+        {
+            LogLevel = "Information",
+            IncludeScopes = true,
+            ConsoleEnabled = true,
+            FileEnabled = false
+        };
+    }
+    
+    private NewLoggingConfiguration ConvertToNewFormat(LoggingConfiguration oldConfig)
+    {
+        return new NewLoggingConfiguration
+        {
+            LogLevel = new Dictionary<string, string>
+            {
+                ["Default"] = oldConfig.LogLevel,
+                ["Microsoft"] = "Warning",
+                ["Microsoft.Hosting.Lifetime"] = "Information"
+            },
+            Console = new ConsoleLoggerConfiguration
+            {
+                Enabled = oldConfig.ConsoleEnabled,
+                IncludeScopes = oldConfig.IncludeScopes
+            },
+            File = new FileLoggerConfiguration
+            {
+                Enabled = oldConfig.FileEnabled,
+                Path = "logs/app.log",
+                MaxFileSizeInMB = 10,
+                MaxNumberOfFiles = 5
+            }
+        };
+    }
+    
+    private async Task SaveNewLoggingConfigurationAsync(NewLoggingConfiguration config)
+    {
+        // Guardar nueva configuración
+        await Task.CompletedTask;
+    }
+}
+
+public class LoggingConfiguration
+{
+    public string LogLevel { get; set; }
+    public bool IncludeScopes { get; set; }
+    public bool ConsoleEnabled { get; set; }
+    public bool FileEnabled { get; set; }
+}
+
+public class NewLoggingConfiguration
+{
+    public Dictionary<string, string> LogLevel { get; set; }
+    public ConsoleLoggerConfiguration Console { get; set; }
+    public FileLoggerConfiguration File { get; set; }
+}
+
+public class ConsoleLoggerConfiguration
+{
+    public bool Enabled { get; set; }
+    public bool IncludeScopes { get; set; }
+}
+
+public class FileLoggerConfiguration
+{
+    public bool Enabled { get; set; }
+    public string Path { get; set; }
+    public int MaxFileSizeInMB { get; set; }
+    public int MaxNumberOfFiles { get; set; }
+}
+```
+
+### 8. Rollback y Recovery
+```csharp
+public class MigrationRollbackService
+{
+    private readonly DbContext _context;
+    private readonly ILogger<MigrationRollbackService> _logger;
+    private readonly List<MigrationStep> _migrationSteps;
+    
+    public MigrationRollbackService(
+        DbContext context,
+        ILogger<MigrationRollbackService> logger)
+    {
+        _context = context;
+        _logger = logger;
+        _migrationSteps = new List<MigrationStep>();
+    }
+    
+    public void AddMigrationStep(MigrationStep step)
+    {
+        _migrationSteps.Add(step);
+    }
+    
+    public async Task ExecuteMigrationAsync()
+    {
+        var executedSteps = new Stack<MigrationStep>();
+        
+        try
+        {
+            foreach (var step in _migrationSteps)
+            {
+                await step.ExecuteAsync();
+                executedSteps.Push(step);
+                _logger.LogInformation("Migration step {StepName} executed", step.Name);
+            }
+            
+            _logger.LogInformation("Migration completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Migration failed, starting rollback");
+            await RollbackAsync(executedSteps);
+            throw;
+        }
+    }
+    
+    private async Task RollbackAsync(Stack<MigrationStep> executedSteps)
+    {
+        while (executedSteps.Count > 0)
+        {
+            var step = executedSteps.Pop();
+            
+            try
+            {
+                await step.RollbackAsync();
+                _logger.LogInformation("Migration step {StepName} rolled back", step.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to rollback step {StepName}", step.Name);
+                // Continuar con el rollback de otros pasos
+            }
+        }
+    }
+}
+
+public abstract class MigrationStep
+{
+    public string Name { get; set; }
+    
+    public abstract Task ExecuteAsync();
+    public abstract Task RollbackAsync();
+}
+
+public class DatabaseMigrationStep : MigrationStep
+{
+    private readonly DbContext _context;
+    private readonly string _sqlScript;
+    private readonly string _rollbackScript;
+    
+    public DatabaseMigrationStep(DbContext context, string sqlScript, string rollbackScript)
+    {
+        _context = context;
+        _sqlScript = sqlScript;
+        _rollbackScript = rollbackScript;
+    }
+    
+    public override async Task ExecuteAsync()
+    {
+        await _context.Database.ExecuteSqlRawAsync(_sqlScript);
+    }
+    
+    public override async Task RollbackAsync()
+    {
+        await _context.Database.ExecuteSqlRawAsync(_rollbackScript);
+    }
+}
+```
+
+### Conclusión
+Las estrategias de migración son esenciales para:
+- Mantener aplicaciones actualizadas
+- Evolucionar sistemas de manera segura
+- Manejar cambios de datos y configuración
+- Proporcionar rollback en caso de problemas
+
+### Recursos
+- [Entity Framework Migrations](https://docs.microsoft.com/ef/core/managing-schemas/migrations/)
+- [API Versioning](https://docs.microsoft.com/aspnet/core/web-api/versioning)
+- [Configuration Migration](https://docs.microsoft.com/dotnet/core/extensions/configuration)
+- [Database Migration Best Practices](https://docs.microsoft.com/ef/core/managing-schemas/migrations/best-practices)

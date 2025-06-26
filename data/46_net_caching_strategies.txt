@@ -1,0 +1,524 @@
+# Estrategias de Caching y Optimización de Rendimiento en .NET
+
+## Introducción
+El caching es fundamental para mejorar el rendimiento de las aplicaciones. .NET ofrece múltiples opciones de caching para diferentes escenarios y necesidades.
+
+### 1. In-Memory Caching
+```csharp
+public class UserService
+{
+    private readonly IMemoryCache _cache;
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<UserService> _logger;
+    
+    public UserService(
+        IMemoryCache cache,
+        IUserRepository userRepository,
+        ILogger<UserService> logger)
+    {
+        _cache = cache;
+        _userRepository = userRepository;
+        _logger = logger;
+    }
+    
+    public async Task<User> GetUserAsync(int userId)
+    {
+        var cacheKey = $"user_{userId}";
+        
+        if (_cache.TryGetValue(cacheKey, out User cachedUser))
+        {
+            _logger.LogInformation("User {UserId} retrieved from cache", userId);
+            return cachedUser;
+        }
+        
+        var user = await _userRepository.GetByIdAsync(userId);
+        
+        if (user != null)
+        {
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(10))
+                .SetAbsoluteExpiration(TimeSpan.FromHours(1))
+                .RegisterPostEvictionCallback((key, value, reason, state) =>
+                {
+                    _logger.LogInformation("User {UserId} evicted from cache. Reason: {Reason}", userId, reason);
+                });
+            
+            _cache.Set(cacheKey, user, cacheOptions);
+            _logger.LogInformation("User {UserId} cached", userId);
+        }
+        
+        return user;
+    }
+    
+    public async Task<List<User>> GetUsersAsync()
+    {
+        const string cacheKey = "all_users";
+        
+        if (_cache.TryGetValue(cacheKey, out List<User> cachedUsers))
+        {
+            return cachedUsers;
+        }
+        
+        var users = await _userRepository.GetAllAsync();
+        
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(30));
+        
+        _cache.Set(cacheKey, users, cacheOptions);
+        
+        return users;
+    }
+    
+    public async Task UpdateUserAsync(User user)
+    {
+        await _userRepository.UpdateAsync(user);
+        
+        // Invalidar cache
+        _cache.Remove($"user_{user.Id}");
+        _cache.Remove("all_users");
+        
+        _logger.LogInformation("Cache invalidated for user {UserId}", user.Id);
+    }
+}
+```
+
+### 2. Distributed Caching con Redis
+```csharp
+public class RedisCacheService
+{
+    private readonly IDistributedCache _cache;
+    private readonly ILogger<RedisCacheService> _logger;
+    
+    public RedisCacheService(
+        IDistributedCache cache,
+        ILogger<RedisCacheService> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+    }
+    
+    public async Task<T> GetAsync<T>(string key)
+    {
+        var json = await _cache.GetStringAsync(key);
+        
+        if (string.IsNullOrEmpty(json))
+        {
+            return default(T);
+        }
+        
+        return JsonSerializer.Deserialize<T>(json);
+    }
+    
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
+    {
+        var json = JsonSerializer.Serialize(value);
+        var options = new DistributedCacheEntryOptions();
+        
+        if (expiration.HasValue)
+        {
+            options.SetAbsoluteExpiration(expiration.Value);
+        }
+        
+        await _cache.SetStringAsync(key, json, options);
+        _logger.LogInformation("Value cached with key {Key}", key);
+    }
+    
+    public async Task RemoveAsync(string key)
+    {
+        await _cache.RemoveAsync(key);
+        _logger.LogInformation("Cache entry removed for key {Key}", key);
+    }
+    
+    public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
+    {
+        var cachedValue = await GetAsync<T>(key);
+        
+        if (cachedValue != null)
+        {
+            return cachedValue;
+        }
+        
+        var value = await factory();
+        await SetAsync(key, value, expiration);
+        
+        return value;
+    }
+}
+
+// Configuración en Program.cs
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "MyApp_";
+});
+```
+
+### 3. Response Caching en ASP.NET Core
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _productService;
+    
+    public ProductsController(IProductService productService)
+    {
+        _productService = productService;
+    }
+    
+    [HttpGet]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    public async Task<ActionResult<List<Product>>> GetProducts()
+    {
+        var products = await _productService.GetProductsAsync();
+        return Ok(products);
+    }
+    
+    [HttpGet("{id}")]
+    [ResponseCache(Duration = 600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "id" })]
+    public async Task<ActionResult<Product>> GetProduct(int id)
+    {
+        var product = await _productService.GetProductAsync(id);
+        
+        if (product == null)
+            return NotFound();
+        
+        return Ok(product);
+    }
+    
+    [HttpGet("search")]
+    [ResponseCache(Duration = 180, VaryByQueryKeys = new[] { "q", "category" })]
+    public async Task<ActionResult<List<Product>>> SearchProducts([FromQuery] string q, [FromQuery] string category)
+    {
+        var products = await _productService.SearchProductsAsync(q, category);
+        return Ok(products);
+    }
+}
+
+// Configuración global en Program.cs
+builder.Services.AddResponseCaching(options =>
+{
+    options.MaximumBodySize = 64 * 1024 * 1024; // 64MB
+    options.UseCaseSensitivePaths = false;
+});
+
+app.UseResponseCaching();
+```
+
+### 4. Cache-Aside Pattern
+```csharp
+public class CacheAsideService<T>
+{
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<CacheAsideService<T>> _logger;
+    
+    public CacheAsideService(
+        IMemoryCache cache,
+        ILogger<CacheAsideService<T>> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+    }
+    
+    public async Task<T> GetOrSetAsync(string key, Func<Task<T>> factory, TimeSpan expiration)
+    {
+        if (_cache.TryGetValue(key, out T cachedValue))
+        {
+            _logger.LogInformation("Cache hit for key {Key}", key);
+            return cachedValue;
+        }
+        
+        _logger.LogInformation("Cache miss for key {Key}", key);
+        
+        var value = await factory();
+        
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(expiration)
+            .RegisterPostEvictionCallback((k, v, reason, state) =>
+            {
+                _logger.LogInformation("Cache entry evicted for key {Key}. Reason: {Reason}", k, reason);
+            });
+        
+        _cache.Set(key, value, cacheOptions);
+        
+        return value;
+    }
+    
+    public void Invalidate(string key)
+    {
+        _cache.Remove(key);
+        _logger.LogInformation("Cache invalidated for key {Key}", key);
+    }
+    
+    public void InvalidatePattern(string pattern)
+    {
+        // Implementar invalidación por patrón
+        // Esto requiere acceso al cache interno o usar Redis con SCAN
+    }
+}
+
+// Uso
+public class ProductService
+{
+    private readonly CacheAsideService<Product> _cacheService;
+    private readonly IProductRepository _repository;
+    
+    public ProductService(CacheAsideService<Product> cacheService, IProductRepository repository)
+    {
+        _cacheService = cacheService;
+        _repository = repository;
+    }
+    
+    public async Task<Product> GetProductAsync(int id)
+    {
+        return await _cacheService.GetOrSetAsync(
+            $"product_{id}",
+            () => _repository.GetByIdAsync(id),
+            TimeSpan.FromMinutes(30));
+    }
+}
+```
+
+### 5. Write-Through Caching
+```csharp
+public class WriteThroughCacheService<T>
+{
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<WriteThroughCacheService<T>> _logger;
+    
+    public WriteThroughCacheService(
+        IMemoryCache cache,
+        ILogger<WriteThroughCacheService<T>> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+    }
+    
+    public async Task<T> GetAsync(string key)
+    {
+        if (_cache.TryGetValue(key, out T value))
+        {
+            return value;
+        }
+        
+        return default(T);
+    }
+    
+    public async Task SetAsync(string key, T value, Func<T, Task> persistAction, TimeSpan expiration)
+    {
+        // Persistir primero
+        await persistAction(value);
+        
+        // Luego actualizar cache
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(expiration);
+        
+        _cache.Set(key, value, cacheOptions);
+        
+        _logger.LogInformation("Write-through cache update for key {Key}", key);
+    }
+    
+    public async Task UpdateAsync(string key, T value, Func<T, Task> updateAction, TimeSpan expiration)
+    {
+        // Actualizar en persistencia
+        await updateAction(value);
+        
+        // Actualizar cache
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(expiration);
+        
+        _cache.Set(key, value, cacheOptions);
+        
+        _logger.LogInformation("Write-through cache update for key {Key}", key);
+    }
+}
+```
+
+### 6. Cache Invalidation Strategies
+```csharp
+public class CacheInvalidationService
+{
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<CacheInvalidationService> _logger;
+    private readonly ConcurrentDictionary<string, HashSet<string>> _keyPatterns;
+    
+    public CacheInvalidationService(
+        IMemoryCache cache,
+        ILogger<CacheInvalidationService> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+        _keyPatterns = new ConcurrentDictionary<string, HashSet<string>>();
+    }
+    
+    public void RegisterPattern(string pattern, string key)
+    {
+        _keyPatterns.AddOrUpdate(pattern, 
+            new HashSet<string> { key },
+            (_, keys) => { keys.Add(key); return keys; });
+    }
+    
+    public void InvalidateByPattern(string pattern)
+    {
+        if (_keyPatterns.TryGetValue(pattern, out var keys))
+        {
+            foreach (var key in keys)
+            {
+                _cache.Remove(key);
+                _logger.LogInformation("Cache invalidated for key {Key} by pattern {Pattern}", key, pattern);
+            }
+        }
+    }
+    
+    public void InvalidateByPrefix(string prefix)
+    {
+        // En un escenario real, esto requeriría acceso al cache interno
+        // o usar Redis con SCAN para buscar keys por patrón
+        _logger.LogInformation("Cache invalidation by prefix {Prefix} requested", prefix);
+    }
+}
+
+// Uso
+public class UserService
+{
+    private readonly CacheInvalidationService _cacheInvalidation;
+    
+    public UserService(CacheInvalidationService cacheInvalidation)
+    {
+        _cacheInvalidation = cacheInvalidation;
+        
+        // Registrar patrones
+        _cacheInvalidation.RegisterPattern("user_*", "user_1");
+        _cacheInvalidation.RegisterPattern("user_*", "user_2");
+    }
+    
+    public async Task UpdateUserAsync(User user)
+    {
+        // Actualizar usuario
+        await _userRepository.UpdateAsync(user);
+        
+        // Invalidar cache por patrón
+        _cacheInvalidation.InvalidateByPattern("user_*");
+    }
+}
+```
+
+### 7. Cache Warming
+```csharp
+public class CacheWarmingService : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<CacheWarmingService> _logger;
+    
+    public CacheWarmingService(
+        IServiceProvider serviceProvider,
+        ILogger<CacheWarmingService> logger)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Cache warming service started");
+        
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await WarmCacheAsync();
+                await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during cache warming");
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            }
+        }
+    }
+    
+    private async Task WarmCacheAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
+        
+        // Pre-cargar datos frecuentemente accedidos
+        await userService.GetActiveUsersAsync();
+        await productService.GetPopularProductsAsync();
+        
+        _logger.LogInformation("Cache warming completed");
+    }
+}
+```
+
+### 8. Cache Performance Monitoring
+```csharp
+public class CacheMetricsService
+{
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<CacheMetricsService> _logger;
+    private readonly ConcurrentDictionary<string, CacheMetrics> _metrics;
+    
+    public CacheMetricsService(
+        IMemoryCache cache,
+        ILogger<CacheMetricsService> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+        _metrics = new ConcurrentDictionary<string, CacheMetrics>();
+    }
+    
+    public void RecordHit(string key)
+    {
+        var metrics = _metrics.GetOrAdd(key, _ => new CacheMetrics());
+        Interlocked.Increment(ref metrics.Hits);
+    }
+    
+    public void RecordMiss(string key)
+    {
+        var metrics = _metrics.GetOrAdd(key, _ => new CacheMetrics());
+        Interlocked.Increment(ref metrics.Misses);
+    }
+    
+    public double GetHitRate(string key)
+    {
+        if (_metrics.TryGetValue(key, out var metrics))
+        {
+            var total = metrics.Hits + metrics.Misses;
+            return total > 0 ? (double)metrics.Hits / total : 0;
+        }
+        
+        return 0;
+    }
+    
+    public void LogMetrics()
+    {
+        foreach (var kvp in _metrics)
+        {
+            var hitRate = GetHitRate(kvp.Key);
+            _logger.LogInformation("Cache key {Key}: Hit rate {HitRate:P2}", kvp.Key, hitRate);
+        }
+    }
+}
+
+public class CacheMetrics
+{
+    public long Hits;
+    public long Misses;
+}
+```
+
+### Conclusión
+Las estrategias de caching son esenciales para:
+- Mejorar tiempos de respuesta
+- Reducir carga en bases de datos
+- Escalar aplicaciones
+- Optimizar uso de recursos
+
+### Recursos
+- [Memory Cache Documentation](https://docs.microsoft.com/dotnet/core/extensions/caching)
+- [Distributed Cache Documentation](https://docs.microsoft.com/aspnet/core/performance/caching/distributed)
+- [Response Caching Documentation](https://docs.microsoft.com/aspnet/core/performance/caching/response)
+- [Redis Documentation](https://redis.io/documentation)

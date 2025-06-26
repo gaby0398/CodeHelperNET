@@ -1,0 +1,506 @@
+# Frameworks de UI y Desarrollo de Interfaces en .NET
+
+## Introducción
+.NET ofrece múltiples frameworks para crear interfaces de usuario modernas y responsivas, desde aplicaciones web hasta aplicaciones de escritorio y móviles.
+
+### 1. ASP.NET Core MVC y Razor Pages
+```csharp
+// Controller
+public class HomeController : Controller
+{
+    private readonly IUserService _userService;
+    
+    public HomeController(IUserService userService)
+    {
+        _userService = userService;
+    }
+    
+    public async Task<IActionResult> Index()
+    {
+        var users = await _userService.GetUsersAsync();
+        return View(users);
+    }
+    
+    [HttpPost]
+    public async Task<IActionResult> CreateUser(CreateUserViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+        
+        await _userService.CreateUserAsync(model);
+        return RedirectToAction(nameof(Index));
+    }
+}
+
+// Razor View
+@model List<User>
+@{
+    ViewData["Title"] = "Users";
+}
+
+<div class="container">
+    <h2>Users</h2>
+    <a asp-action="Create" class="btn btn-primary">Create New</a>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>@user.Name</td>
+                    <td>@user.Email</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@user.Id">Edit</a>
+                        <a asp-action="Delete" asp-route-id="@user.Id">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+```
+
+### 2. Blazor Server
+```csharp
+@page "/users"
+@inject IUserService UserService
+@inject IJSRuntime JSRuntime
+
+<h3>Users Management</h3>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="form-group">
+            <label>Name:</label>
+            <input @bind="newUser.Name" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input @bind="newUser.Email" class="form-control" />
+        </div>
+        <button @onclick="AddUser" class="btn btn-primary">Add User</button>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in users)
+        {
+            <tr>
+                <td>@user.Name</td>
+                <td>@user.Email</td>
+                <td>
+                    <button @onclick="() => DeleteUser(user.Id)" class="btn btn-danger btn-sm">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<User> users = new();
+    private User newUser = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserService.GetUsersAsync();
+    }
+    
+    private async Task AddUser()
+    {
+        await UserService.CreateUserAsync(newUser);
+        users.Add(newUser);
+        newUser = new User();
+        StateHasChanged();
+    }
+    
+    private async Task DeleteUser(int id)
+    {
+        await UserService.DeleteUserAsync(id);
+        users.RemoveAll(u => u.Id == id);
+        StateHasChanged();
+    }
+}
+```
+
+### 3. Blazor WebAssembly
+```csharp
+@page "/counter"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<h1>Counter</h1>
+
+<p>Current count: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar datos desde API
+        var data = await Http.GetFromJsonAsync<WeatherForecast[]>("api/weatherforecast");
+    }
+}
+
+// Program.cs
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+await builder.Build().RunAsync();
+```
+
+### 4. WPF (Windows Presentation Foundation)
+```csharp
+// MainWindow.xaml
+<Window x:Class="WpfApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="User Management" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10">
+            <TextBox x:Name="NameTextBox" Width="150" Margin="5" 
+                     Text="{Binding NewUser.Name, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox x:Name="EmailTextBox" Width="200" Margin="5" 
+                     Text="{Binding NewUser.Email, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button Content="Add User" Width="100" Margin="5" 
+                    Command="{Binding AddUserCommand}"/>
+        </StackPanel>
+        
+        <DataGrid Grid.Row="1" Margin="10" 
+                  ItemsSource="{Binding Users}"
+                  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                <DataGridTextColumn Header="Email" Binding="{Binding Email}"/>
+                <DataGridTemplateColumn Header="Actions">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Delete" 
+                                    Command="{Binding DataContext.DeleteUserCommand, 
+                                    RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding Id}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>
+
+// MainWindow.xaml.cs
+public partial class MainWindow : Window
+{
+    public MainWindow()
+    {
+        InitializeComponent();
+        DataContext = new MainViewModel();
+    }
+}
+
+// MainViewModel.cs
+public class MainViewModel : INotifyPropertyChanged
+{
+    private ObservableCollection<User> _users;
+    private User _newUser;
+    
+    public ObservableCollection<User> Users
+    {
+        get => _users;
+        set
+        {
+            _users = value;
+            OnPropertyChanged();
+        }
+    }
+    
+    public User NewUser
+    {
+        get => _newUser;
+        set
+        {
+            _newUser = value;
+            OnPropertyChanged();
+        }
+    }
+    
+    public ICommand AddUserCommand { get; }
+    public ICommand DeleteUserCommand { get; }
+    
+    public MainViewModel()
+    {
+        Users = new ObservableCollection<User>();
+        NewUser = new User();
+        
+        AddUserCommand = new RelayCommand(AddUser, CanAddUser);
+        DeleteUserCommand = new RelayCommand<int>(DeleteUser);
+    }
+    
+    private void AddUser()
+    {
+        Users.Add(NewUser);
+        NewUser = new User();
+    }
+    
+    private bool CanAddUser()
+    {
+        return !string.IsNullOrEmpty(NewUser?.Name) && 
+               !string.IsNullOrEmpty(NewUser?.Email);
+    }
+    
+    private void DeleteUser(int id)
+    {
+        var user = Users.FirstOrDefault(u => u.Id == id);
+        if (user != null)
+            Users.Remove(user);
+    }
+    
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+```
+
+### 5. Windows Forms
+```csharp
+public partial class MainForm : Form
+{
+    private List<User> users = new();
+    
+    public MainForm()
+    {
+        InitializeComponent();
+        LoadUsers();
+    }
+    
+    private void LoadUsers()
+    {
+        // Simular carga de datos
+        users = new List<User>
+        {
+            new User { Id = 1, Name = "John Doe", Email = "john@example.com" },
+            new User { Id = 2, Name = "Jane Smith", Email = "jane@example.com" }
+        };
+        
+        dataGridView1.DataSource = users;
+    }
+    
+    private void btnAdd_Click(object sender, EventArgs e)
+    {
+        var user = new User
+        {
+            Name = txtName.Text,
+            Email = txtEmail.Text
+        };
+        
+        users.Add(user);
+        dataGridView1.DataSource = null;
+        dataGridView1.DataSource = users;
+        
+        txtName.Clear();
+        txtEmail.Clear();
+    }
+    
+    private void btnDelete_Click(object sender, EventArgs e)
+    {
+        if (dataGridView1.SelectedRows.Count > 0)
+        {
+            var selectedUser = (User)dataGridView1.SelectedRows[0].DataBoundItem;
+            users.Remove(selectedUser);
+            dataGridView1.DataSource = null;
+            dataGridView1.DataSource = users;
+        }
+    }
+}
+```
+
+### 6. .NET MAUI (Multi-platform App UI)
+```csharp
+// MainPage.xaml
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiApp.MainPage">
+    <ScrollView>
+        <VerticalStackLayout Spacing="25" Padding="30,0" VerticalOptions="Center">
+            <Label Text="Welcome to .NET MAUI!" 
+                   SemanticProperties.HeadingLevel="Level1" 
+                   FontSize="32" HorizontalOptions="Center" />
+            
+            <Entry x:Name="NameEntry" Placeholder="Enter name" />
+            <Entry x:Name="EmailEntry" Placeholder="Enter email" />
+            
+            <Button x:Name="AddButton" Text="Add User" 
+                    SemanticProperties.Hint="Adds a new user to the list"
+                    Clicked="OnAddClicked" HorizontalOptions="Center" />
+            
+            <CollectionView x:Name="UsersCollection">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="10" Padding="10">
+                            <StackLayout>
+                                <Label Text="{Binding Name}" FontSize="18" />
+                                <Label Text="{Binding Email}" FontSize="14" />
+                                <Button Text="Delete" 
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=DeleteUserCommand}"
+                                        CommandParameter="{Binding Id}" />
+                            </StackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
+// MainPage.xaml.cs
+public partial class MainPage : ContentPage
+{
+    private ObservableCollection<User> users;
+    
+    public ICommand DeleteUserCommand { get; }
+    
+    public MainPage()
+    {
+        InitializeComponent();
+        users = new ObservableCollection<User>();
+        UsersCollection.ItemsSource = users;
+        
+        DeleteUserCommand = new Command<int>(DeleteUser);
+        BindingContext = this;
+    }
+    
+    private void OnAddClicked(object sender, EventArgs e)
+    {
+        var user = new User
+        {
+            Name = NameEntry.Text,
+            Email = EmailEntry.Text
+        };
+        
+        users.Add(user);
+        
+        NameEntry.Text = string.Empty;
+        EmailEntry.Text = string.Empty;
+    }
+    
+    private void DeleteUser(int id)
+    {
+        var user = users.FirstOrDefault(u => u.Id == id);
+        if (user != null)
+            users.Remove(user);
+    }
+}
+```
+
+### 7. Avalonia UI (Cross-platform)
+```csharp
+// MainWindow.axaml
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="AvaloniaApp.MainWindow"
+        Title="User Management">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10">
+            <TextBox x:Name="NameTextBox" Width="150" Margin="5" 
+                     Text="{Binding NewUser.Name}"/>
+            <TextBox x:Name="EmailTextBox" Width="200" Margin="5" 
+                     Text="{Binding NewUser.Email}"/>
+            <Button Content="Add User" Width="100" Margin="5" 
+                    Command="{Binding AddUserCommand}"/>
+        </StackPanel>
+        
+        <DataGrid Grid.Row="1" Margin="10" 
+                  ItemsSource="{Binding Users}"
+                  AutoGenerateColumns="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                <DataGridTextColumn Header="Email" Binding="{Binding Email}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>
+```
+
+### 8. Componentes Reutilizables
+```csharp
+// CustomButton.razor
+@if (IsLoading)
+{
+    <div class="spinner-border spinner-border-sm" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <button @attributes="AdditionalAttributes" 
+            class="@CssClass" 
+            @onclick="OnClick">
+        @ChildContent
+    </button>
+}
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string CssClass { get; set; } = "btn btn-primary";
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> AdditionalAttributes { get; set; }
+}
+
+// Uso
+<CustomButton IsLoading="@isLoading" OnClick="SaveData">
+    Save
+</CustomButton>
+```
+
+### Conclusión
+Cada framework de UI tiene sus ventajas:
+- **ASP.NET Core**: Para aplicaciones web tradicionales
+- **Blazor**: Para aplicaciones web interactivas con C#
+- **WPF**: Para aplicaciones de escritorio Windows
+- **Windows Forms**: Para aplicaciones simples de Windows
+- **.NET MAUI**: Para aplicaciones multiplataforma
+- **Avalonia**: Para aplicaciones cross-platform
+
+### Recursos
+- [ASP.NET Core Documentation](https://docs.microsoft.com/aspnet/core/)
+- [Blazor Documentation](https://docs.microsoft.com/aspnet/core/blazor/)
+- [WPF Documentation](https://docs.microsoft.com/dotnet/desktop/wpf/)
+- [.NET MAUI Documentation](https://docs.microsoft.com/dotnet/maui/)
+- [Avalonia UI](https://avaloniaui.net/)

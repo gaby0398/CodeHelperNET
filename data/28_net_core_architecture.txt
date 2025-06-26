@@ -1,0 +1,595 @@
+# Arquitectura de .NET Core
+
+## Introducción a .NET Core
+
+.NET Core es la implementación de código abierto y multiplataforma de .NET. Fue diseñado para ser modular, ligero y de alto rendimiento, permitiendo el desarrollo de aplicaciones modernas que pueden ejecutarse en Windows, macOS y Linux.
+
+### Características Fundamentales de .NET Core
+
+#### 1. Multiplataforma
+
+**Definición**: .NET Core puede ejecutarse en múltiples sistemas operativos sin modificaciones.
+
+**Sistemas Soportados**:
+- **Windows**: Windows 10, Windows Server 2016+
+- **macOS**: macOS 10.13+
+- **Linux**: Ubuntu, CentOS, RHEL, Debian, Alpine
+
+**Ejemplo de Multiplataforma**:
+```csharp
+public class CrossPlatformExample
+{
+    public void DemonstrateCrossPlatform()
+    {
+        // Detectar el sistema operativo
+        var os = Environment.OSVersion;
+        var platform = Environment.OSVersion.Platform;
+        
+        Console.WriteLine($"Operating System: {os}");
+        Console.WriteLine($"Platform: {platform}");
+        
+        // Rutas multiplataforma
+        var path = Path.Combine("home", "user", "documents");
+        Console.WriteLine($"Path: {path}");
+        
+        // Separadores de línea multiplataforma
+        var newLine = Environment.NewLine;
+        Console.WriteLine($"New line character: '{newLine}'");
+        
+        // Variables de entorno
+        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? 
+                     Environment.GetEnvironmentVariable("USERPROFILE");
+        Console.WriteLine($"Home directory: {homeDir}");
+    }
+}
+```
+
+#### 2. Modularidad
+
+**Definición**: .NET Core utiliza un sistema de paquetes NuGet para incluir solo las dependencias necesarias.
+
+**Ventajas de la Modularidad**:
+- **Tamaño Reducido**: Solo incluye lo necesario
+- **Actualizaciones Granulares**: Actualizar componentes individuales
+- **Flexibilidad**: Elegir exactamente lo que necesitas
+- **Seguridad**: Menor superficie de ataque
+
+**Ejemplo de Modularidad**:
+```csharp
+// Solo incluir lo que necesitas
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+// En lugar de referenciar todo el framework
+public class ModularExample
+{
+    public async Task DemonstrateModularity()
+    {
+        // Usar solo las funcionalidades necesarias
+        var numbers = new List<int> { 1, 2, 3, 4, 5 };
+        
+        // LINQ (incluido en System.Linq)
+        var evenNumbers = numbers.Where(n => n % 2 == 0).ToList();
+        
+        // Async/await (incluido en System.Threading.Tasks)
+        await Task.Delay(100);
+        
+        // JSON (requiere System.Text.Json o Newtonsoft.Json)
+        var json = System.Text.Json.JsonSerializer.Serialize(numbers);
+        Console.WriteLine($"JSON: {json}");
+    }
+}
+```
+
+### Arquitectura de .NET Core
+
+#### 1. Runtime
+
+**Definición**: El runtime de .NET Core es el motor de ejecución que proporciona servicios fundamentales.
+
+**Componentes del Runtime**:
+- **CoreCLR**: Common Language Runtime optimizado
+- **CoreFX**: Bibliotecas base
+- **Roslyn**: Compilador de C#
+- **NuGet**: Gestor de paquetes
+
+**Ejemplo de Runtime**:
+```csharp
+public class RuntimeExample
+{
+    public void DemonstrateRuntime()
+    {
+        // Información del runtime
+        var runtimeVersion = Environment.Version;
+        var frameworkDescription = RuntimeInformation.FrameworkDescription;
+        var processArchitecture = RuntimeInformation.ProcessArchitecture;
+        var osArchitecture = RuntimeInformation.OSArchitecture;
+        
+        Console.WriteLine($"Runtime Version: {runtimeVersion}");
+        Console.WriteLine($"Framework: {frameworkDescription}");
+        Console.WriteLine($"Process Architecture: {processArchitecture}");
+        Console.WriteLine($"OS Architecture: {osArchitecture}");
+        
+        // Información del proceso
+        var processId = Environment.ProcessId;
+        var workingSet = Environment.WorkingSet;
+        var processorCount = Environment.ProcessorCount;
+        
+        Console.WriteLine($"Process ID: {processId}");
+        Console.WriteLine($"Working Set: {workingSet} bytes");
+        Console.WriteLine($"Processor Count: {processorCount}");
+    }
+}
+```
+
+#### 2. Hosting Model
+
+**Definición**: El modelo de hosting define cómo se inicia y configura una aplicación .NET Core.
+
+**Tipos de Hosting**:
+- **Generic Host**: Para aplicaciones de consola y servicios
+- **Web Host**: Para aplicaciones web (ASP.NET Core)
+
+**Ejemplo de Generic Host**:
+```csharp
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        var host = Host.CreateDefaultBuilder(args)
+            .ConfigureServices((context, services) =>
+            {
+                // Registrar servicios
+                services.AddSingleton<IMyService, MyService>();
+                services.AddTransient<IMyRepository, MyRepository>();
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole();
+                logging.AddDebug();
+            })
+            .Build();
+        
+        await host.RunAsync();
+    }
+}
+
+public interface IMyService
+{
+    void DoWork();
+}
+
+public class MyService : IMyService
+{
+    private readonly ILogger<MyService> _logger;
+    
+    public MyService(ILogger<MyService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public void DoWork()
+    {
+        _logger.LogInformation("Doing work...");
+    }
+}
+```
+
+#### 3. Dependency Injection
+
+**Definición**: .NET Core incluye un contenedor IoC integrado para inyección de dependencias.
+
+**Lifetimes de Servicios**:
+- **Singleton**: Una instancia para toda la aplicación
+- **Scoped**: Una instancia por request/scope
+- **Transient**: Nueva instancia cada vez
+
+**Ejemplo de DI**:
+```csharp
+public class DependencyInjectionExample
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Singleton - Una instancia para toda la aplicación
+        services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
+        // Scoped - Una instancia por request
+        services.AddScoped<IUserService, UserService>();
+        
+        // Transient - Nueva instancia cada vez
+        services.AddTransient<IEmailService, EmailService>();
+        
+        // Factory pattern
+        services.AddTransient<IDatabaseConnection>(provider =>
+        {
+            var config = provider.GetService<IConfigurationService>();
+            return new DatabaseConnection(config.GetConnectionString());
+        });
+    }
+}
+
+public interface IConfigurationService
+{
+    string GetConnectionString();
+}
+
+public class ConfigurationService : IConfigurationService
+{
+    public string GetConnectionString()
+    {
+        return "Server=localhost;Database=MyApp;Trusted_Connection=true;";
+    }
+}
+
+public class UserService
+{
+    private readonly IEmailService _emailService;
+    private readonly IConfigurationService _configService;
+    
+    public UserService(IEmailService emailService, IConfigurationService configService)
+    {
+        _emailService = emailService;
+        _configService = configService;
+    }
+    
+    public async Task CreateUserAsync(string email, string name)
+    {
+        // Lógica de negocio
+        await _emailService.SendWelcomeEmailAsync(email);
+    }
+}
+```
+
+### Configuración en .NET Core
+
+#### 1. Configuration System
+
+**Definición**: Sistema flexible de configuración que soporta múltiples fuentes.
+
+**Fuentes de Configuración**:
+- **appsettings.json**: Archivo de configuración principal
+- **Environment Variables**: Variables de entorno
+- **Command Line**: Argumentos de línea de comandos
+- **User Secrets**: Secretos de desarrollo
+- **Azure Key Vault**: Secretos en la nube
+
+**Ejemplo de Configuración**:
+```csharp
+using Microsoft.Extensions.Configuration;
+
+public class ConfigurationExample
+{
+    public void ConfigureApp(IConfigurationBuilder builder)
+    {
+        builder
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)
+            .AddEnvironmentVariables()
+            .AddCommandLine(args)
+            .AddUserSecrets<Program>(optional: true);
+    }
+    
+    public void UseConfiguration(IConfiguration configuration)
+    {
+        // Leer valores simples
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var apiKey = configuration["ApiKey"];
+        
+        // Leer secciones completas
+        var emailSettings = configuration.GetSection("EmailSettings").Get<EmailSettings>();
+        var databaseSettings = configuration.GetSection("Database").Get<DatabaseSettings>();
+        
+        // Valores con tipos específicos
+        var port = configuration.GetValue<int>("Port", 8080);
+        var isEnabled = configuration.GetValue<bool>("FeatureFlags:NewFeature", false);
+        
+        Console.WriteLine($"Connection String: {connectionString}");
+        Console.WriteLine($"API Key: {apiKey}");
+        Console.WriteLine($"Port: {port}");
+        Console.WriteLine($"New Feature Enabled: {isEnabled}");
+    }
+}
+
+public class EmailSettings
+{
+    public string SmtpServer { get; set; }
+    public int Port { get; set; }
+    public string Username { get; set; }
+    public string Password { get; set; }
+}
+
+public class DatabaseSettings
+{
+    public string ConnectionString { get; set; }
+    public int CommandTimeout { get; set; }
+    public bool EnableRetryOnFailure { get; set; }
+}
+```
+
+#### 2. Options Pattern
+
+**Definición**: Patrón para acceder a configuraciones tipadas de forma segura.
+
+**Ejemplo de Options Pattern**:
+```csharp
+using Microsoft.Extensions.Options;
+
+public class OptionsExample
+{
+    public void ConfigureOptions(IServiceCollection services, IConfiguration configuration)
+    {
+        // Configurar opciones
+        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        services.Configure<DatabaseSettings>(configuration.GetSection("Database"));
+        
+        // Configurar opciones con validación
+        services.Configure<ApiSettings>(configuration.GetSection("Api"))
+            .ValidateDataAnnotations();
+    }
+}
+
+public class EmailService
+{
+    private readonly EmailSettings _emailSettings;
+    private readonly ILogger<EmailService> _logger;
+    
+    public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
+    {
+        _emailSettings = emailSettings.Value;
+        _logger = logger;
+    }
+    
+    public async Task SendEmailAsync(string to, string subject, string body)
+    {
+        _logger.LogInformation("Sending email to {To} using server {SmtpServer}", 
+            to, _emailSettings.SmtpServer);
+        
+        // Implementación del envío de email
+        await Task.Delay(100); // Simulación
+    }
+}
+
+public class ApiSettings
+{
+    [Required]
+    public string BaseUrl { get; set; }
+    
+    [Range(1, 100)]
+    public int TimeoutSeconds { get; set; }
+    
+    [Required]
+    public string ApiKey { get; set; }
+}
+```
+
+### Logging en .NET Core
+
+#### 1. Logging Framework
+
+**Definición**: Sistema de logging integrado que soporta múltiples proveedores.
+
+**Proveedores de Logging**:
+- **Console**: Salida a consola
+- **Debug**: Ventana de debug
+- **EventLog**: Registro de eventos de Windows
+- **File**: Archivos de log
+- **Azure Application Insights**: Monitoreo en la nube
+
+**Ejemplo de Logging**:
+```csharp
+using Microsoft.Extensions.Logging;
+
+public class LoggingExample
+{
+    private readonly ILogger<LoggingExample> _logger;
+    
+    public LoggingExample(ILogger<LoggingExample> logger)
+    {
+        _logger = logger;
+    }
+    
+    public void DemonstrateLogging()
+    {
+        // Diferentes niveles de log
+        _logger.LogTrace("This is a trace message");
+        _logger.LogDebug("This is a debug message");
+        _logger.LogInformation("This is an information message");
+        _logger.LogWarning("This is a warning message");
+        _logger.LogError("This is an error message");
+        _logger.LogCritical("This is a critical message");
+        
+        // Logging estructurado
+        var user = new { Id = 123, Name = "John Doe" };
+        _logger.LogInformation("User {UserId} with name {UserName} logged in", 
+            user.Id, user.Name);
+        
+        // Logging con excepciones
+        try
+        {
+            throw new InvalidOperationException("Something went wrong");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while processing user {UserId}", 123);
+        }
+        
+        // Logging con scope
+        using (_logger.BeginScope("Processing order {OrderId}", 456))
+        {
+            _logger.LogInformation("Starting order processing");
+            // ... procesamiento
+            _logger.LogInformation("Order processing completed");
+        }
+    }
+}
+```
+
+#### 2. Custom Logging
+
+**Ejemplo de Logger Personalizado**:
+```csharp
+public class CustomLogger : ILogger
+{
+    private readonly string _categoryName;
+    private readonly IExternalScopeProvider _scopeProvider;
+    
+    public CustomLogger(string categoryName, IExternalScopeProvider scopeProvider)
+    {
+        _categoryName = categoryName;
+        _scopeProvider = scopeProvider;
+    }
+    
+    public IDisposable BeginScope<TState>(TState state) => _scopeProvider?.Push(state) ?? NullScope.Instance;
+    
+    public bool IsEnabled(LogLevel logLevel) => true;
+    
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+    {
+        if (!IsEnabled(logLevel)) return;
+        
+        var message = formatter(state, exception);
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        
+        var logEntry = $"[{timestamp}] [{logLevel}] [{_categoryName}] {message}";
+        
+        if (exception != null)
+        {
+            logEntry += $"\nException: {exception}";
+        }
+        
+        // Escribir a archivo personalizado
+        File.AppendAllText("custom.log", logEntry + Environment.NewLine);
+    }
+}
+
+public class CustomLoggerProvider : ILoggerProvider
+{
+    private readonly IExternalScopeProvider _scopeProvider = new LoggerExternalScopeProvider();
+    
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new CustomLogger(categoryName, _scopeProvider);
+    }
+    
+    public void Dispose() { }
+}
+
+// Configuración del logger personalizado
+public static class CustomLoggerExtensions
+{
+    public static ILoggingBuilder AddCustomLogger(this ILoggingBuilder builder)
+    {
+        builder.AddProvider(new CustomLoggerProvider());
+        return builder;
+    }
+}
+```
+
+### Performance y Optimización
+
+#### 1. Performance Counters
+
+**Ejemplo de Monitoreo de Performance**:
+```csharp
+using System.Diagnostics;
+
+public class PerformanceExample
+{
+    public void MonitorPerformance()
+    {
+        // Contadores de performance
+        var process = Process.GetCurrentProcess();
+        
+        Console.WriteLine($"Process ID: {process.Id}");
+        Console.WriteLine($"Working Set: {process.WorkingSet64 / 1024 / 1024} MB");
+        Console.WriteLine($"Private Memory: {process.PrivateMemorySize64 / 1024 / 1024} MB");
+        Console.WriteLine($"Virtual Memory: {process.VirtualMemorySize64 / 1024 / 1024} MB");
+        Console.WriteLine($"CPU Time: {process.TotalProcessorTime}");
+        
+        // Medir tiempo de ejecución
+        var stopwatch = Stopwatch.StartNew();
+        
+        // Operación a medir
+        PerformOperation();
+        
+        stopwatch.Stop();
+        Console.WriteLine($"Operation took: {stopwatch.ElapsedMilliseconds}ms");
+    }
+    
+    private void PerformOperation()
+    {
+        // Simular trabajo
+        Thread.Sleep(100);
+    }
+}
+```
+
+#### 2. Memory Management
+
+**Ejemplo de Gestión de Memoria**:
+```csharp
+public class MemoryManagementExample
+{
+    public void DemonstrateMemoryManagement()
+    {
+        // Información de memoria
+        var totalMemory = GC.GetTotalMemory(false);
+        var maxGeneration = GC.MaxGeneration;
+        
+        Console.WriteLine($"Total Memory: {totalMemory / 1024 / 1024} MB");
+        Console.WriteLine($"Max Generation: {maxGeneration}");
+        
+        // Forzar garbage collection (solo para demostración)
+        var beforeGC = GC.GetTotalMemory(false);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        var afterGC = GC.GetTotalMemory(false);
+        
+        Console.WriteLine($"Memory before GC: {beforeGC / 1024 / 1024} MB");
+        Console.WriteLine($"Memory after GC: {afterGC / 1024 / 1024} MB");
+        Console.WriteLine($"Freed: {(beforeGC - afterGC) / 1024 / 1024} MB");
+        
+        // Suscribirse a eventos del GC
+        GC.RegisterForFullGCNotification(10, 10);
+        
+        // Verificar si hay notificación de GC
+        if (GC.WaitForFullGCApproach(1000) == GCNotificationStatus.Succeeded)
+        {
+            Console.WriteLine("Full GC is approaching");
+        }
+    }
+}
+```
+
+### Conclusión
+
+.NET Core proporciona una arquitectura moderna y eficiente para el desarrollo de aplicaciones:
+
+**Ventajas Principales**:
+- **Multiplataforma**: Ejecuta en Windows, macOS y Linux
+- **Modular**: Solo incluye lo que necesitas
+- **Alto Rendimiento**: Optimizado para velocidad
+- **Moderno**: Soporte para las últimas tecnologías
+- **Open Source**: Transparencia y comunidad activa
+
+**Casos de Uso**:
+- **Microservicios**: Arquitectura distribuida
+- **APIs Web**: RESTful APIs con ASP.NET Core
+- **Aplicaciones de Consola**: Herramientas y servicios
+- **Contenedores**: Docker y Kubernetes
+- **Cloud Native**: Aplicaciones nativas en la nube
+
+**Próximos Pasos**:
+- Explorar ASP.NET Core para desarrollo web
+- Aprender sobre Entity Framework Core
+- Experimentar con Blazor
+- Investigar .NET MAUI para aplicaciones multiplataforma
+- Profundizar en patrones de microservicios

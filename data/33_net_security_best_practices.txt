@@ -1,0 +1,781 @@
+# Seguridad en .NET: Mejores Prácticas
+
+## Introducción a la Seguridad en .NET
+
+La seguridad es un aspecto crítico en el desarrollo de aplicaciones modernas. .NET proporciona un conjunto completo de herramientas y bibliotecas para implementar seguridad robusta en aplicaciones.
+
+### Conceptos Fundamentales de Seguridad
+
+#### 1. Principios de Seguridad
+
+**Definición**: Los principios de seguridad fundamentales que deben aplicarse en todas las aplicaciones.
+
+**Principios Clave**:
+- **Defense in Depth**: Múltiples capas de seguridad
+- **Principle of Least Privilege**: Mínimos privilegios necesarios
+- **Fail Securely**: Fallar de manera segura
+- **Secure by Default**: Seguro por defecto
+- **Security through Obscurity**: No confiar solo en la ocultación
+
+**Ejemplo de Implementación**:
+```csharp
+public class SecurityPrinciplesExample
+{
+    // Defense in Depth - Múltiples capas de validación
+    public async Task<bool> ProcessUserRequestAsync(UserRequest request)
+    {
+        // Capa 1: Validación de entrada
+        if (!ValidateInput(request))
+        {
+            _logger.LogWarning("Invalid input detected for user {UserId}", request.UserId);
+            return false;
+        }
+        
+        // Capa 2: Autenticación
+        if (!await AuthenticateUserAsync(request.UserId, request.Token))
+        {
+            _logger.LogWarning("Authentication failed for user {UserId}", request.UserId);
+            return false;
+        }
+        
+        // Capa 3: Autorización
+        if (!await AuthorizeUserAsync(request.UserId, request.Action))
+        {
+            _logger.LogWarning("Authorization failed for user {UserId} action {Action}", 
+                request.UserId, request.Action);
+            return false;
+        }
+        
+        // Capa 4: Validación de negocio
+        if (!ValidateBusinessRules(request))
+        {
+            _logger.LogWarning("Business rule validation failed for user {UserId}", request.UserId);
+            return false;
+        }
+        
+        // Procesar la solicitud
+        return await ProcessRequestAsync(request);
+    }
+    
+    // Principle of Least Privilege - Mínimos privilegios
+    public async Task<bool> ExecuteWithMinimalPrivilegesAsync(Func<Task> operation)
+    {
+        var originalIdentity = Thread.CurrentPrincipal;
+        
+        try
+        {
+            // Cambiar a identidad con privilegios mínimos
+            Thread.CurrentPrincipal = new GenericPrincipal(
+                new GenericIdentity("minimal-user"), 
+                new string[] { "read-only" });
+            
+            await operation();
+            return true;
+        }
+        finally
+        {
+            // Restaurar identidad original
+            Thread.CurrentPrincipal = originalIdentity;
+        }
+    }
+    
+    // Fail Securely - Fallar de manera segura
+    public async Task<string> GetSensitiveDataAsync(int userId)
+    {
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            
+            if (user == null)
+            {
+                // Fallar de manera segura - no revelar información
+                throw new UnauthorizedAccessException("Access denied");
+            }
+            
+            // Validar permisos antes de devolver datos
+            if (!await HasPermissionAsync(userId, "read-sensitive-data"))
+            {
+                throw new UnauthorizedAccessException("Access denied");
+            }
+            
+            return user.SensitiveData;
+        }
+        catch (Exception ex)
+        {
+            // Log del error sin revelar detalles sensibles
+            _logger.LogError(ex, "Error accessing sensitive data for user {UserId}", userId);
+            
+            // Fallar de manera segura
+            throw new UnauthorizedAccessException("Access denied");
+        }
+    }
+}
+```
+
+### Autenticación y Autorización
+
+#### 1. JWT Authentication
+
+**Implementación de JWT**:
+```csharp
+public class JwtAuthenticationService
+{
+    private readonly JwtSettings _jwtSettings;
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<JwtAuthenticationService> _logger;
+    
+    public JwtAuthenticationService(
+        IOptions<JwtSettings> jwtSettings,
+        IUserRepository userRepository,
+        ILogger<JwtAuthenticationService> logger)
+    {
+        _jwtSettings = jwtSettings.Value;
+        _userRepository = userRepository;
+        _logger = logger;
+    }
+    
+    public async Task<AuthenticationResult> AuthenticateAsync(LoginRequest request)
+    {
+        try
+        {
+            // Validar entrada
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            {
+                return AuthenticationResult.Failure("Invalid credentials");
+            }
+            
+            // Buscar usuario
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
+            if (user == null)
+            {
+                _logger.LogWarning("Login attempt with non-existent username: {Username}", request.Username);
+                return AuthenticationResult.Failure("Invalid credentials");
+            }
+            
+            // Verificar contraseña
+            if (!VerifyPassword(request.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Failed login attempt for user: {Username}", request.Username);
+                return AuthenticationResult.Failure("Invalid credentials");
+            }
+            
+            // Verificar si la cuenta está activa
+            if (!user.IsActive)
+            {
+                _logger.LogWarning("Login attempt for inactive user: {Username}", request.Username);
+                return AuthenticationResult.Failure("Account is disabled");
+            }
+            
+            // Generar token JWT
+            var token = GenerateJwtToken(user);
+            
+            // Registrar login exitoso
+            _logger.LogInformation("Successful login for user: {Username}", request.Username);
+            
+            return AuthenticationResult.Success(token, user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during authentication for user: {Username}", request.Username);
+            return AuthenticationResult.Failure("Authentication error");
+        }
+    }
+    
+    private string GenerateJwtToken(User user)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("user_id", user.Id.ToString()),
+            new Claim("username", user.Username)
+        };
+        
+        // Agregar roles
+        foreach (var role in user.Roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
+            notBefore: DateTime.UtcNow,
+            issuedAt: DateTime.UtcNow,
+            signingCredentials: credentials
+        );
+        
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+    
+    private bool VerifyPassword(string password, string passwordHash)
+    {
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public class AuthenticationResult
+{
+    public bool IsSuccess { get; set; }
+    public string Token { get; set; }
+    public User User { get; set; }
+    public string ErrorMessage { get; set; }
+    
+    public static AuthenticationResult Success(string token, User user)
+    {
+        return new AuthenticationResult
+        {
+            IsSuccess = true,
+            Token = token,
+            User = user
+        };
+    }
+    
+    public static AuthenticationResult Failure(string errorMessage)
+    {
+        return new AuthenticationResult
+        {
+            IsSuccess = false,
+            ErrorMessage = errorMessage
+        };
+    }
+}
+```
+
+#### 2. Authorization Policies
+
+**Implementación de Políticas de Autorización**:
+```csharp
+public class AuthorizationService
+{
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<AuthorizationService> _logger;
+    
+    public AuthorizationService(IUserRepository userRepository, ILogger<AuthorizationService> logger)
+    {
+        _userRepository = userRepository;
+        _logger = logger;
+    }
+    
+    public async Task<bool> AuthorizeAsync(int userId, string resource, string action)
+    {
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                return false;
+            }
+            
+            // Verificar permisos basados en roles
+            if (await HasRolePermissionAsync(user, resource, action))
+            {
+                return true;
+            }
+            
+            // Verificar permisos específicos del usuario
+            if (await HasUserPermissionAsync(user, resource, action))
+            {
+                return true;
+            }
+            
+            _logger.LogWarning("Authorization denied for user {UserId} on resource {Resource} action {Action}", 
+                userId, resource, action);
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during authorization for user {UserId}", userId);
+            return false; // Fail securely
+        }
+    }
+    
+    private async Task<bool> HasRolePermissionAsync(User user, string resource, string action)
+    {
+        foreach (var role in user.Roles)
+        {
+            var permissions = await GetRolePermissionsAsync(role);
+            if (permissions.Any(p => p.Resource == resource && p.Action == action))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private async Task<bool> HasUserPermissionAsync(User user, string resource, string action)
+    {
+        var userPermissions = await GetUserPermissionsAsync(user.Id);
+        return userPermissions.Any(p => p.Resource == resource && p.Action == action);
+    }
+}
+
+// Configuración de políticas en Program.cs
+public static class AuthorizationPolicies
+{
+    public static void ConfigureAuthorization(AuthorizationOptions options)
+    {
+        // Política para administradores
+        options.AddPolicy("AdminOnly", policy =>
+            policy.RequireRole("Admin"));
+        
+        // Política para usuarios autenticados
+        options.AddPolicy("AuthenticatedUsers", policy =>
+            policy.RequireAuthenticatedUser());
+        
+        // Política para edad mínima
+        options.AddPolicy("MinimumAge", policy =>
+            policy.RequireAssertion(context =>
+            {
+                var user = context.User;
+                var ageClaim = user.FindFirst("Age");
+                return ageClaim != null && int.TryParse(ageClaim.Value, out int age) && age >= 18;
+            }));
+        
+        // Política para recursos específicos
+        options.AddPolicy("ResourceAccess", policy =>
+            policy.RequireAssertion(async context =>
+            {
+                var resource = context.Resource as string;
+                var action = context.Requirements.OfType<ResourceRequirement>().FirstOrDefault()?.Action;
+                
+                if (string.IsNullOrEmpty(resource) || string.IsNullOrEmpty(action))
+                {
+                    return false;
+                }
+                
+                var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+                {
+                    return false;
+                }
+                
+                var authService = context.Resource as IAuthorizationService;
+                return await authService.AuthorizeAsync(id, resource, action);
+            }));
+    }
+}
+```
+
+### Validación y Sanitización de Entrada
+
+#### 1. Validación de Entrada
+
+**Implementación de Validación**:
+```csharp
+public class InputValidationService
+{
+    private readonly ILogger<InputValidationService> _logger;
+    
+    public InputValidationService(ILogger<InputValidationService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public ValidationResult ValidateUserInput(CreateUserRequest request)
+    {
+        var errors = new List<string>();
+        
+        // Validar nombre de usuario
+        if (string.IsNullOrWhiteSpace(request.Username))
+        {
+            errors.Add("Username is required");
+        }
+        else if (request.Username.Length < 3 || request.Username.Length > 50)
+        {
+            errors.Add("Username must be between 3 and 50 characters");
+        }
+        else if (!Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]+$"))
+        {
+            errors.Add("Username can only contain letters, numbers, and underscores");
+        }
+        
+        // Validar email
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            errors.Add("Email is required");
+        }
+        else if (!IsValidEmail(request.Email))
+        {
+            errors.Add("Invalid email format");
+        }
+        
+        // Validar contraseña
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            errors.Add("Password is required");
+        }
+        else if (!IsStrongPassword(request.Password))
+        {
+            errors.Add("Password does not meet security requirements");
+        }
+        
+        // Validar edad
+        if (request.Age < 13 || request.Age > 120)
+        {
+            errors.Add("Age must be between 13 and 120");
+        }
+        
+        if (errors.Any())
+        {
+            _logger.LogWarning("Input validation failed: {Errors}", string.Join(", ", errors));
+            return ValidationResult.Failure(errors);
+        }
+        
+        return ValidationResult.Success();
+    }
+    
+    public string SanitizeInput(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        
+        // Remover caracteres peligrosos
+        var sanitized = HttpUtility.HtmlEncode(input);
+        
+        // Remover scripts
+        sanitized = Regex.Replace(sanitized, @"<script[^>]*>.*?</script>", "", RegexOptions.IgnoreCase);
+        
+        // Remover otros tags HTML peligrosos
+        sanitized = Regex.Replace(sanitized, @"<(iframe|object|embed)[^>]*>.*?</\1>", "", RegexOptions.IgnoreCase);
+        
+        return sanitized;
+    }
+    
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    private bool IsStrongPassword(string password)
+    {
+        // Al menos 8 caracteres
+        if (password.Length < 8)
+            return false;
+        
+        // Al menos una letra mayúscula
+        if (!Regex.IsMatch(password, @"[A-Z]"))
+            return false;
+        
+        // Al menos una letra minúscula
+        if (!Regex.IsMatch(password, @"[a-z]"))
+            return false;
+        
+        // Al menos un número
+        if (!Regex.IsMatch(password, @"[0-9]"))
+            return false;
+        
+        // Al menos un carácter especial
+        if (!Regex.IsMatch(password, @"[^A-Za-z0-9]"))
+            return false;
+        
+        return true;
+    }
+}
+
+public class ValidationResult
+{
+    public bool IsValid { get; set; }
+    public List<string> Errors { get; set; } = new List<string>();
+    
+    public static ValidationResult Success()
+    {
+        return new ValidationResult { IsValid = true };
+    }
+    
+    public static ValidationResult Failure(List<string> errors)
+    {
+        return new ValidationResult { IsValid = false, Errors = errors };
+    }
+}
+```
+
+#### 2. Protección contra Ataques Comunes
+
+**Implementación de Protecciones**:
+```csharp
+public class SecurityProtectionService
+{
+    private readonly ILogger<SecurityProtectionService> _logger;
+    private readonly IMemoryCache _cache;
+    
+    public SecurityProtectionService(ILogger<SecurityProtectionService> logger, IMemoryCache cache)
+    {
+        _logger = logger;
+        _cache = cache;
+    }
+    
+    // Protección contra SQL Injection
+    public async Task<IEnumerable<User>> GetUsersByRoleAsync(string role)
+    {
+        // Usar parámetros para prevenir SQL injection
+        var sql = "SELECT * FROM Users WHERE Role = @Role AND IsActive = 1";
+        
+        using var connection = new SqlConnection(_connectionString);
+        return await connection.QueryAsync<User>(sql, new { Role = role });
+    }
+    
+    // Protección contra XSS
+    public string SanitizeHtmlContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return content;
+        }
+        
+        // Usar AntiXSS library o similar
+        var sanitizer = new HtmlSanitizer();
+        sanitizer.AllowedTags.Add("div");
+        sanitizer.AllowedTags.Add("span");
+        sanitizer.AllowedTags.Add("p");
+        sanitizer.AllowedTags.Add("br");
+        
+        return sanitizer.Sanitize(content);
+    }
+    
+    // Protección contra CSRF
+    public string GenerateCsrfToken()
+    {
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        return token;
+    }
+    
+    public bool ValidateCsrfToken(string token, string sessionToken)
+    {
+        return !string.IsNullOrEmpty(token) && 
+               !string.IsNullOrEmpty(sessionToken) && 
+               token == sessionToken;
+    }
+    
+    // Protección contra Rate Limiting
+    public async Task<bool> IsRateLimitedAsync(string key, int maxRequests, TimeSpan window)
+    {
+        var cacheKey = $"rate_limit:{key}";
+        
+        if (_cache.TryGetValue(cacheKey, out int requestCount))
+        {
+            if (requestCount >= maxRequests)
+            {
+                _logger.LogWarning("Rate limit exceeded for key: {Key}", key);
+                return true;
+            }
+            
+            _cache.Set(cacheKey, requestCount + 1, window);
+        }
+        else
+        {
+            _cache.Set(cacheKey, 1, window);
+        }
+        
+        return false;
+    }
+    
+    // Protección contra Brute Force
+    public async Task<bool> IsAccountLockedAsync(string username)
+    {
+        var lockKey = $"account_lock:{username}";
+        
+        if (_cache.TryGetValue(lockKey, out DateTime lockUntil))
+        {
+            if (DateTime.UtcNow < lockUntil)
+            {
+                return true;
+            }
+            else
+            {
+                _cache.Remove(lockKey);
+            }
+        }
+        
+        return false;
+    }
+    
+    public async Task LockAccountAsync(string username, TimeSpan duration)
+    {
+        var lockKey = $"account_lock:{username}";
+        var lockUntil = DateTime.UtcNow.Add(duration);
+        
+        _cache.Set(lockKey, lockUntil, duration);
+        
+        _logger.LogWarning("Account locked for user: {Username} until {LockUntil}", username, lockUntil);
+    }
+}
+```
+
+### Criptografía y Hashing
+
+#### 1. Hashing de Contraseñas
+
+**Implementación de Hashing Seguro**:
+```csharp
+public class PasswordService
+{
+    private readonly ILogger<PasswordService> _logger;
+    
+    public PasswordService(ILogger<PasswordService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public string HashPassword(string password)
+    {
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new ArgumentException("Password cannot be null or empty", nameof(password));
+        }
+        
+        // Usar BCrypt con work factor de 12 (recomendado)
+        var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
+        var hash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+        
+        return hash;
+    }
+    
+    public bool VerifyPassword(string password, string hash)
+    {
+        if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(hash))
+        {
+            return false;
+        }
+        
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(password, hash);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying password");
+            return false;
+        }
+    }
+    
+    public bool IsPasswordCompromised(string password)
+    {
+        // Verificar contra listas de contraseñas comprometidas
+        var commonPasswords = new[]
+        {
+            "password", "123456", "qwerty", "admin", "letmein"
+        };
+        
+        return commonPasswords.Contains(password.ToLower());
+    }
+}
+```
+
+#### 2. Encriptación de Datos Sensibles
+
+**Implementación de Encriptación**:
+```csharp
+public class EncryptionService
+{
+    private readonly byte[] _key;
+    private readonly byte[] _iv;
+    
+    public EncryptionService(IConfiguration configuration)
+    {
+        var keyString = configuration["Encryption:Key"];
+        var ivString = configuration["Encryption:IV"];
+        
+        if (string.IsNullOrEmpty(keyString) || string.IsNullOrEmpty(ivString))
+        {
+            throw new InvalidOperationException("Encryption key and IV must be configured");
+        }
+        
+        _key = Convert.FromBase64String(keyString);
+        _iv = Convert.FromBase64String(ivString);
+    }
+    
+    public string Encrypt(string plainText)
+    {
+        if (string.IsNullOrEmpty(plainText))
+        {
+            return plainText;
+        }
+        
+        using var aes = Aes.Create();
+        aes.Key = _key;
+        aes.IV = _iv;
+        
+        using var encryptor = aes.CreateEncryptor();
+        using var msEncrypt = new MemoryStream();
+        using var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write);
+        using var swEncrypt = new StreamWriter(csEncrypt);
+        
+        swEncrypt.Write(plainText);
+        swEncrypt.Flush();
+        csEncrypt.FlushFinalBlock();
+        
+        return Convert.ToBase64String(msEncrypt.ToArray());
+    }
+    
+    public string Decrypt(string cipherText)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+        {
+            return cipherText;
+        }
+        
+        using var aes = Aes.Create();
+        aes.Key = _key;
+        aes.IV = _iv;
+        
+        using var decryptor = aes.CreateDecryptor();
+        using var msDecrypt = new MemoryStream(Convert.FromBase64String(cipherText));
+        using var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
+        using var srDecrypt = new StreamReader(csDecrypt);
+        
+        return srDecrypt.ReadToEnd();
+    }
+}
+```
+
+### Conclusión
+
+La seguridad en .NET es fundamental y debe implementarse en múltiples capas:
+
+**Principios Clave**:
+- **Defense in Depth**: Múltiples capas de protección
+- **Principle of Least Privilege**: Mínimos privilegios necesarios
+- **Fail Securely**: Fallar de manera segura
+- **Input Validation**: Validar y sanitizar todas las entradas
+- **Secure Communication**: Usar HTTPS y encriptación
+
+**Mejores Prácticas**:
+- **Autenticación Robusta**: JWT, OAuth, MFA
+- **Autorización Granular**: Políticas y permisos específicos
+- **Validación de Entrada**: Sanitización y validación
+- **Criptografía**: Hashing seguro y encriptación
+- **Logging de Seguridad**: Auditoría y monitoreo
+
+**Próximos Pasos**:
+- Explorar Identity Server
+- Aprender sobre OAuth 2.0 y OpenID Connect
+- Investigar Azure Key Vault
+- Profundizar en security headers
+- Experimentar con penetration testing

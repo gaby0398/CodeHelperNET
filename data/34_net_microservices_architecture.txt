@@ -1,0 +1,83 @@
+# Arquitectura de Microservicios en .NET
+
+## Introducción
+La arquitectura de microservicios es un enfoque para desarrollar aplicaciones como un conjunto de pequeños servicios independientes, cada uno ejecutándose en su propio proceso y comunicándose mediante APIs ligeras.
+
+### Características Clave
+- Despliegue independiente
+- Escalabilidad granular
+- Resiliencia y tolerancia a fallos
+- Tecnología heterogénea
+
+### Implementación en .NET
+
+#### 1. Creación de un Microservicio Básico
+```csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddControllers();
+        var app = builder.Build();
+        app.MapControllers();
+        app.Run();
+    }
+}
+```
+
+#### 2. Comunicación entre Microservicios
+- HTTP/REST
+- gRPC
+- Mensajería (RabbitMQ, Azure Service Bus)
+
+#### 3. Ejemplo de Comunicación HTTP
+```csharp
+public class ProductService
+{
+    private readonly HttpClient _httpClient;
+    public ProductService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+    public async Task<Product> GetProductAsync(int id)
+    {
+        return await _httpClient.GetFromJsonAsync<Product>($"/api/products/{id}");
+    }
+}
+```
+
+#### 4. Ejemplo de Comunicación con Mensajería
+```csharp
+// Usando MassTransit y RabbitMQ
+public class OrderCreatedConsumer : IConsumer<OrderCreated>
+{
+    public Task Consume(ConsumeContext<OrderCreated> context)
+    {
+        var order = context.Message;
+        // Procesar la orden
+        return Task.CompletedTask;
+    }
+}
+```
+
+#### 5. Service Discovery y API Gateway
+- Ocelot como API Gateway
+- Consul/Eureka para descubrimiento de servicios
+
+#### 6. Resiliencia
+- Polly para retries, circuit breaker y fallback
+
+#### 7. Observabilidad
+- Health checks
+- Logging distribuido
+- Tracing (OpenTelemetry)
+
+### Buenas Prácticas
+- Diseñar servicios pequeños y autónomos
+- Usar contratos claros (OpenAPI, Protobuf)
+- Automatizar despliegues (CI/CD)
+- Monitorear y loggear cada microservicio
+
+### Recursos
+- [Documentación oficial de microservicios en .NET](https://docs.microsoft.com/dotnet/architecture/microservices/)

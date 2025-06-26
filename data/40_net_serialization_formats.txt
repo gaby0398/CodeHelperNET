@@ -1,0 +1,270 @@
+# Serialización y Formatos de Datos en .NET
+
+## Introducción
+La serialización es el proceso de convertir objetos en memoria a un formato que puede ser almacenado o transmitido. .NET soporta múltiples formatos de serialización.
+
+### 1. JSON Serialization
+```csharp
+using System.Text.Json;
+
+// Serialización básica
+var person = new Person { Name = "John", Age = 30 };
+string json = JsonSerializer.Serialize(person);
+
+// Deserialización
+var deserializedPerson = JsonSerializer.Deserialize<Person>(json);
+
+// Configuración personalizada
+var options = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    WriteIndented = true
+};
+string formattedJson = JsonSerializer.Serialize(person, options);
+```
+
+### 2. XML Serialization
+```csharp
+using System.Xml.Serialization;
+
+// Serialización XML
+var serializer = new XmlSerializer(typeof(Person));
+using var writer = new StringWriter();
+serializer.Serialize(writer, person);
+string xml = writer.ToString();
+
+// Deserialización XML
+using var reader = new StringReader(xml);
+var deserializedPerson = (Person)serializer.Deserialize(reader);
+```
+
+### 3. Protocol Buffers (Protobuf)
+```csharp
+using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
+
+// Definición del mensaje
+[ProtoContract]
+public class PersonProto
+{
+    [ProtoMember(1)]
+    public string Name { get; set; }
+    
+    [ProtoMember(2)]
+    public int Age { get; set; }
+}
+
+// Serialización
+var personProto = new PersonProto { Name = "John", Age = 30 };
+using var stream = new MemoryStream();
+Serializer.Serialize(stream, personProto);
+byte[] bytes = stream.ToArray();
+
+// Deserialización
+using var readStream = new MemoryStream(bytes);
+var deserializedPerson = Serializer.Deserialize<PersonProto>(readStream);
+```
+
+### 4. MessagePack
+```csharp
+using MessagePack;
+
+[MessagePackObject]
+public class Person
+{
+    [Key(0)]
+    public string Name { get; set; }
+    
+    [Key(1)]
+    public int Age { get; set; }
+}
+
+// Serialización
+var person = new Person { Name = "John", Age = 30 };
+byte[] bytes = MessagePackSerializer.Serialize(person);
+
+// Deserialización
+var deserializedPerson = MessagePackSerializer.Deserialize<Person>(bytes);
+```
+
+### 5. Binary Serialization
+```csharp
+using System.Runtime.Serialization.Formatters.Binary;
+
+// Serialización binaria
+var formatter = new BinaryFormatter();
+using var stream = new MemoryStream();
+formatter.Serialize(stream, person);
+byte[] bytes = stream.ToArray();
+
+// Deserialización binaria
+using var readStream = new MemoryStream(bytes);
+var deserializedPerson = (Person)formatter.Deserialize(readStream);
+```
+
+### 6. Custom Serialization
+```csharp
+public class CustomSerializer
+{
+    public static string SerializeToCustomFormat(Person person)
+    {
+        return $"{person.Name}|{person.Age}|{person.Email}";
+    }
+    
+    public static Person DeserializeFromCustomFormat(string data)
+    {
+        var parts = data.Split('|');
+        return new Person
+        {
+            Name = parts[0],
+            Age = int.Parse(parts[1]),
+            Email = parts[2]
+        };
+    }
+}
+```
+
+### 7. Performance Comparison
+```csharp
+public class SerializationBenchmark
+{
+    public void ComparePerformance()
+    {
+        var person = new Person { Name = "John Doe", Age = 30, Email = "john@example.com" };
+        
+        // JSON
+        var jsonStopwatch = Stopwatch.StartNew();
+        var json = JsonSerializer.Serialize(person);
+        jsonStopwatch.Stop();
+        
+        // XML
+        var xmlStopwatch = Stopwatch.StartNew();
+        var xmlSerializer = new XmlSerializer(typeof(Person));
+        using var writer = new StringWriter();
+        xmlSerializer.Serialize(writer, person);
+        var xml = writer.ToString();
+        xmlStopwatch.Stop();
+        
+        // Protobuf
+        var protobufStopwatch = Stopwatch.StartNew();
+        var personProto = new PersonProto { Name = person.Name, Age = person.Age };
+        using var stream = new MemoryStream();
+        Serializer.Serialize(stream, personProto);
+        var protobufBytes = stream.ToArray();
+        protobufStopwatch.Stop();
+        
+        Console.WriteLine($"JSON: {jsonStopwatch.ElapsedMilliseconds}ms, Size: {json.Length}");
+        Console.WriteLine($"XML: {xmlStopwatch.ElapsedMilliseconds}ms, Size: {xml.Length}");
+        Console.WriteLine($"Protobuf: {protobufStopwatch.ElapsedMilliseconds}ms, Size: {protobufBytes.Length}");
+    }
+}
+```
+
+### 8. Async Serialization
+```csharp
+public class AsyncSerializationExample
+{
+    public async Task<string> SerializeAsync(Person person)
+    {
+        using var stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync(stream, person);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        return await reader.ReadToEndAsync();
+    }
+    
+    public async Task<Person> DeserializeAsync(string json)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return await JsonSerializer.DeserializeAsync<Person>(stream);
+    }
+}
+```
+
+### 9. Serialization with Compression
+```csharp
+public class CompressedSerialization
+{
+    public byte[] SerializeWithCompression(Person person)
+    {
+        var json = JsonSerializer.Serialize(person);
+        var bytes = Encoding.UTF8.GetBytes(json);
+        
+        using var outputStream = new MemoryStream();
+        using var gzipStream = new GZipStream(outputStream, CompressionMode.Compress);
+        gzipStream.Write(bytes, 0, bytes.Length);
+        gzipStream.Flush();
+        
+        return outputStream.ToArray();
+    }
+    
+    public Person DeserializeWithCompression(byte[] compressedData)
+    {
+        using var inputStream = new MemoryStream(compressedData);
+        using var gzipStream = new GZipStream(inputStream, CompressionMode.Decompress);
+        using var outputStream = new MemoryStream();
+        gzipStream.CopyTo(outputStream);
+        
+        var json = Encoding.UTF8.GetString(outputStream.ToArray());
+        return JsonSerializer.Deserialize<Person>(json);
+    }
+}
+```
+
+### 10. Serialization Best Practices
+```csharp
+public class SerializationBestPractices
+{
+    // 1. Use DTOs for serialization
+    public class PersonDto
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public string Email { get; set; }
+        
+        // Exclude sensitive data
+        [JsonIgnore]
+        public string Password { get; set; }
+    }
+    
+    // 2. Handle circular references
+    public class CircularReferenceExample
+    {
+        public static string SerializeWithCircularReferenceHandling(Person person)
+        {
+            var options = new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.IgnoreCycles
+            };
+            return JsonSerializer.Serialize(person, options);
+        }
+    }
+    
+    // 3. Custom converters
+    public class DateTimeConverter : JsonConverter<DateTime>
+    {
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            return DateTime.Parse(reader.GetString());
+        }
+        
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+    }
+}
+```
+
+### Conclusión
+La elección del formato de serialización depende de:
+- Performance requirements
+- Interoperability needs
+- Data size constraints
+- Security requirements
+- Human readability needs
+
+### Recursos
+- [System.Text.Json Documentation](https://docs.microsoft.com/dotnet/standard/serialization/system-text-json-overview)
+- [Protocol Buffers](https://developers.google.com/protocol-buffers)
+- [MessagePack](https://msgpack.org/)

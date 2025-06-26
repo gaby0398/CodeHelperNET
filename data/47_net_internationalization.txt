@@ -1,0 +1,533 @@
+# Internacionalización y Localización en .NET
+
+## Introducción
+La internacionalización (i18n) y localización (l10n) son fundamentales para aplicaciones globales. .NET proporciona herramientas robustas para manejar múltiples idiomas y culturas.
+
+### 1. Configuración de Recursos
+```csharp
+// Resources/SharedResource.resx (Default/English)
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Welcome" xml:space="preserve">
+    <value>Welcome to our application</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>User with ID {0} was not found</value>
+  </data>
+</root>
+
+// Resources/SharedResource.es.resx (Spanish)
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Welcome" xml:space="preserve">
+    <value>Bienvenido a nuestra aplicación</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>Usuario con ID {0} no fue encontrado</value>
+  </data>
+</root>
+
+// Resources/SharedResource.fr.resx (French)
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Welcome" xml:space="preserve">
+    <value>Bienvenue dans notre application</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>Utilisateur avec ID {0} n'a pas été trouvé</value>
+  </data>
+</root>
+```
+
+### 2. Uso de Recursos en Código
+```csharp
+public class LocalizationService
+{
+    private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ILogger<LocalizationService> _logger;
+    
+    public LocalizationService(
+        IStringLocalizer<SharedResource> localizer,
+        ILogger<LocalizationService> logger)
+    {
+        _localizer = localizer;
+        _logger = logger;
+    }
+    
+    public string GetWelcomeMessage()
+    {
+        return _localizer["Welcome"];
+    }
+    
+    public string GetUserNotFoundMessage(int userId)
+    {
+        return _localizer["UserNotFound", userId];
+    }
+    
+    public string GetLocalizedString(string key, params object[] arguments)
+    {
+        return _localizer[key, arguments];
+    }
+}
+
+// Uso en controladores
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly IStringLocalizer<SharedResource> _localizer;
+    
+    public UsersController(
+        IUserService userService,
+        IStringLocalizer<SharedResource> localizer)
+    {
+        _userService = userService;
+        _localizer = localizer;
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetUser(int id)
+    {
+        var user = await _userService.GetUserAsync(id);
+        
+        if (user == null)
+        {
+            return NotFound(_localizer["UserNotFound", id]);
+        }
+        
+        return Ok(user);
+    }
+    
+    [HttpPost]
+    public async Task<IActionResult> CreateUser(CreateUserRequest request)
+    {
+        try
+        {
+            var user = await _userService.CreateUserAsync(request);
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(_localizer["ValidationError", ex.Message]);
+        }
+    }
+}
+```
+
+### 3. Configuración de Culturas
+```csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // Configurar localización
+        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+        
+        builder.Services.Configure<RequestLocalizationOptions>(options =>
+        {
+            var supportedCultures = new[]
+            {
+                new CultureInfo("en"),
+                new CultureInfo("es"),
+                new CultureInfo("fr"),
+                new CultureInfo("de"),
+                new CultureInfo("ja"),
+                new CultureInfo("zh-CN")
+            };
+            
+            options.SupportedCultures = supportedCultures;
+            options.SupportedUICultures = supportedCultures;
+            options.DefaultRequestCulture = new RequestCulture("en");
+            
+            // Detectar cultura desde header Accept-Language
+            options.RequestCultureProviders = new List<IRequestCultureProvider>
+            {
+                new AcceptLanguageHeaderRequestCultureProvider(),
+                new CookieRequestCultureProvider(),
+                new QueryStringRequestCultureProvider()
+            };
+        });
+        
+        var app = builder.Build();
+        
+        app.UseRequestLocalization();
+        
+        app.Run();
+    }
+}
+```
+
+### 4. Formateo de Fechas y Números
+```csharp
+public class DateTimeFormattingService
+{
+    private readonly ILogger<DateTimeFormattingService> _logger;
+    
+    public DateTimeFormattingService(ILogger<DateTimeFormattingService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public string FormatDate(DateTime date, string cultureName = "en")
+    {
+        var culture = new CultureInfo(cultureName);
+        return date.ToString("D", culture);
+    }
+    
+    public string FormatDateTime(DateTime dateTime, string cultureName = "en")
+    {
+        var culture = new CultureInfo(cultureName);
+        return dateTime.ToString("G", culture);
+    }
+    
+    public string FormatCurrency(decimal amount, string cultureName = "en")
+    {
+        var culture = new CultureInfo(cultureName);
+        return amount.ToString("C", culture);
+    }
+    
+    public string FormatNumber(double number, string cultureName = "en")
+    {
+        var culture = new CultureInfo(cultureName);
+        return number.ToString("N", culture);
+    }
+    
+    public string FormatPercentage(double value, string cultureName = "en")
+    {
+        var culture = new CultureInfo(cultureName);
+        return value.ToString("P", culture);
+    }
+}
+
+// Uso
+var formatter = new DateTimeFormattingService(logger);
+
+var date = DateTime.Now;
+Console.WriteLine(formatter.FormatDate(date, "en")); // "Monday, January 15, 2024"
+Console.WriteLine(formatter.FormatDate(date, "es")); // "lunes, 15 de enero de 2024"
+Console.WriteLine(formatter.FormatDate(date, "fr")); // "lundi 15 janvier 2024"
+
+var amount = 1234.56m;
+Console.WriteLine(formatter.FormatCurrency(amount, "en")); // "$1,234.56"
+Console.WriteLine(formatter.FormatCurrency(amount, "es")); // "1.234,56 €"
+Console.WriteLine(formatter.FormatCurrency(amount, "fr")); // "1 234,56 €"
+```
+
+### 5. Validación Localizada
+```csharp
+public class LocalizedValidationAttribute : ValidationAttribute
+{
+    private readonly string _resourceKey;
+    
+    public LocalizedValidationAttribute(string resourceKey)
+    {
+        _resourceKey = resourceKey;
+    }
+    
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        var localizer = validationContext.GetService<IStringLocalizer<SharedResource>>();
+        
+        if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
+        {
+            return new ValidationResult(localizer[_resourceKey]);
+        }
+        
+        return ValidationResult.Success;
+    }
+}
+
+public class CreateUserRequest
+{
+    [Required(ErrorMessage = "Name is required")]
+    [LocalizedValidation("NameRequired")]
+    public string Name { get; set; }
+    
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email format")]
+    [LocalizedValidation("EmailRequired")]
+    public string Email { get; set; }
+    
+    [Range(18, 120, ErrorMessage = "Age must be between 18 and 120")]
+    [LocalizedValidation("AgeRange")]
+    public int Age { get; set; }
+}
+
+// Recursos para validación
+// SharedResource.resx
+<data name="NameRequired" xml:space="preserve">
+    <value>Name is required</value>
+</data>
+<data name="EmailRequired" xml:space="preserve">
+    <value>Email is required</value>
+</data>
+<data name="AgeRange" xml:space="preserve">
+    <value>Age must be between 18 and 120</value>
+</data>
+
+// SharedResource.es.resx
+<data name="NameRequired" xml:space="preserve">
+    <value>El nombre es requerido</value>
+</data>
+<data name="EmailRequired" xml:space="preserve">
+    <value>El email es requerido</value>
+</data>
+<data name="AgeRange" xml:space="preserve">
+    <value>La edad debe estar entre 18 y 120 años</value>
+</data>
+```
+
+### 6. Localización en Razor Views
+```csharp
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+@inject IHtmlLocalizer<SharedResource> HtmlLocalizer
+
+@{
+    ViewData["Title"] = Localizer["Welcome"];
+}
+
+<div class="container">
+    <h1>@Localizer["Welcome"]</h1>
+    
+    <form asp-action="Create" method="post">
+        <div class="form-group">
+            <label asp-for="Name">@Localizer["Name"]</label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        
+        <div class="form-group">
+            <label asp-for="Email">@Localizer["Email"]</label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">@Localizer["Save"]</button>
+        <a asp-action="Index" class="btn btn-secondary">@Localizer["Cancel"]</a>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // Mensajes de validación localizados
+        var validationMessages = {
+            required: '@Localizer["FieldRequired"]',
+            email: '@Localizer["InvalidEmail"]',
+            minLength: '@Localizer["MinLength"]',
+            maxLength: '@Localizer["MaxLength"]'
+        };
+    </script>
+}
+```
+
+### 7. Localización en Blazor
+```csharp
+@page "/localization-demo"
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<SharedResource> Localizer
+
+<h3>@Localizer["Welcome"]</h3>
+
+<div class="form-group">
+    <label>@Localizer["Name"]</label>
+    <input @bind="name" class="form-control" />
+</div>
+
+<div class="form-group">
+    <label>@Localizer["Email"]</label>
+    <input @bind="email" class="form-control" />
+</div>
+
+<button @onclick="Save" class="btn btn-primary">@Localizer["Save"]</button>
+
+<div class="mt-3">
+    <p>@Localizer["CurrentCulture"]: @CultureInfo.CurrentCulture.Name</p>
+    <p>@Localizer["CurrentUICulture"]: @CultureInfo.CurrentUICulture.Name</p>
+</div>
+
+@code {
+    private string name = "";
+    private string email = "";
+    
+    private void Save()
+    {
+        // Lógica de guardado
+    }
+}
+
+// Program.cs para Blazor
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[] { "en", "es", "fr" };
+    options.SetDefaultCulture(supportedCultures[0])
+           .AddSupportedCultures(supportedCultures)
+           .AddSupportedUICultures(supportedCultures);
+});
+```
+
+### 8. Detección Automática de Cultura
+```csharp
+public class CultureDetectionMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<CultureDetectionMiddleware> _logger;
+    
+    public CultureDetectionMiddleware(
+        RequestDelegate next,
+        ILogger<CultureDetectionMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var culture = GetCultureFromRequest(context);
+        
+        if (!string.IsNullOrEmpty(culture))
+        {
+            var cultureInfo = new CultureInfo(culture);
+            CultureInfo.CurrentCulture = cultureInfo;
+            CultureInfo.CurrentUICulture = cultureInfo;
+            
+            _logger.LogInformation("Culture set to {Culture}", culture);
+        }
+        
+        await _next(context);
+    }
+    
+    private string GetCultureFromRequest(HttpContext context)
+    {
+        // 1. Verificar cookie
+        var cookieCulture = context.Request.Cookies["culture"];
+        if (!string.IsNullOrEmpty(cookieCulture))
+            return cookieCulture;
+        
+        // 2. Verificar query string
+        var queryCulture = context.Request.Query["culture"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(queryCulture))
+            return queryCulture;
+        
+        // 3. Verificar header Accept-Language
+        var acceptLanguage = context.Request.Headers["Accept-Language"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(acceptLanguage))
+        {
+            var preferredCulture = acceptLanguage.Split(',')[0].Trim();
+            return preferredCulture;
+        }
+        
+        return null;
+    }
+}
+
+// Extensión para registrar el middleware
+public static class CultureDetectionMiddlewareExtensions
+{
+    public static IApplicationBuilder UseCultureDetection(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<CultureDetectionMiddleware>();
+    }
+}
+
+// Uso en Program.cs
+app.UseCultureDetection();
+```
+
+### 9. Gestión de Recursos Dinámicos
+```csharp
+public class DynamicResourceService
+{
+    private readonly IDistributedCache _cache;
+    private readonly ILogger<DynamicResourceService> _logger;
+    
+    public DynamicResourceService(
+        IDistributedCache cache,
+        ILogger<DynamicResourceService> logger)
+    {
+        _cache = cache;
+        _logger = logger;
+    }
+    
+    public async Task<string> GetResourceAsync(string key, string culture)
+    {
+        var cacheKey = $"resource_{culture}_{key}";
+        
+        var cachedValue = await _cache.GetStringAsync(cacheKey);
+        if (!string.IsNullOrEmpty(cachedValue))
+        {
+            return cachedValue;
+        }
+        
+        // Cargar desde base de datos o archivo
+        var value = await LoadResourceFromDatabaseAsync(key, culture);
+        
+        if (!string.IsNullOrEmpty(value))
+        {
+            await _cache.SetStringAsync(cacheKey, value, TimeSpan.FromHours(24));
+        }
+        
+        return value;
+    }
+    
+    public async Task SetResourceAsync(string key, string culture, string value)
+    {
+        // Guardar en base de datos
+        await SaveResourceToDatabaseAsync(key, culture, value);
+        
+        // Actualizar cache
+        var cacheKey = $"resource_{culture}_{key}";
+        await _cache.SetStringAsync(cacheKey, value, TimeSpan.FromHours(24));
+        
+        _logger.LogInformation("Resource updated: {Key} for culture {Culture}", key, culture);
+    }
+    
+    private async Task<string> LoadResourceFromDatabaseAsync(string key, string culture)
+    {
+        // Implementar carga desde base de datos
+        return await Task.FromResult($"Dynamic resource for {key} in {culture}");
+    }
+    
+    private async Task SaveResourceToDatabaseAsync(string key, string culture, string value)
+    {
+        // Implementar guardado en base de datos
+        await Task.CompletedTask;
+    }
+}
+```
+
+### Conclusión
+La internacionalización en .NET proporciona:
+- Soporte completo para múltiples idiomas
+- Formateo automático de fechas y números
+- Validación localizada
+- Detección automática de cultura
+- Recursos dinámicos y caching
+
+### Recursos
+- [Localization Documentation](https://docs.microsoft.com/aspnet/core/fundamentals/localization)
+- [Globalization and Localization](https://docs.microsoft.com/dotnet/standard/globalization-localization/)
+- [Resource Files](https://docs.microsoft.com/dotnet/framework/resources/)

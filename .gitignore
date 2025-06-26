@@ -1,2 +1,3 @@
 /venv/
-/codehelper-env/
+/codehelper_env/
+/__pycache__/

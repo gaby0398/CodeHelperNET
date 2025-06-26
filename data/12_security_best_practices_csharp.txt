@@ -1,0 +1,688 @@
+# Seguridad y Buenas Prácticas en C#: Guía Completa
+
+## Introducción a la Seguridad en C#
+
+La seguridad en el desarrollo de software es fundamental para proteger aplicaciones, datos y usuarios. En C#, existen múltiples mecanismos y mejores prácticas para implementar seguridad robusta en aplicaciones.
+
+### Principios de Seguridad
+- **Defensa en profundidad**: Múltiples capas de seguridad
+- **Principio de menor privilegio**: Acceso mínimo necesario
+- **Validación de entrada**: Verificar todos los datos de entrada
+- **Cifrado de datos sensibles**: Proteger información confidencial
+- **Auditoría y logging**: Rastrear actividades de seguridad
+
+## Vulnerabilidades Comunes y Prevención
+
+### 1. SQL Injection
+
+SQL Injection ocurre cuando el código SQL se construye dinámicamente con entrada del usuario sin validación.
+
+#### Código Vulnerable
+```csharp
+public class VulnerableUserRepository
+{
+    // VULNERABLE: SQL Injection
+    public User GetUserByUsername(string username)
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            connection.Open();
+            // PELIGROSO: Concatenación directa
+            string query = $"SELECT * FROM Users WHERE Username = '{username}'";
+            
+            using (var command = new SqlCommand(query, connection))
+            {
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new User
+                        {
+                            Id = reader.GetInt32("Id"),
+                            Username = reader.GetString("Username"),
+                            Email = reader.GetString("Email")
+                        };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+}
+```
+
+#### Código Seguro con Parameterized Queries
+```csharp
+public class SecureUserRepository
+{
+    // SEGURO: Parameterized Query
+    public User GetUserByUsername(string username)
+    {
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            connection.Open();
+            string query = "SELECT * FROM Users WHERE Username = @Username";
+            
+            using (var command = new SqlCommand(query, connection))
+            {
+                // Usar parámetros para prevenir SQL Injection
+                command.Parameters.AddWithValue("@Username", username);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new User
+                        {
+                            Id = reader.GetInt32("Id"),
+                            Username = reader.GetString("Username"),
+                            Email = reader.GetString("Email")
+                        };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+}
+```
+
+#### Entity Framework (Más Seguro)
+```csharp
+public class UserService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public UserService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    // Entity Framework previene SQL Injection automáticamente
+    public async Task<User> GetUserByUsernameAsync(string username)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Username == username);
+    }
+}
+```
+
+### 2. Cross-Site Scripting (XSS)
+
+XSS ocurre cuando el código JavaScript malicioso se ejecuta en el navegador del usuario.
+
+#### Código Vulnerable
+```csharp
+public class VulnerableController : Controller
+{
+    // VULNERABLE: XSS
+    public IActionResult DisplayComment(string comment)
+    {
+        // PELIGROSO: Renderizar HTML sin encoding
+        ViewBag.Comment = comment;
+        return View();
+    }
+}
+```
+
+#### Código Seguro con HTML Encoding
+```csharp
+public class SecureController : Controller
+{
+    // SEGURO: HTML Encoding
+    public IActionResult DisplayComment(string comment)
+    {
+        // Usar HTML encoding para prevenir XSS
+        ViewBag.Comment = HttpUtility.HtmlEncode(comment);
+        return View();
+    }
+}
+```
+
+### 3. Cross-Site Request Forgery (CSRF)
+
+CSRF permite a atacantes ejecutar acciones no autorizadas en nombre del usuario autenticado.
+
+#### Código Seguro con Anti-Forgery Tokens
+```csharp
+public class SecureController : Controller
+{
+    // SEGURO: Con protección CSRF
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult TransferMoney(int accountId, decimal amount)
+    {
+        // Validar token CSRF automáticamente
+        _bankService.Transfer(accountId, amount);
+        return RedirectToAction("Success");
+    }
+}
+```
+
+## Autenticación y Autorización
+
+### 1. Identity Framework
+
+ASP.NET Core Identity proporciona un sistema completo de autenticación y autorización.
+
+```csharp
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+        
+        services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        {
+            // Configuración de contraseñas
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequiredLength = 8;
+            
+            // Configuración de lockout
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.AllowedForNewUsers = true;
+        })
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders();
+    }
+}
+```
+
+### 2. JWT Authentication
+
+JSON Web Tokens para autenticación stateless.
+
+```csharp
+public class JwtService
+{
+    private readonly JwtSettings _jwtSettings;
+    
+    public JwtService(IOptions<JwtSettings> jwtSettings)
+    {
+        _jwtSettings = jwtSettings.Value;
+    }
+    
+    public string GenerateToken(ApplicationUser user, IList<string> roles)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.Name, user.UserName),
+            new Claim(ClaimTypes.Email, user.Email)
+        };
+        
+        // Agregar roles como claims
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
+            signingCredentials: creds
+        );
+        
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}
+```
+
+### 3. Authorization Policies
+
+```csharp
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddAuthorization(options =>
+        {
+            // Política para administradores
+            options.AddPolicy("AdminOnly", policy =>
+                policy.RequireRole("Admin"));
+            
+            // Política personalizada
+            options.AddPolicy("CanEditUsers", policy =>
+                policy.RequireAssertion(context =>
+                {
+                    var user = context.User;
+                    return user.IsInRole("Admin") || 
+                           user.HasClaim("Permission", "EditUsers");
+                }));
+        });
+    }
+}
+
+[Authorize(Policy = "AdminOnly")]
+public class AdminController : Controller
+{
+    [Authorize(Policy = "CanEditUsers")]
+    public IActionResult EditUser(int id)
+    {
+        // Solo usuarios con permisos pueden acceder
+        return View();
+    }
+}
+```
+
+## Cifrado y Hashing
+
+### 1. Password Hashing
+
+```csharp
+public class PasswordHasher
+{
+    public string HashPassword(string password)
+    {
+        // Usar BCrypt para hashing seguro
+        return BCrypt.Net.BCrypt.HashPassword(password, BCrypt.Net.BCrypt.GenerateSalt(12));
+    }
+    
+    public bool VerifyPassword(string password, string hashedPassword)
+    {
+        return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+    }
+}
+
+public class UserService
+{
+    private readonly PasswordHasher _passwordHasher;
+    
+    public UserService(PasswordHasher passwordHasher)
+    {
+        _passwordHasher = passwordHasher;
+    }
+    
+    public async Task<bool> ValidateUserAsync(string username, string password)
+    {
+        var user = await _userRepository.GetByUsernameAsync(username);
+        if (user == null)
+            return false;
+        
+        return _passwordHasher.VerifyPassword(password, user.PasswordHash);
+    }
+    
+    public async Task CreateUserAsync(string username, string password, string email)
+    {
+        var passwordHash = _passwordHasher.HashPassword(password);
+        
+        var user = new User
+        {
+            Username = username,
+            PasswordHash = passwordHash,
+            Email = email
+        };
+        
+        await _userRepository.CreateAsync(user);
+    }
+}
+```
+
+### 2. Data Encryption
+
+```csharp
+public class EncryptionService
+{
+    private readonly string _key;
+    private readonly string _iv;
+    
+    public EncryptionService(IConfiguration configuration)
+    {
+        _key = configuration["Encryption:Key"];
+        _iv = configuration["Encryption:IV"];
+    }
+    
+    public string Encrypt(string plainText)
+    {
+        using (var aes = Aes.Create())
+        {
+            aes.Key = Convert.FromBase64String(_key);
+            aes.IV = Convert.FromBase64String(_iv);
+            
+            using (var encryptor = aes.CreateEncryptor())
+            using (var msEncrypt = new MemoryStream())
+            {
+                using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                using (var swEncrypt = new StreamWriter(csEncrypt))
+                {
+                    swEncrypt.Write(plainText);
+                }
+                
+                return Convert.ToBase64String(msEncrypt.ToArray());
+            }
+        }
+    }
+    
+    public string Decrypt(string cipherText)
+    {
+        using (var aes = Aes.Create())
+        {
+            aes.Key = Convert.FromBase64String(_key);
+            aes.IV = Convert.FromBase64String(_iv);
+            
+            using (var decryptor = aes.CreateDecryptor())
+            using (var msDecrypt = new MemoryStream(Convert.FromBase64String(cipherText)))
+            using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+            using (var srDecrypt = new StreamReader(csDecrypt))
+            {
+                return srDecrypt.ReadToEnd();
+            }
+        }
+    }
+}
+```
+
+## Validación de Entrada
+
+### 1. Data Annotations
+
+```csharp
+public class UserRegistrationModel
+{
+    [Required(ErrorMessage = "El nombre de usuario es requerido")]
+    [StringLength(50, MinimumLength = 3, ErrorMessage = "El nombre debe tener entre 3 y 50 caracteres")]
+    [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Solo se permiten letras, números y guiones bajos")]
+    public string Username { get; set; }
+    
+    [Required(ErrorMessage = "El email es requerido")]
+    [EmailAddress(ErrorMessage = "Formato de email inválido")]
+    public string Email { get; set; }
+    
+    [Required(ErrorMessage = "La contraseña es requerida")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]", 
+        ErrorMessage = "La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial")]
+    public string Password { get; set; }
+    
+    [Compare("Password", ErrorMessage = "Las contraseñas no coinciden")]
+    public string ConfirmPassword { get; set; }
+}
+```
+
+### 2. FluentValidation
+
+```csharp
+public class UserValidator : AbstractValidator<UserRegistrationModel>
+{
+    public UserValidator()
+    {
+        RuleFor(x => x.Username)
+            .NotEmpty().WithMessage("El nombre de usuario es requerido")
+            .Length(3, 50).WithMessage("El nombre debe tener entre 3 y 50 caracteres")
+            .Matches(@"^[a-zA-Z0-9_]+$").WithMessage("Solo se permiten letras, números y guiones bajos");
+        
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("El email es requerido")
+            .EmailAddress().WithMessage("Formato de email inválido");
+        
+        RuleFor(x => x.Password)
+            .NotEmpty().WithMessage("La contraseña es requerida")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres")
+            .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]")
+            .WithMessage("La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial");
+        
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.Password).WithMessage("Las contraseñas no coinciden");
+    }
+}
+```
+
+## Logging y Auditoría
+
+### 1. Security Logging
+
+```csharp
+public class SecurityLogger
+{
+    private readonly ILogger<SecurityLogger> _logger;
+    
+    public SecurityLogger(ILogger<SecurityLogger> logger)
+    {
+        _logger = logger;
+    }
+    
+    public void LogLoginAttempt(string username, bool success, string ipAddress)
+    {
+        var logLevel = success ? LogLevel.Information : LogLevel.Warning;
+        
+        _logger.Log(logLevel, 
+            "Login attempt for user {Username} from IP {IPAddress} - Success: {Success}", 
+            username, ipAddress, success);
+    }
+    
+    public void LogSensitiveOperation(string username, string operation, string details)
+    {
+        _logger.LogWarning(
+            "Sensitive operation performed by {Username}: {Operation} - {Details}", 
+            username, operation, details);
+    }
+    
+    public void LogSecurityViolation(string username, string violation, string ipAddress)
+    {
+        _logger.LogError(
+            "Security violation by {Username} from IP {IPAddress}: {Violation}", 
+            username, ipAddress, violation);
+    }
+}
+```
+
+### 2. Audit Trail
+
+```csharp
+public class AuditService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public AuditService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task LogAuditEventAsync(string userId, string action, string entityType, string entityId, string details)
+    {
+        var auditEntry = new AuditEntry
+        {
+            UserId = userId,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            Details = details,
+            Timestamp = DateTime.UtcNow,
+            IpAddress = GetCurrentIpAddress()
+        };
+        
+        _context.AuditEntries.Add(auditEntry);
+        await _context.SaveChangesAsync();
+    }
+}
+
+public class AuditEntry
+{
+    public int Id { get; set; }
+    public string UserId { get; set; }
+    public string Action { get; set; }
+    public string EntityType { get; set; }
+    public string EntityId { get; set; }
+    public string Details { get; set; }
+    public DateTime Timestamp { get; set; }
+    public string IpAddress { get; set; }
+}
+```
+
+## Configuración Segura
+
+### 1. Configuration Management
+
+```csharp
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Usar User Secrets para desarrollo
+        if (Environment.IsDevelopment())
+        {
+            services.AddUserSecrets<Startup>();
+        }
+        
+        // Configuración segura
+        services.Configure<DatabaseSettings>(Configuration.GetSection("Database"));
+        services.Configure<JwtSettings>(Configuration.GetSection("JWT"));
+    }
+}
+
+// appsettings.json (sin datos sensibles)
+{
+  "Database": {
+    "ConnectionString": "Server=localhost;Database=MyApp;Trusted_Connection=true;"
+  },
+  "JWT": {
+    "SecretKey": "", // Configurado en User Secrets
+    "Issuer": "MyApp",
+    "Audience": "MyAppUsers",
+    "ExpirationInMinutes": 60
+  }
+}
+```
+
+### 2. Environment Variables
+
+```csharp
+public class ConfigurationService
+{
+    private readonly IConfiguration _configuration;
+    
+    public ConfigurationService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+    
+    public string GetConnectionString()
+    {
+        // Prioridad: Environment Variable > User Secrets > appsettings.json
+        return Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING") ??
+               _configuration["Database:ConnectionString"];
+    }
+    
+    public string GetJwtSecret()
+    {
+        return Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ??
+               _configuration["JWT:SecretKey"];
+    }
+}
+```
+
+## Mejores Prácticas Generales
+
+### 1. Error Handling Seguro
+
+```csharp
+public class SecureExceptionHandler
+{
+    private readonly ILogger<SecureExceptionHandler> _logger;
+    
+    public SecureExceptionHandler(ILogger<SecureExceptionHandler> logger)
+    {
+        _logger = logger;
+    }
+    
+    public string HandleException(Exception ex)
+    {
+        // Log del error completo para debugging
+        _logger.LogError(ex, "An error occurred: {Message}", ex.Message);
+        
+        // Retornar mensaje genérico al usuario
+        return "An error occurred. Please try again later.";
+    }
+}
+```
+
+### 2. Input Sanitization
+
+```csharp
+public class InputSanitizer
+{
+    public string SanitizeHtml(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+        
+        // Remover tags HTML peligrosos
+        var sanitizer = new HtmlSanitizer();
+        sanitizer.AllowedTags.Clear();
+        sanitizer.AllowedTags.Add("p");
+        sanitizer.AllowedTags.Add("br");
+        sanitizer.AllowedTags.Add("strong");
+        sanitizer.AllowedTags.Add("em");
+        
+        return sanitizer.Sanitize(input);
+    }
+    
+    public string SanitizeSql(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+        
+        // Remover caracteres peligrosos para SQL
+        return input.Replace("'", "''")
+                   .Replace(";", "")
+                   .Replace("--", "")
+                   .Replace("/*", "")
+                   .Replace("*/", "");
+    }
+}
+```
+
+### 3. Rate Limiting
+
+```csharp
+public class RateLimitingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly IMemoryCache _cache;
+    
+    public RateLimitingMiddleware(RequestDelegate next, IMemoryCache cache)
+    {
+        _next = next;
+        _cache = cache;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+        var cacheKey = $"rate_limit_{ipAddress}";
+        
+        var requestCount = await _cache.GetOrCreateAsync(cacheKey, entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1);
+            return Task.FromResult(0);
+        });
+        
+        if (requestCount > 100) // 100 requests por minuto
+        {
+            context.Response.StatusCode = 429; // Too Many Requests
+            await context.Response.WriteAsync("Rate limit exceeded");
+            return;
+        }
+        
+        _cache.Set(cacheKey, requestCount + 1, TimeSpan.FromMinutes(1));
+        
+        await _next(context);
+    }
+}
+```
+
+## Conclusión
+
+La seguridad en C# requiere un enfoque integral que incluya validación de entrada, autenticación robusta, autorización apropiada, cifrado de datos sensibles y logging de auditoría. Las mejores prácticas de seguridad deben implementarse en todas las capas de la aplicación, desde la presentación hasta la base de datos.
+
+Es fundamental mantenerse actualizado con las últimas vulnerabilidades y mejores prácticas de seguridad, y realizar auditorías regulares de seguridad en el código y la infraestructura. La seguridad no es un producto, sino un proceso continuo que requiere atención constante y mejora continua.

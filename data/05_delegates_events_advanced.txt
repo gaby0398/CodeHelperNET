@@ -1,0 +1,1028 @@
+# DELEGADOS Y EVENTOS AVANZADOS EN C# - GUÍA COMPLETA
+
+## 1. FUNDAMENTOS DE DELEGADOS
+
+### ¿Qué son los Delegados?
+
+Los delegados son tipos que representan referencias a métodos con una firma específica. Son esencialmente punteros a funciones que permiten pasar métodos como parámetros, almacenar referencias a métodos y crear callbacks.
+
+**Características principales:**
+- **Type Safety**: Verificación de tipos en tiempo de compilación
+- **Multicast**: Un delegado puede referenciar múltiples métodos
+- **Covarianza y Contravarianza**: Flexibilidad en tipos de retorno y parámetros
+- **Sintaxis Lambda**: Soporte para expresiones lambda
+- **Eventos**: Base para el sistema de eventos de .NET
+
+### Tipos de Delegados
+
+```csharp
+// Delegado personalizado
+public delegate int OperacionMatematica(int a, int b);
+public delegate void AccionSinRetorno(string mensaje);
+public delegate bool Predicado<T>(T elemento);
+public delegate T FuncionGenerica<T>(T entrada);
+
+// Delegados predefinidos de .NET
+// Action<T> - para métodos sin retorno
+// Func<T, TResult> - para métodos con retorno
+// Predicate<T> - para métodos que retornan bool
+// Comparison<T> - para comparaciones
+// Converter<TInput, TOutput> - para conversiones
+```
+
+## 2. DELEGADOS BÁSICOS
+
+### Definición y Uso de Delegados
+
+```csharp
+public class CalculadoraBasica
+{
+    // Definición de delegado
+    public delegate int Operacion(int a, int b);
+    
+    // Métodos que coinciden con la firma del delegado
+    public static int Sumar(int a, int b) => a + b;
+    public static int Restar(int a, int b) => a - b;
+    public static int Multiplicar(int a, int b) => a * b;
+    public static int Dividir(int a, int b) => b != 0 ? a / b : 0;
+    
+    // Método que usa el delegado
+    public int EjecutarOperacion(Operacion operacion, int a, int b)
+    {
+        return operacion(a, b);
+    }
+}
+
+// Uso de delegados
+var calculadora = new CalculadoraBasica();
+
+// Asignación directa
+CalculadoraBasica.Operacion suma = CalculadoraBasica.Sumar;
+int resultado = calculadora.EjecutarOperacion(suma, 10, 5);
+
+// Uso con métodos anónimos
+CalculadoraBasica.Operacion potencia = delegate(int a, int b) 
+{ 
+    return (int)Math.Pow(a, b); 
+};
+
+// Uso con expresiones lambda
+CalculadoraBasica.Operacion modulo = (a, b) => a % b;
+```
+
+### Delegados Multicast
+
+```csharp
+public class ProcesadorTexto
+{
+    public delegate void Procesador(string texto);
+    
+    public static void ConvertirMayusculas(string texto)
+    {
+        Console.WriteLine($"Mayúsculas: {texto.ToUpper()}");
+    }
+    
+    public static void ConvertirMinusculas(string texto)
+    {
+        Console.WriteLine($"Minúsculas: {texto.ToLower()}");
+    }
+    
+    public static void ContarCaracteres(string texto)
+    {
+        Console.WriteLine($"Caracteres: {texto.Length}");
+    }
+    
+    public static void InvertirTexto(string texto)
+    {
+        Console.WriteLine($"Invertido: {new string(texto.Reverse().ToArray())}");
+    }
+}
+
+// Uso de delegados multicast
+var procesador = new ProcesadorTexto.Procesador(ProcesadorTexto.ConvertirMayusculas);
+procesador += ProcesadorTexto.ConvertirMinusculas;
+procesador += ProcesadorTexto.ContarCaracteres;
+procesador += ProcesadorTexto.InvertirTexto;
+
+procesador("Hola Mundo"); // Ejecuta todos los métodos
+```
+
+### Delegados con Parámetros y Valores de Retorno
+
+```csharp
+public class GestorDelegados
+{
+    // Delegado con múltiples parámetros
+    public delegate string Formateador(string nombre, int edad, string ciudad);
+    
+    // Delegado con valor de retorno
+    public delegate bool Validador<T>(T elemento);
+    
+    // Delegado genérico
+    public delegate T Transformador<T>(T entrada);
+    
+    public static string FormatearSimple(string nombre, int edad, string ciudad)
+    {
+        return $"{nombre} ({edad} años) - {ciudad}";
+    }
+    
+    public static string FormatearDetallado(string nombre, int edad, string ciudad)
+    {
+        return $"Nombre: {nombre} | Edad: {edad} años | Ciudad: {ciudad}";
+    }
+    
+    public static bool EsMayorDeEdad(int edad)
+    {
+        return edad >= 18;
+    }
+    
+    public static bool EsNombreValido(string nombre)
+    {
+        return !string.IsNullOrWhiteSpace(nombre) && nombre.Length >= 2;
+    }
+    
+    public static int Duplicar(int numero)
+    {
+        return numero * 2;
+    }
+    
+    public static string Capitalizar(string texto)
+    {
+        return char.ToUpper(texto[0]) + texto.Substring(1).ToLower();
+    }
+}
+
+// Uso
+var formateador = new GestorDelegados.Formateador(GestorDelegados.FormatearSimple);
+string resultado = formateador("Juan", 25, "Madrid");
+
+var validador = new GestorDelegados.Validador<int>(GestorDelegados.EsMayorDeEdad);
+bool esValido = validador(20);
+
+var transformador = new GestorDelegados.Transformador<int>(GestorDelegados.Duplicar);
+int transformado = transformador(5);
+```
+
+## 3. DELEGADOS PREDEFINIDOS DE .NET
+
+### Action<T>
+
+```csharp
+public class EjemplosAction
+{
+    public static void Imprimir(string mensaje)
+    {
+        Console.WriteLine($"Mensaje: {mensaje}");
+    }
+    
+    public static void ImprimirConTimestamp(string mensaje)
+    {
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {mensaje}");
+    }
+    
+    public static void ImprimirEnColor(string mensaje)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine(mensaje);
+        Console.ResetColor();
+    }
+    
+    public static void ProcesarLista(List<string> elementos, Action<string> procesador)
+    {
+        foreach (var elemento in elementos)
+        {
+            procesador(elemento);
+        }
+    }
+}
+
+// Uso de Action
+Action<string> imprimir = EjemplosAction.Imprimir;
+Action<string> imprimirTimestamp = EjemplosAction.ImprimirConTimestamp;
+Action<string> imprimirColor = EjemplosAction.ImprimirEnColor;
+
+// Multicast con Action
+Action<string> procesadorMultiple = imprimir;
+procesadorMultiple += imprimirTimestamp;
+procesadorMultiple += imprimirColor;
+
+var lista = new List<string> { "Uno", "Dos", "Tres" };
+EjemplosAction.ProcesarLista(lista, procesadorMultiple);
+```
+
+### Func<T, TResult>
+
+```csharp
+public class EjemplosFunc
+{
+    public static int ElevarAlCuadrado(int numero)
+    {
+        return numero * numero;
+    }
+    
+    public static string FormatearNumero(int numero)
+    {
+        return $"Número: {numero:N0}";
+    }
+    
+    public static bool EsPar(int numero)
+    {
+        return numero % 2 == 0;
+    }
+    
+    public static List<T> Filtrar<T>(List<T> elementos, Func<T, bool> predicado)
+    {
+        var resultado = new List<T>();
+        foreach (var elemento in elementos)
+        {
+            if (predicado(elemento))
+            {
+                resultado.Add(elemento);
+            }
+        }
+        return resultado;
+    }
+    
+    public static List<TResult> Transformar<T, TResult>(
+        List<T> elementos, 
+        Func<T, TResult> transformador)
+    {
+        var resultado = new List<TResult>();
+        foreach (var elemento in elementos)
+        {
+            resultado.Add(transformador(elemento));
+        }
+        return resultado;
+    }
+}
+
+// Uso de Func
+Func<int, int> cuadrado = EjemplosFunc.ElevarAlCuadrado;
+Func<int, string> formateador = EjemplosFunc.FormatearNumero;
+Func<int, bool> esPar = EjemplosFunc.EsPar;
+
+var numeros = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+var pares = EjemplosFunc.Filtrar(numeros, esPar);
+var cuadrados = EjemplosFunc.Transformar(numeros, cuadrado);
+var formateados = EjemplosFunc.Transformar(numeros, formateador);
+```
+
+### Predicate<T>
+
+```csharp
+public class EjemplosPredicate
+{
+    public static bool EsPositivo(int numero)
+    {
+        return numero > 0;
+    }
+    
+    public static bool EsPrimo(int numero)
+    {
+        if (numero < 2) return false;
+        for (int i = 2; i <= Math.Sqrt(numero); i++)
+        {
+            if (numero % i == 0) return false;
+        }
+        return true;
+    }
+    
+    public static bool EsPalindromo(string texto)
+    {
+        string limpio = new string(texto.Where(char.IsLetterOrDigit).ToArray()).ToLower();
+        return limpio == new string(limpio.Reverse().ToArray());
+    }
+    
+    public static List<T> FiltrarConPredicate<T>(List<T> elementos, Predicate<T> predicado)
+    {
+        return elementos.FindAll(predicado);
+    }
+}
+
+// Uso de Predicate
+Predicate<int> esPositivo = EjemplosPredicate.EsPositivo;
+Predicate<int> esPrimo = EjemplosPredicate.EsPrimo;
+Predicate<string> esPalindromo = EjemplosPredicate.EsPalindromo;
+
+var numeros = new List<int> { -5, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+var textos = new List<string> { "ana", "oso", "casa", "radar", "hola" };
+
+var positivos = EjemplosPredicate.FiltrarConPredicate(numeros, esPositivo);
+var primos = EjemplosPredicate.FiltrarConPredicate(numeros, esPrimo);
+var palindromos = EjemplosPredicate.FiltrarConPredicate(textos, esPalindromo);
+```
+
+## 4. DELEGADOS CON COVARIANZA Y CONTRAVARIANZA
+
+### Covarianza (out)
+
+```csharp
+// Covarianza permite usar un tipo más derivado
+public interface IProductor<out T>
+{
+    T Producir();
+}
+
+public class ProductorAnimal : IProductor<Animal>
+{
+    public Animal Producir() => new Animal { Nombre = "Animal Genérico" };
+}
+
+public class ProductorPerro : IProductor<Perro>
+{
+    public Perro Producir() => new Perro { Nombre = "Rex", Raza = "Labrador" };
+}
+
+public class ProductorGato : IProductor<Gato>
+{
+    public Gato Producir() => new Gato { Nombre = "Mittens", Color = "Gris" };
+}
+
+// Uso de covarianza
+IProductor<Animal> productorAnimal = new ProductorPerro(); // Covarianza
+Animal animal = productorAnimal.Producir(); // Funciona porque Perro es un Animal
+```
+
+### Contravarianza (in)
+
+```csharp
+// Contravarianza permite usar un tipo menos derivado
+public interface IConsumidor<in T>
+{
+    void Consumir(T elemento);
+}
+
+public class ConsumidorAnimal : IConsumidor<Animal>
+{
+    public void Consumir(Animal animal)
+    {
+        Console.WriteLine($"Consumiendo animal: {animal.Nombre}");
+    }
+}
+
+public class ConsumidorPerro : IConsumidor<Perro>
+{
+    public void Consumir(Perro perro)
+    {
+        Console.WriteLine($"Consumiendo perro: {perro.Nombre} de raza {perro.Raza}");
+    }
+}
+
+// Uso de contravarianza
+IConsumidor<Perro> consumidorPerro = new ConsumidorAnimal(); // Contravarianza
+consumidorPerro.Consumir(new Perro { Nombre = "Rex", Raza = "Labrador" });
+```
+
+## 5. EVENTOS FUNDAMENTALES
+
+### ¿Qué son los Eventos?
+
+Los eventos son una forma de implementar el patrón Observer, permitiendo que objetos se suscriban a notificaciones cuando ocurre algo específico. Los eventos están basados en delegados y proporcionan una forma segura de comunicación entre objetos.
+
+**Características principales:**
+- **Encapsulación**: Los eventos solo pueden ser invocados desde la clase que los declara
+- **Suscripción/Desuscripción**: Los suscriptores pueden añadirse y removerse dinámicamente
+- **Thread Safety**: Los eventos son thread-safe por defecto
+- **Patrón Observer**: Implementa el patrón de diseño Observer
+
+### Eventos Básicos
+
+```csharp
+public class SensorTemperatura
+{
+    // Definición del evento
+    public event EventHandler<TemperaturaEventArgs> TemperaturaCambiada;
+    public event EventHandler<TemperaturaEventArgs> TemperaturaCritica;
+    
+    private double temperatura;
+    private const double TEMPERATURA_CRITICA = 40.0;
+    
+    public double Temperatura
+    {
+        get => temperatura;
+        set
+        {
+            if (temperatura != value)
+            {
+                var temperaturaAnterior = temperatura;
+                temperatura = value;
+                
+                // Disparar evento de cambio
+                OnTemperaturaCambiada(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                
+                // Disparar evento crítico si es necesario
+                if (temperatura >= TEMPERATURA_CRITICA)
+                {
+                    OnTemperaturaCritica(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                }
+            }
+        }
+    }
+    
+    // Métodos para disparar eventos
+    protected virtual void OnTemperaturaCambiada(TemperaturaEventArgs e)
+    {
+        TemperaturaCambiada?.Invoke(this, e);
+    }
+    
+    protected virtual void OnTemperaturaCritica(TemperaturaEventArgs e)
+    {
+        TemperaturaCritica?.Invoke(this, e);
+    }
+}
+
+public class TemperaturaEventArgs : EventArgs
+{
+    public double TemperaturaAnterior { get; }
+    public double TemperaturaActual { get; }
+    public double Diferencia => TemperaturaActual - TemperaturaAnterior;
+    public bool EsIncremento => Diferencia > 0;
+    
+    public TemperaturaEventArgs(double temperaturaAnterior, double temperaturaActual)
+    {
+        TemperaturaAnterior = temperaturaAnterior;
+        TemperaturaActual = temperaturaActual;
+    }
+}
+```
+
+### Suscriptores de Eventos
+
+```csharp
+public class MonitorTemperatura
+{
+    private readonly SensorTemperatura sensor;
+    
+    public MonitorTemperatura(SensorTemperatura sensor)
+    {
+        this.sensor = sensor;
+        
+        // Suscribirse a eventos
+        this.sensor.TemperaturaCambiada += OnTemperaturaCambiada;
+        this.sensor.TemperaturaCritica += OnTemperaturaCritica;
+    }
+    
+    private void OnTemperaturaCambiada(object sender, TemperaturaEventArgs e)
+    {
+        Console.WriteLine($"Temperatura cambiada de {e.TemperaturaAnterior:F1}°C a {e.TemperaturaActual:F1}°C");
+        Console.WriteLine($"Diferencia: {e.Diferencia:F1}°C ({(e.EsIncremento ? "Incremento" : "Decremento")})");
+    }
+    
+    private void OnTemperaturaCritica(object sender, TemperaturaEventArgs e)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"¡ALERTA! Temperatura crítica: {e.TemperaturaActual:F1}°C");
+        Console.WriteLine($"Incremento desde: {e.TemperaturaAnterior:F1}°C");
+        Console.ResetColor();
+    }
+    
+    public void Desuscribirse()
+    {
+        sensor.TemperaturaCambiada -= OnTemperaturaCambiada;
+        sensor.TemperaturaCritica -= OnTemperaturaCritica;
+    }
+}
+
+public class RegistradorEventos
+{
+    private readonly List<string> historial = new List<string>();
+    
+    public void Suscribirse(SensorTemperatura sensor)
+    {
+        sensor.TemperaturaCambiada += OnTemperaturaCambiada;
+        sensor.TemperaturaCritica += OnTemperaturaCritica;
+    }
+    
+    private void OnTemperaturaCambiada(object sender, TemperaturaEventArgs e)
+    {
+        var entrada = $"[{DateTime.Now:HH:mm:ss}] Cambio: {e.TemperaturaAnterior:F1}°C → {e.TemperaturaActual:F1}°C";
+        historial.Add(entrada);
+    }
+    
+    private void OnTemperaturaCritica(object sender, TemperaturaEventArgs e)
+    {
+        var entrada = $"[{DateTime.Now:HH:mm:ss}] CRÍTICO: {e.TemperaturaActual:F1}°C";
+        historial.Add(entrada);
+    }
+    
+    public void MostrarHistorial()
+    {
+        Console.WriteLine("=== Historial de Eventos ===");
+        foreach (var entrada in historial)
+        {
+            Console.WriteLine(entrada);
+        }
+    }
+}
+```
+
+## 6. EVENTOS AVANZADOS
+
+### Eventos con Parámetros Personalizados
+
+```csharp
+public class SistemaArchivos
+{
+    public event EventHandler<ArchivoEventArgs> ArchivoCreado;
+    public event EventHandler<ArchivoEventArgs> ArchivoModificado;
+    public event EventHandler<ArchivoEventArgs> ArchivoEliminado;
+    public event EventHandler<ErrorEventArgs> ErrorOcurrido;
+    
+    public void CrearArchivo(string ruta, string contenido)
+    {
+        try
+        {
+            File.WriteAllText(ruta, contenido);
+            OnArchivoCreado(new ArchivoEventArgs(ruta, contenido.Length));
+        }
+        catch (Exception ex)
+        {
+            OnErrorOcurrido(new ErrorEventArgs(ex));
+        }
+    }
+    
+    public void ModificarArchivo(string ruta, string nuevoContenido)
+    {
+        try
+        {
+            var contenidoAnterior = File.ReadAllText(ruta);
+            File.WriteAllText(ruta, nuevoContenido);
+            OnArchivoModificado(new ArchivoEventArgs(ruta, nuevoContenido.Length, contenidoAnterior.Length));
+        }
+        catch (Exception ex)
+        {
+            OnErrorOcurrido(new ErrorEventArgs(ex));
+        }
+    }
+    
+    public void EliminarArchivo(string ruta)
+    {
+        try
+        {
+            var tamaño = new FileInfo(ruta).Length;
+            File.Delete(ruta);
+            OnArchivoEliminado(new ArchivoEventArgs(ruta, 0, tamaño));
+        }
+        catch (Exception ex)
+        {
+            OnErrorOcurrido(new ErrorEventArgs(ex));
+        }
+    }
+    
+    protected virtual void OnArchivoCreado(ArchivoEventArgs e)
+    {
+        ArchivoCreado?.Invoke(this, e);
+    }
+    
+    protected virtual void OnArchivoModificado(ArchivoEventArgs e)
+    {
+        ArchivoModificado?.Invoke(this, e);
+    }
+    
+    protected virtual void OnArchivoEliminado(ArchivoEventArgs e)
+    {
+        ArchivoEliminado?.Invoke(this, e);
+    }
+    
+    protected virtual void OnErrorOcurrido(ErrorEventArgs e)
+    {
+        ErrorOcurrido?.Invoke(this, e);
+    }
+}
+
+public class ArchivoEventArgs : EventArgs
+{
+    public string Ruta { get; }
+    public long TamañoActual { get; }
+    public long TamañoAnterior { get; }
+    public DateTime Timestamp { get; }
+    
+    public ArchivoEventArgs(string ruta, long tamañoActual, long tamañoAnterior = 0)
+    {
+        Ruta = ruta;
+        TamañoActual = tamañoActual;
+        TamañoAnterior = tamañoAnterior;
+        Timestamp = DateTime.Now;
+    }
+}
+
+public class ErrorEventArgs : EventArgs
+{
+    public Exception Excepcion { get; }
+    public DateTime Timestamp { get; }
+    
+    public ErrorEventArgs(Exception excepcion)
+    {
+        Excepcion = excepcion;
+        Timestamp = DateTime.Now;
+    }
+}
+```
+
+### Gestor de Eventos
+
+```csharp
+public class GestorEventosArchivos
+{
+    private readonly SistemaArchivos sistemaArchivos;
+    private readonly List<string> log = new List<string>();
+    
+    public GestorEventosArchivos(SistemaArchivos sistemaArchivos)
+    {
+        this.sistemaArchivos = sistemaArchivos;
+        SuscribirseAEventos();
+    }
+    
+    private void SuscribirseAEventos()
+    {
+        sistemaArchivos.ArchivoCreado += OnArchivoCreado;
+        sistemaArchivos.ArchivoModificado += OnArchivoModificado;
+        sistemaArchivos.ArchivoEliminado += OnArchivoEliminado;
+        sistemaArchivos.ErrorOcurrido += OnErrorOcurrido;
+    }
+    
+    private void OnArchivoCreado(object sender, ArchivoEventArgs e)
+    {
+        var mensaje = $"[CREADO] {Path.GetFileName(e.Ruta)} - {e.TamañoActual} bytes";
+        LogEvento(mensaje);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine(mensaje);
+        Console.ResetColor();
+    }
+    
+    private void OnArchivoModificado(object sender, ArchivoEventArgs e)
+    {
+        var diferencia = e.TamañoActual - e.TamañoAnterior;
+        var mensaje = $"[MODIFICADO] {Path.GetFileName(e.Ruta)} - {diferencia:+0;-0} bytes";
+        LogEvento(mensaje);
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine(mensaje);
+        Console.ResetColor();
+    }
+    
+    private void OnArchivoEliminado(object sender, ArchivoEventArgs e)
+    {
+        var mensaje = $"[ELIMINADO] {Path.GetFileName(e.Ruta)} - {e.TamañoAnterior} bytes liberados";
+        LogEvento(mensaje);
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine(mensaje);
+        Console.ResetColor();
+    }
+    
+    private void OnErrorOcurrido(object sender, ErrorEventArgs e)
+    {
+        var mensaje = $"[ERROR] {e.Excepcion.Message}";
+        LogEvento(mensaje);
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine(mensaje);
+        Console.ResetColor();
+    }
+    
+    private void LogEvento(string mensaje)
+    {
+        log.Add($"[{DateTime.Now:HH:mm:ss}] {mensaje}");
+    }
+    
+    public void MostrarLog()
+    {
+        Console.WriteLine("=== Log de Eventos ===");
+        foreach (var entrada in log)
+        {
+            Console.WriteLine(entrada);
+        }
+    }
+    
+    public void Desuscribirse()
+    {
+        sistemaArchivos.ArchivoCreado -= OnArchivoCreado;
+        sistemaArchivos.ArchivoModificado -= OnArchivoModificado;
+        sistemaArchivos.ArchivoEliminado -= OnArchivoEliminado;
+        sistemaArchivos.ErrorOcurrido -= OnErrorOcurrido;
+    }
+}
+```
+
+## 7. PATRONES AVANZADOS CON DELEGADOS
+
+### Command Pattern con Delegados
+
+```csharp
+public class Comando
+{
+    public Action Ejecutar { get; }
+    public Action Deshacer { get; }
+    public string Descripcion { get; }
+    
+    public Comando(Action ejecutar, Action deshacer, string descripcion)
+    {
+        Ejecutar = ejecutar;
+        Deshacer = deshacer;
+        Descripcion = descripcion;
+    }
+}
+
+public class GestorComandos
+{
+    private readonly Stack<Comando> historial = new Stack<Comando>();
+    private readonly Stack<Comando> rehacer = new Stack<Comando>();
+    
+    public void EjecutarComando(Comando comando)
+    {
+        comando.Ejecutar();
+        historial.Push(comando);
+        rehacer.Clear(); // Limpiar rehacer al ejecutar nuevo comando
+        Console.WriteLine($"Comando ejecutado: {comando.Descripcion}");
+    }
+    
+    public void Deshacer()
+    {
+        if (historial.Count > 0)
+        {
+            var comando = historial.Pop();
+            comando.Deshacer();
+            rehacer.Push(comando);
+            Console.WriteLine($"Comando deshecho: {comando.Descripcion}");
+        }
+    }
+    
+    public void Rehacer()
+    {
+        if (rehacer.Count > 0)
+        {
+            var comando = rehacer.Pop();
+            comando.Ejecutar();
+            historial.Push(comando);
+            Console.WriteLine($"Comando rehecho: {comando.Descripcion}");
+        }
+    }
+    
+    public void MostrarHistorial()
+    {
+        Console.WriteLine("=== Historial de Comandos ===");
+        foreach (var comando in historial.Reverse())
+        {
+            Console.WriteLine($"- {comando.Descripcion}");
+        }
+    }
+}
+```
+
+### Strategy Pattern con Delegados
+
+```csharp
+public class CalculadoraEstrategia
+{
+    private Func<double, double, double> estrategia;
+    
+    public void EstablecerEstrategia(Func<double, double, double> nuevaEstrategia)
+    {
+        estrategia = nuevaEstrategia;
+    }
+    
+    public double Ejecutar(double a, double b)
+    {
+        if (estrategia == null)
+        {
+            throw new InvalidOperationException("No se ha establecido una estrategia");
+        }
+        
+        return estrategia(a, b);
+    }
+}
+
+// Estrategias predefinidas
+public static class EstrategiasMatematicas
+{
+    public static double Sumar(double a, double b) => a + b;
+    public static double Restar(double a, double b) => a - b;
+    public static double Multiplicar(double a, double b) => a * b;
+    public static double Dividir(double a, double b) => b != 0 ? a / b : 0;
+    public static double Potencia(double a, double b) => Math.Pow(a, b);
+    public static double Modulo(double a, double b) => b != 0 ? a % b : 0;
+}
+
+// Uso
+var calculadora = new CalculadoraEstrategia();
+
+calculadora.EstablecerEstrategia(EstrategiasMatematicas.Sumar);
+Console.WriteLine($"Suma: {calculadora.Ejecutar(10, 5)}");
+
+calculadora.EstablecerEstrategia(EstrategiasMatematicas.Potencia);
+Console.WriteLine($"Potencia: {calculadora.Ejecutar(2, 3)}");
+
+// Estrategia con lambda
+calculadora.EstablecerEstrategia((a, b) => Math.Sqrt(a * a + b * b));
+Console.WriteLine($"Hipotenusa: {calculadora.Ejecutar(3, 4)}");
+```
+
+## 8. DELEGADOS Y ASYNC/AWAIT
+
+### Delegados Asíncronos
+
+```csharp
+public class ServiciosAsincronos
+{
+    // Delegado para operaciones asíncronas
+    public delegate Task<string> OperacionAsincrona(int id);
+    public delegate Task<T> OperacionGenericaAsincrona<T>(T entrada);
+    
+    public static async Task<string> ObtenerDatosAsync(int id)
+    {
+        await Task.Delay(1000); // Simulación de operación asíncrona
+        return $"Datos {id} obtenidos en {DateTime.Now:HH:mm:ss}";
+    }
+    
+    public static async Task<string> ProcesarDatosAsync(int id)
+    {
+        await Task.Delay(500);
+        return $"Datos {id} procesados en {DateTime.Now:HH:mm:ss}";
+    }
+    
+    public static async Task<T> TransformarAsync<T>(T entrada)
+    {
+        await Task.Delay(200);
+        return entrada; // Simulación de transformación
+    }
+    
+    public static async Task EjecutarOperacionesAsync()
+    {
+        OperacionAsincrona operacion = ObtenerDatosAsync;
+        operacion += ProcesarDatosAsync;
+        
+        // Ejecutar todas las operaciones
+        var tareas = new List<Task<string>>();
+        for (int i = 1; i <= 3; i++)
+        {
+            tareas.Add(operacion(i));
+        }
+        
+        var resultados = await Task.WhenAll(tareas);
+        foreach (var resultado in resultados)
+        {
+            Console.WriteLine(resultado);
+        }
+    }
+}
+```
+
+### Eventos Asíncronos
+
+```csharp
+public class SensorAsincrono
+{
+    public event Func<TemperaturaEventArgs, Task> TemperaturaCambiadaAsync;
+    public event Func<TemperaturaEventArgs, Task> TemperaturaCriticaAsync;
+    
+    private double temperatura;
+    
+    public double Temperatura
+    {
+        get => temperatura;
+        set
+        {
+            if (temperatura != value)
+            {
+                var temperaturaAnterior = temperatura;
+                temperatura = value;
+                
+                _ = OnTemperaturaCambiadaAsync(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                
+                if (temperatura >= 40.0)
+                {
+                    _ = OnTemperaturaCriticaAsync(new TemperaturaEventArgs(temperaturaAnterior, temperatura));
+                }
+            }
+        }
+    }
+    
+    protected virtual async Task OnTemperaturaCambiadaAsync(TemperaturaEventArgs e)
+    {
+        if (TemperaturaCambiadaAsync != null)
+        {
+            var tareas = TemperaturaCambiadaAsync.GetInvocationList()
+                .Cast<Func<TemperaturaEventArgs, Task>>()
+                .Select(handler => handler(e));
+            
+            await Task.WhenAll(tareas);
+        }
+    }
+    
+    protected virtual async Task OnTemperaturaCriticaAsync(TemperaturaEventArgs e)
+    {
+        if (TemperaturaCriticaAsync != null)
+        {
+            var tareas = TemperaturaCriticaAsync.GetInvocationList()
+                .Cast<Func<TemperaturaEventArgs, Task>>()
+                .Select(handler => handler(e));
+            
+            await Task.WhenAll(tareas);
+        }
+    }
+}
+
+public class MonitorAsincrono
+{
+    public async Task OnTemperaturaCambiadaAsync(TemperaturaEventArgs e)
+    {
+        await Task.Delay(100); // Simulación de procesamiento asíncrono
+        Console.WriteLine($"Temperatura cambiada: {e.TemperaturaAnterior:F1}°C → {e.TemperaturaActual:F1}°C");
+    }
+    
+    public async Task OnTemperaturaCriticaAsync(TemperaturaEventArgs e)
+    {
+        await Task.Delay(200); // Simulación de procesamiento asíncrono
+        Console.WriteLine($"¡ALERTA CRÍTICA! Temperatura: {e.TemperaturaActual:F1}°C");
+    }
+}
+```
+
+## 9. MEJORES PRÁCTICAS
+
+### Patrones de Diseño con Delegados
+
+```csharp
+public class MejoresPracticas
+{
+    // 1. Usar delegados predefinidos cuando sea posible
+    public static void ProcesarElementos<T>(IEnumerable<T> elementos, Action<T> procesador)
+    {
+        foreach (var elemento in elementos)
+        {
+            procesador(elemento);
+        }
+    }
+    
+    // 2. Usar Func para transformaciones
+    public static List<TResult> Transformar<T, TResult>(IEnumerable<T> elementos, Func<T, TResult> transformador)
+    {
+        return elementos.Select(transformador).ToList();
+    }
+    
+    // 3. Usar Predicate para filtros
+    public static List<T> Filtrar<T>(IEnumerable<T> elementos, Predicate<T> predicado)
+    {
+        return elementos.Where(e => predicado(e)).ToList();
+    }
+    
+    // 4. Manejo seguro de eventos
+    public static void DispararEventoSeguro(EventHandler evento, object sender, EventArgs e)
+    {
+        evento?.Invoke(sender, e);
+    }
+    
+    // 5. Desuscripción de eventos
+    public static void LimpiarEventos(EventHandler evento)
+    {
+        if (evento != null)
+        {
+            foreach (Delegate d in evento.GetInvocationList())
+            {
+                evento -= (EventHandler)d;
+            }
+        }
+    }
+}
+```
+
+### Debugging y Troubleshooting
+
+```csharp
+public class DebugDelegados
+{
+    public static void MostrarInformacionDelegado(Delegate delegado)
+    {
+        if (delegado == null)
+        {
+            Console.WriteLine("El delegado es null");
+            return;
+        }
+        
+        Console.WriteLine($"Tipo del delegado: {delegado.GetType().Name}");
+        Console.WriteLine($"Número de métodos: {delegado.GetInvocationList().Length}");
+        
+        var invocaciones = delegado.GetInvocationList();
+        for (int i = 0; i < invocaciones.Length; i++)
+        {
+            var invocacion = invocaciones[i];
+            Console.WriteLine($"  Método {i + 1}: {invocacion.Method.Name} en {invocacion.Target?.GetType().Name ?? "static"}");
+        }
+    }
+    
+    public static void EjecutarConLogging<T>(Func<T> operacion, string descripcion)
+    {
+        try
+        {
+            Console.WriteLine($"Ejecutando: {descripcion}");
+            var resultado = operacion();
+            Console.WriteLine($"Resultado: {resultado}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en {descripcion}: {ex.Message}");
+        }
+    }
+}
+```
+
+Esta guía completa de delegados y eventos avanzados en C# cubre desde los conceptos fundamentales hasta técnicas avanzadas, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos que demuestran cómo aplicar estos conceptos en diferentes escenarios de programación. 

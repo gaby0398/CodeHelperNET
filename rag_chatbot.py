@@ -19,7 +19,7 @@ class RAGChatbot:
         self.collection = self.client.get_collection("codehelper_csharp_improved")
         
         # Modelo de embeddings para recuperación
-        self.embedding_model = SentenceTransformer("microsoft/codebert-base-mlm")
+        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         
         # Cross-encoder para re-ranking (mejora la calidad de resultados)
         self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
@@ -30,21 +30,32 @@ class RAGChatbot:
         # Traductor para respuestas
         self.translator = pipeline("translation_en_to_es", model="Helsinki-NLP/opus-mt-en-es")
         
-        # Templates de prompts
+        # Templates de prompts mejorados
         self.setup_prompts()
         
     def setup_llm(self):
         """Configurar modelo LLM para generación"""
         try:
-            # Usar un modelo más pequeño pero efectivo para generación
-            model_name = "microsoft/DialoGPT-medium"
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                torch_dtype=torch.float16,
-                device_map="auto" if torch.cuda.is_available() else "cpu"
-            )
-            self.tokenizer.pad_token = self.tokenizer.eos_token
+            # Por ahora, usar solo modo de recuperación para evitar problemas
+            print("Usando modo de solo recuperación para mayor estabilidad...")
+            self.model = None
+            self.tokenizer = None
+            return
+            
+            # Código original comentado para referencia
+            # model_name = "microsoft/DialoGPT-small"
+            # self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            # self.model = AutoModelForCausalLM.from_pretrained(
+            #     model_name,
+            #     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            #     device_map="auto" if torch.cuda.is_available() else "cpu"
+            # )
+            # 
+            # if self.tokenizer.pad_token is None:
+            #     self.tokenizer.pad_token = self.tokenizer.eos_token
+            # 
+            # self.model.config.pad_token_id = self.tokenizer.pad_token_id
+            
         except Exception as e:
             print(f"Error cargando modelo LLM: {e}")
             print("Usando modo de solo recuperación...")
@@ -52,44 +63,44 @@ class RAGChatbot:
             self.tokenizer = None
     
     def setup_prompts(self):
-        """Configurar templates de prompts para diferentes tipos de preguntas"""
+        """Configurar templates de prompts mejorados para respuestas más limpias"""
         self.prompts = {
             'code_example': PromptTemplate(
                 input_variables=["context", "question"],
-                template="""Eres un experto en C# y .NET. Basándote en el siguiente contexto, responde la pregunta del usuario.
+                template="""Eres un experto en C# y .NET. Responde la pregunta del usuario de manera clara y concisa.
 
-Contexto:
+Contexto relevante:
 {context}
 
 Pregunta: {question}
 
-Responde de manera clara y concisa, incluyendo ejemplos de código cuando sea apropiado. Si la información del contexto no es suficiente, indícalo claramente.
+Responde de manera directa y útil. Si es necesario, incluye ejemplos de código breves y claros. No agregues información innecesaria.
 
 Respuesta:"""
             ),
             'concept_explanation': PromptTemplate(
                 input_variables=["context", "question"],
-                template="""Eres un profesor experto en C# y .NET. Explica el concepto solicitado usando el siguiente contexto como referencia.
+                template="""Eres un profesor experto en C# y .NET. Explica el concepto solicitado de manera clara y directa.
 
-Contexto:
+Contexto relevante:
 {context}
 
 Concepto a explicar: {question}
 
-Proporciona una explicación clara, estructurada y fácil de entender. Incluye ejemplos prácticos cuando sea posible.
+Proporciona una explicación clara, concisa y fácil de entender. Incluye ejemplos prácticos cuando sea útil.
 
 Explicación:"""
             ),
             'syntax_help': PromptTemplate(
                 input_variables=["context", "question"],
-                template="""Eres un asistente de programación especializado en C#. Ayuda con la sintaxis solicitada usando el siguiente contexto.
+                template="""Eres un asistente de programación especializado en C#. Ayuda con la sintaxis solicitada.
 
-Contexto:
+Contexto relevante:
 {context}
 
 Pregunta sobre sintaxis: {question}
 
-Proporciona la sintaxis correcta, ejemplos de uso y explicaciones claras. Incluye casos comunes y mejores prácticas.
+Proporciona la sintaxis correcta y ejemplos de uso claros. Sé directo y útil.
 
 Respuesta:"""
             )
@@ -99,16 +110,16 @@ Respuesta:"""
         """Clasificar el tipo de pregunta para usar el prompt apropiado"""
         question_lower = question.lower()
         
-        if any(word in question_lower for word in ['ejemplo', 'código', 'implementar', 'cómo hacer']):
+        if any(word in question_lower for word in ['ejemplo', 'código', 'implementar', 'cómo hacer', 'muestra']):
             return 'code_example'
-        elif any(word in question_lower for word in ['qué es', 'explicar', 'concepto', 'definir']):
+        elif any(word in question_lower for word in ['qué es', 'explicar', 'concepto', 'definir', 'significa']):
             return 'concept_explanation'
-        elif any(word in question_lower for word in ['sintaxis', 'syntax', 'formato', 'escribir']):
+        elif any(word in question_lower for word in ['sintaxis', 'syntax', 'formato', 'escribir', 'declarar']):
             return 'syntax_help'
         else:
             return 'code_example'  # Default
     
-    def retrieve_relevant_chunks(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
+    def retrieve_relevant_chunks(self, query: str, n_results: int = 3) -> List[Dict[str, Any]]:
         """Recuperar chunks relevantes usando embeddings"""
         # Generar embedding de la consulta
         query_embedding = self.embedding_model.encode(query).tolist()
@@ -141,28 +152,73 @@ Respuesta:"""
         
         return []
     
+    def clean_context(self, chunks: List[Dict[str, Any]]) -> str:
+        """Limpiar y preparar el contexto para el prompt"""
+        context_parts = []
+        
+        for chunk in chunks:
+            # Limpiar el contenido del chunk
+            content = chunk['content']
+            
+            # Remover caracteres extraños y normalizar
+            content = re.sub(r'[^\w\s\.\,\;\:\!\?\(\)\[\]\{\}\+\-\*\/\=\<\>\"\'\n\r\t]', '', content)
+            content = re.sub(r'\s+', ' ', content)
+            content = content.strip()
+            
+            # Solo agregar si el contenido es relevante (score > 0.5)
+            if chunk['score'] > 0.5 and len(content) > 20:
+                context_parts.append(content)
+        
+        return "\n\n".join(context_parts)
+    
     def generate_response(self, context: str, question: str, question_type: str) -> str:
-        """Generar respuesta usando el modelo LLM"""
+        """Generar respuesta usando el modelo LLM o modo de recuperación"""
         if self.model is None:
-            return "Lo siento, el modelo de generación no está disponible. Aquí están los fragmentos más relevantes:\n\n" + context
+            # Modo de solo recuperación - proporcionar respuestas estructuradas
+            if not context:
+                return "No encontré información específica para tu pregunta. ¿Podrías reformularla o ser más específico?"
+            
+            # Crear respuesta estructurada basada en el contexto
+            if question_type == 'concept_explanation':
+                # Para explicaciones de conceptos
+                return f"Basándome en la información disponible:\n\n{context[:600]}..."
+            elif question_type == 'code_example':
+                # Para ejemplos de código
+                return f"Aquí tienes información relevante con ejemplos:\n\n{context[:600]}..."
+            elif question_type == 'syntax_help':
+                # Para ayuda de sintaxis
+                return f"Información sobre sintaxis:\n\n{context[:600]}..."
+            else:
+                # Respuesta general
+                return f"Información relevante:\n\n{context[:600]}..."
         
         try:
             # Seleccionar prompt apropiado
             prompt_template = self.prompts[question_type]
             prompt = prompt_template.format(context=context, question=question)
             
-            # Tokenizar
-            inputs = self.tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=1024)
+            # Tokenizar con attention mask explícito
+            inputs = self.tokenizer(
+                prompt, 
+                return_tensors="pt", 
+                truncation=True, 
+                max_length=1024,
+                padding=True,
+                return_attention_mask=True
+            )
             
             # Generar respuesta
             with torch.no_grad():
                 outputs = self.model.generate(
-                    inputs,
-                    max_length=inputs.shape[1] + 200,
-                    temperature=0.7,
+                    input_ids=inputs['input_ids'],
+                    attention_mask=inputs['attention_mask'],
+                    max_length=inputs['input_ids'].shape[1] + 100,  # Respuestas más cortas
+                    temperature=0.7,  # Balance entre creatividad y precisión
                     do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    repetition_penalty=1.1,  # Evitar repeticiones
+                    no_repeat_ngram_size=3   # Evitar repetición de frases
                 )
             
             # Decodificar respuesta
@@ -174,50 +230,58 @@ Respuesta:"""
             # Limpiar respuesta
             response = re.sub(r'^Respuesta:\s*', '', response)
             response = re.sub(r'^Explicación:\s*', '', response)
+            response = re.sub(r'\n+', '\n', response)  # Normalizar saltos de línea
             
-            return response if response else "No pude generar una respuesta específica con la información disponible."
+            # Si la respuesta está vacía o es muy corta, usar fallback
+            if not response or len(response) < 20:
+                if context:
+                    return f"Basándome en la información disponible:\n\n{context[:300]}..."
+                else:
+                    return "No pude generar una respuesta específica. ¿Podrías reformular tu pregunta?"
+            
+            return response
             
         except Exception as e:
             print(f"Error en generación: {e}")
-            return "Error generando respuesta. Aquí están los fragmentos más relevantes:\n\n" + context
+            if context:
+                return f"Basándome en la información disponible:\n\n{context[:300]}..."
+            else:
+                return "Error generando respuesta. ¿Podrías reformular tu pregunta?"
     
     def translate_response(self, response: str) -> str:
         """Traducir respuesta al español si es necesario"""
         try:
             # Detectar si ya está en español
-            spanish_words = ['es', 'son', 'está', 'están', 'para', 'con', 'por', 'que', 'como', 'cuando']
-            if any(word in response.lower() for word in spanish_words):
+            spanish_words = ['es', 'son', 'está', 'están', 'para', 'con', 'por', 'que', 'como', 'cuando', 'una', 'las', 'los']
+            spanish_count = sum(1 for word in spanish_words if word in response.lower())
+            
+            if spanish_count >= 2:  # Si tiene al menos 2 palabras en español
                 return response
             
-            # Traducir
-            translated = self.translator(response[:500])[0]["translation_text"]
+            # Traducir solo si es necesario
+            translated = self.translator(response[:400])[0]["translation_text"]
             return translated
         except:
             return response
     
     def chat(self, question: str) -> str:
-        """Proceso completo de chat RAG"""
-        print(f"🤖 Procesando pregunta: {question}")
-        
+        """Proceso completo de chat RAG - versión limpia"""
         # 1. Clasificar pregunta
         question_type = self.classify_question(question)
-        print(f"📝 Tipo de pregunta: {question_type}")
         
         # 2. Recuperar contexto relevante
-        relevant_chunks = self.retrieve_relevant_chunks(question, n_results=3)
+        relevant_chunks = self.retrieve_relevant_chunks(question, n_results=2)
         
         if not relevant_chunks:
-            return "❌ No encontré información relevante para tu pregunta. ¿Podrías reformularla?"
+            return "No encontré información relevante para tu pregunta. ¿Podrías reformularla o ser más específico?"
         
-        # 3. Preparar contexto
-        context_parts = []
-        for i, chunk in enumerate(relevant_chunks):
-            context_parts.append(f"Fragmento {i+1} (Score: {chunk['score']:.3f}):\n{chunk['content']}\n")
+        # 3. Preparar contexto limpio
+        context = self.clean_context(relevant_chunks)
         
-        context = "\n".join(context_parts)
+        if not context:
+            return "No encontré información útil en la base de datos. ¿Podrías reformular tu pregunta?"
         
         # 4. Generar respuesta
-        print("🧠 Generando respuesta...")
         response = self.generate_response(context, question, question_type)
         
         # 5. Traducir si es necesario
@@ -226,10 +290,10 @@ Respuesta:"""
         return response
     
     def interactive_chat(self):
-        """Modo interactivo de chat"""
+        """Modo interactivo de chat - versión limpia"""
         print("🤖 ChatBot RAG para C# y .NET")
         print("Escribe 'salir' para terminar")
-        print("-" * 50)
+        print("-" * 40)
         
         while True:
             try:
@@ -242,22 +306,9 @@ Respuesta:"""
                 if not question:
                     continue
                 
-                # Procesar pregunta
+                # Procesar pregunta y mostrar respuesta limpia
                 response = self.chat(question)
-                
-                print(f"\n🤖 Asistente: {response}")
-                
-                # Opción para ver contexto
-                show_context = input("\n¿Ver contexto usado? (s/n): ").strip().lower()
-                if show_context == 's':
-                    relevant_chunks = self.retrieve_relevant_chunks(question, n_results=3)
-                    print("\n📚 Contexto utilizado:")
-                    for i, chunk in enumerate(relevant_chunks):
-                        print(f"\n--- Fragmento {i+1} ---")
-                        print(f"Tipo: {chunk['metadata']['content_type']}")
-                        print(f"Archivo: {chunk['metadata']['filename']}")
-                        print(f"Score: {chunk['score']:.3f}")
-                        print(f"Contenido: {chunk['content'][:200]}...")
+                print(f"\n🤖 {response}")
                 
             except KeyboardInterrupt:
                 print("\n👋 ¡Hasta luego!")

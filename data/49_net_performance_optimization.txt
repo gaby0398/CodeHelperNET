@@ -1,0 +1,559 @@
+# Optimización de Rendimiento y Técnicas Avanzadas en .NET
+
+## Introducción
+La optimización de rendimiento es crucial para aplicaciones de alta demanda. .NET proporciona herramientas y técnicas avanzadas para maximizar el rendimiento.
+
+### 1. Memory Management y GC Optimization
+```csharp
+public class MemoryOptimizedService
+{
+    private readonly ILogger<MemoryOptimizedService> _logger;
+    private readonly ArrayPool<byte> _arrayPool;
+    
+    public MemoryOptimizedService(ILogger<MemoryOptimizedService> logger)
+    {
+        _logger = logger;
+        _arrayPool = ArrayPool<byte>.Shared;
+    }
+    
+    public async Task<byte[]> ProcessLargeDataAsync(Stream inputStream)
+    {
+        // Usar ArrayPool para evitar allocations
+        var buffer = _arrayPool.Rent(8192);
+        
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            int bytesRead;
+            
+            while ((bytesRead = await inputStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await memoryStream.WriteAsync(buffer, 0, bytesRead);
+            }
+            
+            return memoryStream.ToArray();
+        }
+        finally
+        {
+            _arrayPool.Return(buffer);
+        }
+    }
+    
+    public void OptimizeGarbageCollection()
+    {
+        // Forzar garbage collection en momentos específicos
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        
+        // Configurar GC para modo de servidor
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+    }
+    
+    public void MonitorMemoryUsage()
+    {
+        var totalMemory = GC.GetTotalMemory(false);
+        var maxMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+        
+        _logger.LogInformation("Memory usage: {Used}MB / {Total}MB", 
+            totalMemory / 1024 / 1024, 
+            maxMemory / 1024 / 1024);
+    }
+}
+
+// Configuración de GC en runtimeconfig.json
+{
+  "runtimeOptions": {
+    "gcAllowVeryLargeObjects": true,
+    "gcServer": true,
+    "gcConcurrent": true
+  }
+}
+```
+
+### 2. Async/Await Optimization
+```csharp
+public class AsyncOptimizedService
+{
+    private readonly ILogger<AsyncOptimizedService> _logger;
+    private readonly SemaphoreSlim _semaphore;
+    
+    public AsyncOptimizedService(ILogger<AsyncOptimizedService> logger)
+    {
+        _logger = logger;
+        _semaphore = new SemaphoreSlim(10, 10); // Limitar concurrencia
+    }
+    
+    public async Task<List<T>> ProcessItemsInParallelAsync<T>(IEnumerable<T> items, Func<T, Task<T>> processor)
+    {
+        var tasks = items.Select(async item =>
+        {
+            await _semaphore.WaitAsync();
+            try
+            {
+                return await processor(item);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        });
+        
+        return await Task.WhenAll(tasks);
+    }
+    
+    public async Task<T> WithTimeoutAsync<T>(Task<T> task, TimeSpan timeout)
+    {
+        using var cts = new CancellationTokenSource(timeout);
+        
+        try
+        {
+            return await task.WaitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Operation timed out after {Timeout}", timeout);
+            throw new TimeoutException($"Operation timed out after {timeout}");
+        }
+    }
+    
+    public async Task<T> RetryWithExponentialBackoffAsync<T>(Func<Task<T>> operation, int maxRetries = 3)
+    {
+        for (int i = 0; i <= maxRetries; i++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (i < maxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, i));
+                _logger.LogWarning(ex, "Retry {RetryCount} after {Delay}", i + 1, delay);
+                await Task.Delay(delay);
+            }
+        }
+        
+        throw new InvalidOperationException($"Operation failed after {maxRetries} retries");
+    }
+}
+```
+
+### 3. Caching Avanzado
+```csharp
+public class AdvancedCacheService
+{
+    private readonly IMemoryCache _memoryCache;
+    private readonly IDistributedCache _distributedCache;
+    private readonly ILogger<AdvancedCacheService> _logger;
+    
+    public AdvancedCacheService(
+        IMemoryCache memoryCache,
+        IDistributedCache distributedCache,
+        ILogger<AdvancedCacheService> logger)
+    {
+        _memoryCache = memoryCache;
+        _distributedCache = distributedCache;
+        _logger = logger;
+    }
+    
+    public async Task<T> GetOrSetWithLayeredCacheAsync<T>(string key, Func<Task<T>> factory, TimeSpan expiration)
+    {
+        // Primero intentar cache en memoria
+        if (_memoryCache.TryGetValue(key, out T memoryValue))
+        {
+            _logger.LogInformation("Cache hit in memory for key {Key}", key);
+            return memoryValue;
+        }
+        
+        // Luego intentar cache distribuido
+        var distributedValue = await _distributedCache.GetAsync(key);
+        if (distributedValue != null)
+        {
+            var value = JsonSerializer.Deserialize<T>(distributedValue);
+            
+            // Actualizar cache en memoria
+            _memoryCache.Set(key, value, TimeSpan.FromMinutes(5));
+            
+            _logger.LogInformation("Cache hit in distributed cache for key {Key}", key);
+            return value;
+        }
+        
+        // Si no está en cache, obtener del factory
+        var newValue = await factory();
+        
+        // Guardar en ambos caches
+        var serializedValue = JsonSerializer.SerializeToUtf8Bytes(newValue);
+        await _distributedCache.SetAsync(key, serializedValue, new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = expiration
+        });
+        
+        _memoryCache.Set(key, newValue, TimeSpan.FromMinutes(5));
+        
+        _logger.LogInformation("Value cached for key {Key}", key);
+        return newValue;
+    }
+    
+    public async Task InvalidatePatternAsync(string pattern)
+    {
+        // Implementar invalidación por patrón usando Redis SCAN
+        _logger.LogInformation("Invalidating cache pattern {Pattern}", pattern);
+    }
+}
+```
+
+### 4. Database Optimization
+```csharp
+public class DatabaseOptimizedService
+{
+    private readonly DbContext _context;
+    private readonly ILogger<DatabaseOptimizedService> _logger;
+    
+    public DatabaseOptimizedService(DbContext context, ILogger<DatabaseOptimizedService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+    
+    public async Task<List<User>> GetUsersWithOptimizedQueryAsync()
+    {
+        // Usar AsNoTracking para queries de solo lectura
+        return await _context.Users
+            .AsNoTracking()
+            .Where(u => u.IsActive)
+            .Select(u => new User
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Email = u.Email
+                // Solo seleccionar campos necesarios
+            })
+            .ToListAsync();
+    }
+    
+    public async Task BulkInsertAsync<T>(IEnumerable<T> entities) where T : class
+    {
+        // Usar AddRange para inserción en lote
+        _context.Set<T>().AddRange(entities);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task UpdateInBatchesAsync<T>(IEnumerable<T> entities, int batchSize = 1000) where T : class
+    {
+        var batches = entities.Chunk(batchSize);
+        
+        foreach (var batch in batches)
+        {
+            _context.Set<T>().UpdateRange(batch);
+            await _context.SaveChangesAsync();
+        }
+    }
+    
+    public async Task<List<User>> GetUsersWithPaginationAsync(int page, int pageSize)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .OrderBy(u => u.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+}
+```
+
+### 5. Compression y Serialization Optimization
+```csharp
+public class CompressionService
+{
+    private readonly ILogger<CompressionService> _logger;
+    
+    public CompressionService(ILogger<CompressionService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task<byte[]> CompressDataAsync(byte[] data)
+    {
+        using var outputStream = new MemoryStream();
+        using var gzipStream = new GZipStream(outputStream, CompressionMode.Compress);
+        
+        await gzipStream.WriteAsync(data, 0, data.Length);
+        await gzipStream.FlushAsync();
+        
+        return outputStream.ToArray();
+    }
+    
+    public async Task<byte[]> DecompressDataAsync(byte[] compressedData)
+    {
+        using var inputStream = new MemoryStream(compressedData);
+        using var gzipStream = new GZipStream(inputStream, CompressionMode.Decompress);
+        using var outputStream = new MemoryStream();
+        
+        await gzipStream.CopyToAsync(outputStream);
+        return outputStream.ToArray();
+    }
+    
+    public string SerializeOptimized<T>(T obj)
+    {
+        // Usar System.Text.Json para mejor rendimiento
+        return JsonSerializer.Serialize(obj, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false, // No formatear para mejor rendimiento
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
+    }
+    
+    public T DeserializeOptimized<T>(string json)
+    {
+        return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+    }
+}
+```
+
+### 6. Connection Pooling y Resource Management
+```csharp
+public class ConnectionPoolService
+{
+    private readonly ConnectionMultiplexer _redis;
+    private readonly ILogger<ConnectionPoolService> _logger;
+    
+    public ConnectionPoolService(ILogger<ConnectionPoolService> logger)
+    {
+        _redis = ConnectionMultiplexer.Connect(new ConfigurationOptions
+        {
+            EndPoints = { "localhost:6379" },
+            ConnectRetry = 3,
+            ReconnectRetryPolicy = new ExponentialRetry(5000),
+            ConnectTimeout = 5000,
+            SyncTimeout = 5000
+        });
+        
+        _logger = logger;
+    }
+    
+    public async Task<string> GetValueAsync(string key)
+    {
+        var database = _redis.GetDatabase();
+        return await database.StringGetAsync(key);
+    }
+    
+    public async Task SetValueAsync(string key, string value, TimeSpan? expiration = null)
+    {
+        var database = _redis.GetDatabase();
+        await database.StringSetAsync(key, value, expiration);
+    }
+    
+    public async Task<bool> ExecuteWithRetryAsync(Func<Task<bool>> operation, int maxRetries = 3)
+    {
+        for (int i = 0; i <= maxRetries; i++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (i < maxRetries)
+            {
+                _logger.LogWarning(ex, "Retry {RetryCount} for Redis operation", i + 1);
+                await Task.Delay(TimeSpan.FromMilliseconds(100 * (i + 1)));
+            }
+        }
+        
+        throw new InvalidOperationException("Operation failed after retries");
+    }
+}
+```
+
+### 7. Performance Monitoring
+```csharp
+public class PerformanceMonitor
+{
+    private readonly ILogger<PerformanceMonitor> _logger;
+    private readonly ConcurrentDictionary<string, Stopwatch> _timers;
+    private readonly ConcurrentDictionary<string, long> _counters;
+    
+    public PerformanceMonitor(ILogger<PerformanceMonitor> logger)
+    {
+        _logger = logger;
+        _timers = new ConcurrentDictionary<string, Stopwatch>();
+        _counters = new ConcurrentDictionary<string, long>();
+    }
+    
+    public IDisposable MeasureOperation(string operationName)
+    {
+        var timer = Stopwatch.StartNew();
+        _timers[operationName] = timer;
+        
+        return new OperationTimer(operationName, this);
+    }
+    
+    public void IncrementCounter(string counterName)
+    {
+        _counters.AddOrUpdate(counterName, 1, (key, value) => value + 1);
+    }
+    
+    public void LogMetrics()
+    {
+        foreach (var timer in _timers)
+        {
+            _logger.LogInformation("Operation {Operation} took {Elapsed}ms", 
+                timer.Key, timer.Value.ElapsedMilliseconds);
+        }
+        
+        foreach (var counter in _counters)
+        {
+            _logger.LogInformation("Counter {Counter}: {Value}", 
+                counter.Key, counter.Value);
+        }
+    }
+    
+    private class OperationTimer : IDisposable
+    {
+        private readonly string _operationName;
+        private readonly PerformanceMonitor _monitor;
+        
+        public OperationTimer(string operationName, PerformanceMonitor monitor)
+        {
+            _operationName = operationName;
+            _monitor = monitor;
+        }
+        
+        public void Dispose()
+        {
+            if (_monitor._timers.TryRemove(_operationName, out var timer))
+            {
+                timer.Stop();
+                _monitor._logger.LogInformation("Operation {Operation} completed in {Elapsed}ms", 
+                    _operationName, timer.ElapsedMilliseconds);
+            }
+        }
+    }
+}
+
+// Uso
+public class OptimizedController : ControllerBase
+{
+    private readonly PerformanceMonitor _monitor;
+    
+    public OptimizedController(PerformanceMonitor monitor)
+    {
+        _monitor = monitor;
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetData()
+    {
+        using (_monitor.MeasureOperation("GetData"))
+        {
+            _monitor.IncrementCounter("GetDataRequests");
+            
+            // Operación costosa
+            await Task.Delay(100);
+            
+            return Ok(new { message = "Data retrieved" });
+        }
+    }
+}
+```
+
+### 8. Background Processing Optimization
+```csharp
+public class OptimizedBackgroundService : BackgroundService
+{
+    private readonly Channel<WorkItem> _channel;
+    private readonly SemaphoreSlim _semaphore;
+    private readonly ILogger<OptimizedBackgroundService> _logger;
+    
+    public OptimizedBackgroundService(ILogger<OptimizedBackgroundService> logger)
+    {
+        _logger = logger;
+        _channel = Channel.CreateUnbounded<WorkItem>(new UnboundedChannelOptions
+        {
+            SingleReader = false,
+            SingleWriter = false
+        });
+        _semaphore = new SemaphoreSlim(Environment.ProcessorCount);
+    }
+    
+    public async Task EnqueueWorkAsync(WorkItem workItem)
+    {
+        await _channel.Writer.WriteAsync(workItem);
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var tasks = new List<Task>();
+        
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                var workItem = await _channel.Reader.ReadAsync(stoppingToken);
+                
+                var task = ProcessWorkItemAsync(workItem, stoppingToken);
+                tasks.Add(task);
+                
+                // Limpiar tareas completadas
+                tasks.RemoveAll(t => t.IsCompleted);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+        
+        // Esperar que todas las tareas se completen
+        await Task.WhenAll(tasks);
+    }
+    
+    private async Task ProcessWorkItemAsync(WorkItem workItem, CancellationToken stoppingToken)
+    {
+        await _semaphore.WaitAsync(stoppingToken);
+        
+        try
+        {
+            using var timer = Stopwatch.StartNew();
+            
+            // Procesar trabajo
+            await workItem.ProcessAsync();
+            
+            _logger.LogInformation("Work item {Id} processed in {Elapsed}ms", 
+                workItem.Id, timer.ElapsedMilliseconds);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+}
+
+public class WorkItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Data { get; set; }
+    
+    public async Task ProcessAsync()
+    {
+        // Simular procesamiento
+        await Task.Delay(Random.Shared.Next(100, 1000));
+    }
+}
+```
+
+### Conclusión
+La optimización de rendimiento requiere:
+- Monitoreo continuo de métricas
+- Uso eficiente de memoria y GC
+- Optimización de operaciones asíncronas
+- Caching inteligente
+- Optimización de base de datos
+- Procesamiento en background eficiente
+
+### Recursos
+- [Performance Best Practices](https://docs.microsoft.com/dotnet/standard/performance/)
+- [Memory Management](https://docs.microsoft.com/dotnet/standard/garbage-collection/)
+- [Async Programming](https://docs.microsoft.com/dotnet/csharp/async)
+- [Entity Framework Performance](https://docs.microsoft.com/ef/core/performance/)

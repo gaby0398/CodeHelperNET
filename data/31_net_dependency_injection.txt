@@ -1,0 +1,855 @@
+# Dependency Injection en .NET: Guía Completa
+
+## Introducción a Dependency Injection
+
+Dependency Injection (DI) es un patrón de diseño que implementa el principio de Inversión de Dependencias (DIP). En .NET, el contenedor IoC (Inversion of Control) integrado proporciona una implementación robusta y fácil de usar de este patrón.
+
+### Conceptos Fundamentales
+
+#### 1. ¿Qué es Dependency Injection?
+
+**Definición**: DI es un patrón que permite inyectar dependencias en una clase en lugar de que la clase las cree internamente.
+
+**Ventajas**:
+- **Desacoplamiento**: Reduce la dependencia entre clases
+- **Testabilidad**: Facilita el testing unitario
+- **Flexibilidad**: Permite cambiar implementaciones fácilmente
+- **Mantenibilidad**: Código más limpio y organizado
+
+**Ejemplo Básico**:
+```csharp
+// ❌ Sin DI - Acoplamiento fuerte
+public class UserService
+{
+    private readonly SqlServerUserRepository _userRepository;
+    private readonly EmailService _emailService;
+    
+    public UserService()
+    {
+        _userRepository = new SqlServerUserRepository();
+        _emailService = new EmailService();
+    }
+}
+
+// ✅ Con DI - Desacoplamiento
+public class UserService
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
+    
+    public UserService(IUserRepository userRepository, IEmailService emailService)
+    {
+        _userRepository = userRepository;
+        _emailService = emailService;
+    }
+}
+```
+
+#### 2. Lifetimes de Servicios
+
+**Tipos de Lifetime**:
+- **Singleton**: Una instancia para toda la aplicación
+- **Scoped**: Una instancia por request/scope
+- **Transient**: Nueva instancia cada vez
+
+**Ejemplo de Lifetimes**:
+```csharp
+public class ServiceLifetimesExample
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Singleton - Una instancia para toda la aplicación
+        services.AddSingleton<IConfigurationService, ConfigurationService>();
+        services.AddSingleton<ICacheService, CacheService>();
+        services.AddSingleton<ILogger, Logger>();
+        
+        // Scoped - Una instancia por request (en aplicaciones web)
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IDbContext, ApplicationDbContext>();
+        
+        // Transient - Nueva instancia cada vez
+        services.AddTransient<IEmailService, EmailService>();
+        services.AddTransient<INotificationService, NotificationService>();
+        services.AddTransient<IValidator<User>, UserValidator>();
+    }
+}
+
+// Ejemplo de servicios con diferentes lifetimes
+public interface IConfigurationService
+{
+    string GetConnectionString();
+    string GetApiKey();
+}
+
+public class ConfigurationService : IConfigurationService
+{
+    private readonly IConfiguration _configuration;
+    
+    public ConfigurationService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+        Console.WriteLine("ConfigurationService created");
+    }
+    
+    public string GetConnectionString()
+    {
+        return _configuration.GetConnectionString("DefaultConnection");
+    }
+    
+    public string GetApiKey()
+    {
+        return _configuration["ApiKey"];
+    }
+}
+
+public interface IUserRepository
+{
+    Task<User> GetByIdAsync(int id);
+    Task<IEnumerable<User>> GetAllAsync();
+}
+
+public class UserRepository : IUserRepository
+{
+    private readonly IDbContext _dbContext;
+    
+    public UserRepository(IDbContext dbContext)
+    {
+        _dbContext = dbContext;
+        Console.WriteLine("UserRepository created");
+    }
+    
+    public async Task<User> GetByIdAsync(int id)
+    {
+        return await _dbContext.Users.FindAsync(id);
+    }
+    
+    public async Task<IEnumerable<User>> GetAllAsync()
+    {
+        return await _dbContext.Users.ToListAsync();
+    }
+}
+
+public interface IEmailService
+{
+    Task SendEmailAsync(string to, string subject, string body);
+}
+
+public class EmailService : IEmailService
+{
+    public EmailService()
+    {
+        Console.WriteLine("EmailService created");
+    }
+    
+    public async Task SendEmailAsync(string to, string subject, string body)
+    {
+        // Implementación del envío de email
+        await Task.Delay(100);
+        Console.WriteLine($"Email sent to {to}: {subject}");
+    }
+}
+```
+
+### Configuración del Contenedor IoC
+
+#### 1. Registro de Servicios
+
+**Métodos de Registro**:
+```csharp
+public class ServiceRegistrationExample
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Registro básico
+        services.AddSingleton<IMyService, MyService>();
+        services.AddScoped<IMyRepository, MyRepository>();
+        services.AddTransient<IMyValidator, MyValidator>();
+        
+        // Registro con interfaz genérica
+        services.AddSingleton(typeof(IRepository<>), typeof(Repository<>));
+        
+        // Registro múltiple para la misma interfaz
+        services.AddTransient<INotificationService, EmailNotificationService>();
+        services.AddTransient<INotificationService, SmsNotificationService>();
+        services.AddTransient<INotificationService, PushNotificationService>();
+        
+        // Registro con factory
+        services.AddTransient<IDatabaseConnection>(provider =>
+        {
+            var config = provider.GetService<IConfigurationService>();
+            return new DatabaseConnection(config.GetConnectionString());
+        });
+        
+        // Registro condicional
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (environment == "Development")
+        {
+            services.AddTransient<IEmailService, MockEmailService>();
+        }
+        else
+        {
+            services.AddTransient<IEmailService, RealEmailService>();
+        }
+        
+        // Registro con opciones
+        services.Configure<EmailSettings>(configuration.GetSection("Email"));
+        services.Configure<DatabaseSettings>(configuration.GetSection("Database"));
+        
+        // Registro con validación
+        services.AddOptions<ApiSettings>()
+            .Bind(configuration.GetSection("Api"))
+            .ValidateDataAnnotations();
+    }
+}
+
+// Ejemplo de servicios con factory
+public interface IDatabaseConnection
+{
+    Task<bool> ConnectAsync();
+    Task<bool> DisconnectAsync();
+}
+
+public class DatabaseConnection : IDatabaseConnection
+{
+    private readonly string _connectionString;
+    
+    public DatabaseConnection(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+    
+    public async Task<bool> ConnectAsync()
+    {
+        // Implementación de conexión
+        await Task.Delay(100);
+        return true;
+    }
+    
+    public async Task<bool> DisconnectAsync()
+    {
+        // Implementación de desconexión
+        await Task.Delay(50);
+        return true;
+    }
+}
+
+// Ejemplo de servicios con opciones
+public class EmailSettings
+{
+    public string SmtpServer { get; set; }
+    public int Port { get; set; }
+    public string Username { get; set; }
+    public string Password { get; set; }
+}
+
+public class DatabaseSettings
+{
+    public string ConnectionString { get; set; }
+    public int CommandTimeout { get; set; }
+    public bool EnableRetryOnFailure { get; set; }
+}
+
+public class ApiSettings
+{
+    [Required]
+    public string BaseUrl { get; set; }
+    
+    [Range(1, 100)]
+    public int TimeoutSeconds { get; set; }
+    
+    [Required]
+    public string ApiKey { get; set; }
+}
+```
+
+#### 2. Registro de Servicios con Extensiones
+
+**Ejemplo de Extensiones**:
+```csharp
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    {
+        // Servicios de aplicación
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IProductService, ProductService>();
+        
+        return services;
+    }
+    
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Servicios de infraestructura
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        
+        return services;
+    }
+    
+    public static IServiceCollection AddExternalServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Servicios externos
+        services.AddHttpClient<IExternalApiService, ExternalApiService>(client =>
+        {
+            client.BaseAddress = new Uri(configuration["ExternalApi:BaseUrl"]);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        
+        return services;
+    }
+    
+    public static IServiceCollection AddValidationServices(this IServiceCollection services)
+    {
+        // Servicios de validación
+        services.AddScoped<IValidator<User>, UserValidator>();
+        services.AddScoped<IValidator<Order>, OrderValidator>();
+        services.AddScoped<IValidator<Product>, ProductValidator>();
+        
+        return services;
+    }
+}
+
+// Uso en Program.cs
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // Configurar servicios usando extensiones
+        builder.Services.AddApplicationServices();
+        builder.Services.AddInfrastructureServices(builder.Configuration);
+        builder.Services.AddExternalServices(builder.Configuration);
+        builder.Services.AddValidationServices();
+        
+        var app = builder.Build();
+        app.Run();
+    }
+}
+```
+
+### Inyección de Dependencias en Diferentes Contextos
+
+#### 1. En Controladores ASP.NET Core
+
+**Ejemplo de Controlador**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UsersController> _logger;
+    private readonly IValidator<CreateUserDto> _validator;
+    
+    public UsersController(
+        IUserService userService,
+        IEmailService emailService,
+        ILogger<UsersController> logger,
+        IValidator<CreateUserDto> validator)
+    {
+        _userService = userService;
+        _emailService = emailService;
+        _logger = logger;
+        _validator = validator;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    {
+        try
+        {
+            var users = await _userService.GetAllUsersAsync();
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving users");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto createUserDto)
+    {
+        // Validación
+        var validationResult = await _validator.ValidateAsync(createUserDto);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors);
+        }
+        
+        try
+        {
+            var user = await _userService.CreateUserAsync(createUserDto);
+            
+            // Enviar email de bienvenida
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Welcome!",
+                $"Welcome to our platform, {user.Name}!");
+            
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserDto>> GetUser(int id)
+    {
+        var user = await _userService.GetUserByIdAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+        
+        return Ok(user);
+    }
+}
+```
+
+#### 2. En Servicios de Aplicación
+
+**Ejemplo de Servicio**:
+```csharp
+public interface IUserService
+{
+    Task<IEnumerable<UserDto>> GetAllUsersAsync();
+    Task<UserDto> GetUserByIdAsync(int id);
+    Task<UserDto> CreateUserAsync(CreateUserDto createUserDto);
+    Task<bool> UpdateUserAsync(UpdateUserDto updateUserDto);
+    Task<bool> DeleteUserAsync(int id);
+}
+
+public class UserService : IUserService
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UserService> _logger;
+    private readonly IValidator<CreateUserDto> _createValidator;
+    private readonly IValidator<UpdateUserDto> _updateValidator;
+    private readonly IConfigurationService _configService;
+    
+    public UserService(
+        IUserRepository userRepository,
+        IEmailService emailService,
+        ILogger<UserService> logger,
+        IValidator<CreateUserDto> createValidator,
+        IValidator<UpdateUserDto> updateValidator,
+        IConfigurationService configService)
+    {
+        _userRepository = userRepository;
+        _emailService = emailService;
+        _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
+        _configService = configService;
+    }
+    
+    public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
+    {
+        _logger.LogInformation("Retrieving all users");
+        
+        var users = await _userRepository.GetAllAsync();
+        return users.Select(u => new UserDto
+        {
+            Id = u.Id,
+            Name = u.Name,
+            Email = u.Email,
+            CreatedAt = u.CreatedAt
+        });
+    }
+    
+    public async Task<UserDto> GetUserByIdAsync(int id)
+    {
+        _logger.LogInformation("Retrieving user with ID: {UserId}", id);
+        
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+        
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
+        };
+    }
+    
+    public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
+    {
+        _logger.LogInformation("Creating new user: {Email}", createUserDto.Email);
+        
+        // Validación
+        var validationResult = await _createValidator.ValidateAsync(createUserDto);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+        
+        // Verificar si el email ya existe
+        var existingUser = await _userRepository.GetByEmailAsync(createUserDto.Email);
+        if (existingUser != null)
+        {
+            throw new ValidationException("Email already exists");
+        }
+        
+        // Crear usuario
+        var user = new User
+        {
+            Name = createUserDto.Name,
+            Email = createUserDto.Email,
+            PasswordHash = HashPassword(createUserDto.Password),
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        await _userRepository.AddAsync(user);
+        
+        // Enviar email de confirmación
+        var confirmationUrl = $"{_configService.GetBaseUrl()}/confirm-email?token={user.Id}";
+        await _emailService.SendEmailAsync(
+            user.Email,
+            "Confirm your email",
+            $"Please confirm your email by clicking this link: {confirmationUrl}");
+        
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
+        };
+    }
+    
+    public async Task<bool> UpdateUserAsync(UpdateUserDto updateUserDto)
+    {
+        _logger.LogInformation("Updating user with ID: {UserId}", updateUserDto.Id);
+        
+        // Validación
+        var validationResult = await _updateValidator.ValidateAsync(updateUserDto);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+        
+        var user = await _userRepository.GetByIdAsync(updateUserDto.Id);
+        if (user == null)
+        {
+            return false;
+        }
+        
+        user.Name = updateUserDto.Name;
+        user.UpdatedAt = DateTime.UtcNow;
+        
+        await _userRepository.UpdateAsync(user);
+        return true;
+    }
+    
+    public async Task<bool> DeleteUserAsync(int id)
+    {
+        _logger.LogInformation("Deleting user with ID: {UserId}", id);
+        
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return false;
+        }
+        
+        await _userRepository.DeleteAsync(user);
+        return true;
+    }
+    
+    private string HashPassword(string password)
+    {
+        return BCrypt.Net.BCrypt.HashPassword(password);
+    }
+}
+```
+
+#### 3. En Middleware Personalizado
+
+**Ejemplo de Middleware**:
+```csharp
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+    private readonly IConfigurationService _configService;
+    
+    public RequestLoggingMiddleware(
+        RequestDelegate next,
+        ILogger<RequestLoggingMiddleware> logger,
+        IConfigurationService configService)
+    {
+        _next = next;
+        _logger = logger;
+        _configService = configService;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var startTime = DateTime.UtcNow;
+        var requestId = Guid.NewGuid().ToString();
+        
+        // Log request
+        _logger.LogInformation(
+            "Request {RequestId} {Method} {Path} started",
+            requestId,
+            context.Request.Method,
+            context.Request.Path);
+        
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Request {RequestId} failed", requestId);
+            throw;
+        }
+        finally
+        {
+            var endTime = DateTime.UtcNow;
+            var duration = endTime - startTime;
+            
+            _logger.LogInformation(
+                "Request {RequestId} {Method} {Path} => {StatusCode} ({Duration}ms)",
+                requestId,
+                context.Request.Method,
+                context.Request.Path,
+                context.Response.StatusCode,
+                duration.TotalMilliseconds);
+        }
+    }
+}
+
+// Extensión para registrar el middleware
+public static class RequestLoggingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestLoggingMiddleware>();
+    }
+}
+```
+
+### Testing con Dependency Injection
+
+#### 1. Testing Unitario
+
+**Ejemplo de Tests**:
+```csharp
+public class UserServiceTests
+{
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<ILogger<UserService>> _mockLogger;
+    private readonly Mock<IValidator<CreateUserDto>> _mockCreateValidator;
+    private readonly Mock<IValidator<UpdateUserDto>> _mockUpdateValidator;
+    private readonly Mock<IConfigurationService> _mockConfigService;
+    private readonly UserService _userService;
+    
+    public UserServiceTests()
+    {
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockEmailService = new Mock<IEmailService>();
+        _mockLogger = new Mock<ILogger<UserService>>();
+        _mockCreateValidator = new Mock<IValidator<CreateUserDto>>();
+        _mockUpdateValidator = new Mock<IValidator<UpdateUserDto>>();
+        _mockConfigService = new Mock<IConfigurationService>();
+        
+        _userService = new UserService(
+            _mockUserRepository.Object,
+            _mockEmailService.Object,
+            _mockLogger.Object,
+            _mockCreateValidator.Object,
+            _mockUpdateValidator.Object,
+            _mockConfigService.Object);
+    }
+    
+    [Fact]
+    public async Task CreateUserAsync_ValidUser_ReturnsUserDto()
+    {
+        // Arrange
+        var createUserDto = new CreateUserDto
+        {
+            Name = "John Doe",
+            Email = "john@example.com",
+            Password = "password123"
+        };
+        
+        var validationResult = new ValidationResult();
+        _mockCreateValidator.Setup(v => v.ValidateAsync(createUserDto, default))
+            .ReturnsAsync(validationResult);
+        
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(createUserDto.Email))
+            .ReturnsAsync((User)null);
+        
+        _mockConfigService.Setup(c => c.GetBaseUrl())
+            .Returns("https://example.com");
+        
+        // Act
+        var result = await _userService.CreateUserAsync(createUserDto);
+        
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(createUserDto.Name, result.Name);
+        Assert.Equal(createUserDto.Email, result.Email);
+        
+        _mockUserRepository.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
+        _mockEmailService.Verify(e => e.SendEmailAsync(
+            createUserDto.Email,
+            It.IsAny<string>(),
+            It.IsAny<string>()), Times.Once);
+    }
+    
+    [Fact]
+    public async Task CreateUserAsync_EmailExists_ThrowsValidationException()
+    {
+        // Arrange
+        var createUserDto = new CreateUserDto
+        {
+            Name = "John Doe",
+            Email = "john@example.com",
+            Password = "password123"
+        };
+        
+        var existingUser = new User { Id = 1, Email = createUserDto.Email };
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(createUserDto.Email))
+            .ReturnsAsync(existingUser);
+        
+        // Act & Assert
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _userService.CreateUserAsync(createUserDto));
+    }
+}
+```
+
+#### 2. Testing de Integración
+
+**Ejemplo de Test de Integración**:
+```csharp
+public class UserControllerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    
+    public UserControllerIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+    
+    [Fact]
+    public async Task GetUsers_ReturnsSuccessResult()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        
+        // Act
+        var response = await client.GetAsync("/api/users");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        var users = JsonSerializer.Deserialize<IEnumerable<UserDto>>(content);
+        Assert.NotNull(users);
+    }
+    
+    [Fact]
+    public async Task CreateUser_ValidData_ReturnsCreatedResult()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var createUserDto = new CreateUserDto
+        {
+            Name = "Test User",
+            Email = "test@example.com",
+            Password = "password123"
+        };
+        
+        var json = JsonSerializer.Serialize(createUserDto);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        
+        // Act
+        var response = await client.PostAsync("/api/users", content);
+        
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+}
+
+// Configuración del WebApplicationFactory
+public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Reemplazar servicios reales con mocks para testing
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(IUserRepository));
+            
+            if (descriptor != null)
+            {
+                services.Remove(descriptor);
+            }
+            
+            services.AddScoped<IUserRepository, MockUserRepository>();
+            
+            // Usar base de datos en memoria
+            var dbDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
+            
+            if (dbDescriptor != null)
+            {
+                services.Remove(dbDescriptor);
+            }
+            
+            services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("TestDatabase");
+            });
+        });
+    }
+}
+```
+
+### Conclusión
+
+Dependency Injection en .NET proporciona:
+
+**Ventajas Principales**:
+- **Desacoplamiento**: Reduce dependencias entre componentes
+- **Testabilidad**: Facilita testing unitario e integración
+- **Flexibilidad**: Permite cambiar implementaciones fácilmente
+- **Mantenibilidad**: Código más limpio y organizado
+- **Configurabilidad**: Gestión centralizada de dependencias
+
+**Casos de Uso**:
+- **Aplicaciones Web**: ASP.NET Core
+- **Aplicaciones de Consola**: Servicios y herramientas
+- **Microservicios**: Arquitectura distribuida
+- **Testing**: Mocking y testing unitario
+
+**Próximos Pasos**:
+- Explorar patrones de repositorio
+- Aprender sobre Unit of Work
+- Investigar Service Locator pattern
+- Profundizar en testing con DI
+- Experimentar con diferentes contenedores IoC
