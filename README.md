@@ -1,222 +1,275 @@
-# 🤖 CodeHelperNET - ChatBot RAG para C# y .NET
+# CodeHelperNET - Chatbot Especializado en C# y .NET
 
-Un sistema de **Retrieval-Augmented Generation (RAG)** especializado en C# y .NET que utiliza técnicas avanzadas de Deep Learning para proporcionar respuestas precisas y contextuales sobre programación.
+Un chatbot inteligente especializado en C# y .NET, desarrollado con tecnologías de Deep Learning y RAG (Retrieval-Augmented Generation). El proyecto incluye un backend en Python con embeddings y un frontend moderno en Next.js.
 
-## 🎯 Características Principales
+## 🚀 Características
 
-### ✨ Pipeline RAG Completo
-- **Retrieval**: Búsqueda semántica con embeddings especializados
-- **Augmentation**: Re-ranking con cross-encoders
-- **Generation**: Respuestas generativas con modelo LLM
+- **Chatbot especializado** en C# y .NET con 76 documentos de conocimiento
+- **RAG (Retrieval-Augmented Generation)** para respuestas precisas y contextuales
+- **Frontend moderno** con interfaz tipo ChatGPT y tema oscuro
+- **Backend robusto** con embeddings y cross-encoder para mejor calidad
+- **API REST** para integración fácil
+- **Base de conocimientos** con 3,073 chunks de información especializada
+- **Multiplataforma** - Compatible con Windows, Linux y macOS
 
-### 🧠 Técnicas de Deep Learning Implementadas
-- **Embeddings Especializados**: CodeBERT para código
-- **Cross-Encoders**: Re-ranking de resultados
-- **Transformers**: Modelo generativo DialoGPT
-- **Attention Mechanisms**: En modelos de embeddings
-- **Prompt Engineering**: Templates especializados por tipo de pregunta
+## 🛠️ Tecnologías
 
-### 📊 Métricas de Evaluación
-- **Precision@K**: Calidad de recuperación
-- **Recall@K**: Completitud de resultados
-- **F1-Score**: Balance precisión/recall
-- **NDCG@K**: Calidad del ranking
-- **Tiempo de Respuesta**: Eficiencia del sistema
+### Backend (Python)
+- **Sentence Transformers** - Embeddings para recuperación semántica
+- **ChromaDB** - Base de datos vectorial
+- **Flask** - API REST
+- **Transformers** - Modelos de lenguaje
+- **LangChain** - Framework para RAG
 
-## 🚀 Instalación
+### Frontend (Next.js)
+- **Next.js 14** - Framework de React
+- **TypeScript** - Tipado estático
+- **Tailwind CSS** - Framework de CSS
+- **Lucide React** - Iconos
 
-### 1. Instalar Dependencias
+## 📦 Instalación y Configuración
+
+### Prerrequisitos
+- Python 3.8+
+- Node.js 18+
+- npm o yarn
+
+### 1. Clonar el repositorio
+```bash
+git clone <tu-repositorio>
+cd CodeHelperNET
+```
+
+### 2. Configurar el Backend (Python)
+
+#### Crear entorno virtual
+
+**En Linux/macOS:**
+```bash
+python3 -m venv codehelper_env
+source codehelper_env/bin/activate
+```
+
+**En Windows:**
+```cmd
+python -m venv codehelper_env
+codehelper_env\Scripts\activate
+```
+
+#### Instalar dependencias
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configurar Base de Datos Vectorial
+#### Generar la base de datos vectorial
 ```bash
 python improved_vector_db.py
 ```
 
-### 3. Ejecutar ChatBot
+#### Iniciar el servidor backend
 ```bash
-python rag_chatbot.py
+python api_server.py
 ```
 
-## 📁 Estructura del Proyecto
+El backend estará disponible en: http://localhost:5000
 
-```
-CodeHelperNET/
-├── data/                          # Documentación de C#/.NET
-├── vector_db/                     # Base de datos vectorial
-├── improved_vector_db.py          # Generador mejorado de BD vectorial
-├── rag_chatbot.py                 # ChatBot RAG completo
-├── evaluation_metrics.py          # Métricas de evaluación
-├── requirements.txt               # Dependencias
-└── README.md                      # Documentación
-```
+### 3. Configurar el Frontend (Next.js)
 
-## 🔧 Componentes del Sistema
-
-### 1. Generador de Base Vectorial (`improved_vector_db.py`)
-- **Chunking Semántico**: Preserva contexto y estructura
-- **Limpieza de OCR**: Elimina errores de caracteres
-- **Metadatos Enriquecidos**: Tipo de contenido, archivo, sección
-- **Embeddings Especializados**: CodeBERT para código
-
-### 2. ChatBot RAG (`rag_chatbot.py`)
-- **Clasificación de Preguntas**: Automática por tipo
-- **Recuperación Inteligente**: Embeddings + re-ranking
-- **Generación de Respuestas**: Modelo LLM con prompts especializados
-- **Traducción Automática**: Inglés → Español
-
-### 3. Evaluador de Métricas (`evaluation_metrics.py`)
-- **Métricas de Recuperación**: Precision, Recall, F1, NDCG
-- **Métricas de Respuesta**: Tiempo, longitud, relevancia
-- **Reportes Automáticos**: Análisis y recomendaciones
-
-## 💡 Uso del Sistema
-
-### Modo Interactivo
-```python
-from rag_chatbot import RAGChatbot
-
-chatbot = RAGChatbot()
-chatbot.interactive_chat()
-```
-
-### Consulta Individual
-```python
-response = chatbot.chat("¿Cómo declarar una variable en C#?")
-print(response)
-```
-
-### Evaluación del Sistema
-```python
-from evaluation_metrics import run_evaluation
-
-results = run_evaluation(chatbot)
-```
-
-## 🎯 Tipos de Preguntas Soportadas
-
-### 1. Ejemplos de Código
-- "Dame un ejemplo de un bucle for en C#"
-- "¿Cómo implementar una clase en C#?"
-- "Muestra cómo usar Console.WriteLine"
-
-### 2. Explicaciones de Conceptos
-- "¿Qué es un array en C#?"
-- "Explica qué es ADO.NET"
-- "¿Qué son las interfaces en C#?"
-
-### 3. Ayuda de Sintaxis
-- "¿Cómo declarar una variable en C#?"
-- "Sintaxis de un método en C#"
-- "¿Cómo escribir un if statement?"
-
-## 📈 Mejoras Implementadas
-
-### Comparación con Versión Original
-
-| Aspecto | Versión Original | Versión Mejorada |
-|---------|------------------|------------------|
-| **Pipeline RAG** | ❌ Incompleto | ✅ Completo |
-| **Embeddings** | Genérico multilingüe | CodeBERT especializado |
-| **Chunking** | Básico por longitud | Semántico con contexto |
-| **Generación** | Solo traducción | Modelo LLM generativo |
-| **Re-ranking** | ❌ No implementado | ✅ Cross-encoder |
-| **Evaluación** | ❌ No implementada | ✅ Métricas completas |
-| **Prompts** | ❌ No implementados | ✅ Templates especializados |
-
-### Técnicas de Deep Learning Aplicadas
-
-1. **Embeddings Especializados**
-   - Modelo: `microsoft/codebert-base-mlm`
-   - Ventaja: Entendimiento específico de código
-
-2. **Cross-Encoders para Re-ranking**
-   - Modelo: `cross-encoder/ms-marco-MiniLM-L-6-v2`
-   - Ventaja: Mejora precisión de resultados
-
-3. **Modelo Generativo**
-   - Modelo: `microsoft/DialoGPT-medium`
-   - Ventaja: Respuestas coherentes y contextuales
-
-4. **Prompt Engineering**
-   - Templates especializados por tipo de pregunta
-   - Ventaja: Respuestas más precisas y estructuradas
-
-## 🔬 Métricas de Rendimiento
-
-### Métricas de Recuperación
-- **Precision@5**: 0.85 ± 0.12
-- **Recall@5**: 0.78 ± 0.15
-- **F1@5**: 0.81
-- **NDCG@5**: 0.89
-
-### Métricas de Respuesta
-- **Tiempo promedio**: 2.3s ± 0.8s
-- **Longitud promedio**: 45.2 palabras
-- **Score de relevancia**: 0.82 ± 0.09
-
-## 🛠️ Configuración Avanzada
-
-### Personalizar Modelos
-```python
-# Cambiar modelo de embeddings
-self.embedding_model = SentenceTransformer("tu-modelo-especializado")
-
-# Cambiar modelo generativo
-model_name = "tu-modelo-llm"
-```
-
-### Ajustar Parámetros
-```python
-# Tamaño de chunks
-max_length = 512  # Aumentar para más contexto
-
-# Número de resultados
-n_results = 5     # Ajustar según necesidades
-
-# Temperatura de generación
-temperature = 0.7  # Controlar creatividad
-```
-
-## 📊 Evaluación y Monitoreo
-
-### Ejecutar Evaluación Completa
+#### Instalar dependencias
 ```bash
-python evaluation_metrics.py
+cd frontend
+npm install
 ```
 
-### Interpretar Resultados
-- **Precision@5 > 0.8**: Excelente recuperación
-- **Recall@5 > 0.7**: Buena cobertura
-- **F1@5 > 0.75**: Balance óptimo
-- **Tiempo < 3s**: Respuesta rápida
+#### Configurar variables de entorno
+Crear archivo `.env.local` en la carpeta `frontend/`:
+```env
+PYTHON_BACKEND_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=/api
+```
 
-## 🚀 Próximas Mejoras
+#### Iniciar el servidor frontend
+```bash
+npm run dev
+```
 
-1. **Fine-tuning**: Entrenar modelos en datos específicos de C#
-2. **Caching**: Implementar cache para respuestas frecuentes
-3. **API REST**: Exponer como servicio web
-4. **Interfaz Web**: Dashboard para interacción
-5. **Múltiples Idiomas**: Soporte para más idiomas
+El frontend estará disponible en: http://localhost:3000
 
-## 🤝 Contribuciones
+## 🚀 Inicio Rápido
+
+### Opción 1: Script de inicio automático
+
+**En Linux/macOS:**
+```bash
+chmod +x start_chatbot.sh
+./start_chatbot.sh
+```
+
+**En Windows:**
+```cmd
+start_chatbot.bat
+```
+
+### Opción 2: Inicio manual
+
+1. **Terminal 1 - Backend:**
+   ```bash
+   # Linux/macOS
+   source codehelper_env/bin/activate
+   python api_server.py
+   
+   # Windows
+   codehelper_env\Scripts\activate
+   python api_server.py
+   ```
+
+2. **Terminal 2 - Frontend:**
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. **Abrir navegador:** http://localhost:3000
+
+## 🎯 Uso del Chatbot
+
+### Interfaz Web
+1. Abre http://localhost:3000 en tu navegador
+2. Escribe tu pregunta sobre C# o .NET
+3. El chatbot responderá con información especializada
+
+### Ejemplos de preguntas
+- "¿Qué es async/await en C#?"
+- "¿Cómo crear una API REST con ASP.NET Core?"
+- "¿Qué son los patrones de diseño más comunes?"
+- "¿Cómo implementar Entity Framework Core?"
+- "¿Cuáles son las mejores prácticas de seguridad en .NET?"
+
+### API REST
+También puedes usar el chatbot programáticamente:
+
+**En Linux/macOS:**
+```bash
+curl -X POST http://localhost:5000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "¿Qué es LINQ en C#?"}'
+```
+
+**En Windows (PowerShell):**
+```powershell
+Invoke-RestMethod -Uri "http://localhost:5000/chat" -Method POST -ContentType "application/json" -Body '{"message": "¿Qué es LINQ en C#?"}'
+```
+
+## 📚 Base de Conocimientos
+
+El chatbot tiene acceso a información sobre:
+
+- **C# Fundamentals** - Conceptos básicos y avanzados
+- **ASP.NET Core** - Desarrollo web moderno
+- **Entity Framework** - ORM y acceso a datos
+- **Design Patterns** - Patrones de diseño
+- **Testing** - Pruebas unitarias e integración
+- **Security** - Mejores prácticas de seguridad
+- **Performance** - Optimización y rendimiento
+- **Cloud Development** - Azure, AWS, GCP
+- **Microservices** - Arquitectura de microservicios
+- **DevOps** - CI/CD y automatización
+
+## 🔧 Configuración Avanzada
+
+### Variables de Entorno del Backend
+
+**En Linux/macOS:**
+```bash
+export FLASK_ENV=development  # Modo desarrollo
+export PORT=5000              # Puerto del servidor
+```
+
+**En Windows:**
+```cmd
+set FLASK_ENV=development
+set PORT=5000
+```
+
+### Variables de Entorno del Frontend
+```env
+PYTHON_BACKEND_URL=http://localhost:5000  # URL del backend
+NEXT_PUBLIC_API_URL=/api                  # URL de la API del frontend
+```
+
+### Personalización del Chatbot
+Puedes modificar:
+- `rag_chatbot.py` - Lógica del chatbot
+- `improved_vector_db.py` - Generación de embeddings
+- `frontend/src/components/ChatInterface.tsx` - Interfaz del chat
+
+## 🌐 Despliegue
+
+### Despliegue en Vercel (Frontend)
+1. Conecta tu repositorio con Vercel
+2. Configura las variables de entorno en Vercel
+3. El despliegue será automático en cada push
+
+### Despliegue del Backend
+El backend puede desplegarse en:
+- **Render** - Servicio gratuito para Python
+- **Railway** - Despliegue fácil
+- **Heroku** - Plataforma tradicional
+- **AWS/GCP/Azure** - Servicios en la nube
+
+## 🐛 Solución de Problemas
+
+### Error: "Chatbot no inicializado"
+- Verifica que el backend esté ejecutándose
+- Revisa los logs del servidor Flask
+
+### Error: "No se pudo conectar con el servidor"
+- Confirma que la URL del backend sea correcta
+- Verifica que no haya problemas de CORS
+
+### Error: "Base de datos vectorial no encontrada"
+- Ejecuta `python improved_vector_db.py` para regenerar la base
+
+### Error: "Dependencias faltantes"
+- Ejecuta `pip install -r requirements.txt`
+- Verifica que el entorno virtual esté activado
+
+### Problemas específicos de Windows
+- **Error de permisos:** Ejecuta PowerShell como administrador
+- **Error de encoding:** Usa `chcp 65001` para UTF-8
+- **Error de path:** Usa rutas con backslashes `\` en lugar de `/`
+
+### Problemas específicos de Linux
+- **Error de permisos:** Usa `sudo` si es necesario
+- **Error de dependencias:** Instala `python3-dev` y `build-essential`
+- **Error de encoding:** Configura `export LANG=en_US.UTF-8`
+
+## 📊 Rendimiento
+
+- **Tiempo de respuesta**: ~1-3 segundos por pregunta
+- **Precisión**: Alta gracias al RAG y cross-encoder
+- **Base de datos**: 3,073 chunks de información
+- **Documentos**: 76 archivos de conocimiento especializado
+
+## 🤝 Contribución
 
 1. Fork el proyecto
-2. Crear rama para feature (`git checkout -b feature/AmazingFeature`)
-3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir Pull Request
+5. Abre un Pull Request
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
 ## 👨‍💻 Autor
 
-Desarrollado como proyecto universitario de Deep Learning.
+Desarrollado como proyecto universitario para el curso IF7103 Sistemas Expertos.
 
----
+## 🙏 Agradecimientos
 
-**¡Disfruta programando con C# y .NET! 🎉** 
+- Sentence Transformers por los modelos de embeddings
+- ChromaDB por la base de datos vectorial
+- Next.js por el framework frontend
+- La comunidad de C# y .NET por el conocimiento compartido 
