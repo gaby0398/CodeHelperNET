@@ -1,0 +1,431 @@
+# Testing y Debugging en C#: Guía Completa
+
+## Introducción al Testing en C#
+
+El testing es una parte fundamental del desarrollo de software que asegura la calidad, confiabilidad y mantenibilidad del código. En C#, existen múltiples frameworks y herramientas para implementar diferentes tipos de pruebas.
+
+### Beneficios del Testing
+- **Detección temprana de errores**: Identificar problemas antes de llegar a producción
+- **Refactoring seguro**: Cambiar código con confianza
+- **Documentación viva**: Los tests documentan el comportamiento esperado
+- **Mejora del diseño**: Forzar interfaces claras y desacoplamiento
+
+## Tipos de Testing
+
+### 1. Unit Testing (Pruebas Unitarias)
+
+Las pruebas unitarias verifican el comportamiento de unidades individuales de código.
+
+#### Framework MSTest
+```csharp
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+[TestClass]
+public class CalculatorTests
+{
+    private Calculator _calculator;
+    
+    [TestInitialize]
+    public void Setup()
+    {
+        _calculator = new Calculator();
+    }
+    
+    [TestMethod]
+    public void Add_TwoNumbers_ReturnsSum()
+    {
+        // Arrange
+        int a = 5;
+        int b = 3;
+        
+        // Act
+        int result = _calculator.Add(a, b);
+        
+        // Assert
+        Assert.AreEqual(8, result);
+    }
+    
+    [TestMethod]
+    public void Divide_ByZero_ThrowsException()
+    {
+        // Arrange
+        int a = 10;
+        int b = 0;
+        
+        // Act & Assert
+        Assert.ThrowsException<DivideByZeroException>(() => 
+            _calculator.Divide(a, b));
+    }
+}
+```
+
+#### Framework xUnit
+```csharp
+using Xunit;
+
+public class UserServiceTests
+{
+    private readonly UserService _userService;
+    private readonly Mock<IUserRepository> _mockRepository;
+    
+    public UserServiceTests()
+    {
+        _mockRepository = new Mock<IUserRepository>();
+        _userService = new UserService(_mockRepository.Object);
+    }
+    
+    [Fact]
+    public void GetUserById_ValidId_ReturnsUser()
+    {
+        // Arrange
+        int userId = 1;
+        var expectedUser = new User { Id = userId, Name = "John Doe" };
+        _mockRepository.Setup(r => r.GetById(userId)).Returns(expectedUser);
+        
+        // Act
+        var result = _userService.GetUserById(userId);
+        
+        // Assert
+        Assert.Equal(expectedUser, result);
+    }
+}
+```
+
+### 2. Integration Testing (Pruebas de Integración)
+
+Las pruebas de integración verifican la interacción entre múltiples componentes.
+
+```csharp
+[TestClass]
+public class UserControllerIntegrationTests
+{
+    private TestServer _server;
+    private HttpClient _client;
+    
+    [TestInitialize]
+    public void Setup()
+    {
+        var builder = new WebHostBuilder()
+            .UseStartup<TestStartup>();
+        
+        _server = new TestServer(builder);
+        _client = _server.CreateClient();
+    }
+    
+    [TestMethod]
+    public async Task GetUser_ValidId_ReturnsUser()
+    {
+        // Arrange
+        int userId = 1;
+        
+        // Act
+        var response = await _client.GetAsync($"/api/users/{userId}");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        var user = JsonConvert.DeserializeObject<User>(content);
+        Assert.AreEqual(userId, user.Id);
+    }
+}
+```
+
+### 3. Mocking y Stubbing
+
+El mocking permite crear objetos simulados para aislar las unidades de prueba.
+
+```csharp
+[TestClass]
+public class OrderServiceTests
+{
+    private Mock<IUserRepository> _mockUserRepo;
+    private Mock<IProductRepository> _mockProductRepo;
+    private Mock<IEmailService> _mockEmailService;
+    private OrderService _orderService;
+    
+    [TestInitialize]
+    public void Setup()
+    {
+        _mockUserRepo = new Mock<IUserRepository>();
+        _mockProductRepo = new Mock<IProductRepository>();
+        _mockEmailService = new Mock<IEmailService>();
+        
+        _orderService = new OrderService(
+            _mockUserRepo.Object,
+            _mockProductRepo.Object,
+            _mockEmailService.Object);
+    }
+    
+    [TestMethod]
+    public void CreateOrder_ValidData_CreatesOrderAndSendsEmail()
+    {
+        // Arrange
+        var user = new User { Id = 1, Email = "user@example.com" };
+        var product = new Product { Id = 100, Price = 50.0m };
+        
+        _mockUserRepo.Setup(r => r.GetById(1)).Returns(user);
+        _mockProductRepo.Setup(r => r.GetById(100)).Returns(product);
+        
+        // Act
+        var order = _orderService.CreateOrder(1, 100, 2);
+        
+        // Assert
+        Assert.IsNotNull(order);
+        Assert.AreEqual(100.0m, order.TotalAmount);
+        
+        _mockEmailService.Verify(e => e.SendEmail(
+            user.Email, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+}
+```
+
+## Debugging en C#
+
+### 1. Herramientas de Debugging
+
+#### Visual Studio Debugger
+```csharp
+public class DebugExample
+{
+    public void ProcessData(List<int> numbers)
+    {
+        // Punto de interrupción manual
+        // F9 para establecer breakpoint
+        
+        int sum = 0;
+        foreach (int number in numbers)
+        {
+            // Inspeccionar variables en tiempo real
+            sum += number;
+            
+            // Usar Debug.WriteLine para logging
+            Debug.WriteLine($"Processing number: {number}, Current sum: {sum}");
+        }
+        
+        // Usar Debug.Assert para validaciones
+        Debug.Assert(sum > 0, "Sum should be positive");
+        
+        Console.WriteLine($"Final sum: {sum}");
+    }
+}
+```
+
+#### Logging con Serilog
+```csharp
+public class LoggingExample
+{
+    private readonly ILogger _logger;
+    
+    public LoggingExample()
+    {
+        _logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+    }
+    
+    public void ProcessUser(User user)
+    {
+        try
+        {
+            _logger.Information("Processing user {UserId} with name {UserName}", 
+                user.Id, user.Name);
+            
+            // Lógica de procesamiento
+            
+            _logger.Information("Successfully processed user {UserId}", user.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error processing user {UserId}", user.Id);
+            throw;
+        }
+    }
+}
+```
+
+### 2. Técnicas de Debugging
+
+#### Conditional Breakpoints
+```csharp
+public void ProcessOrders(List<Order> orders)
+{
+    foreach (var order in orders)
+    {
+        // Breakpoint condicional: order.Amount > 1000
+        if (order.Amount > 1000)
+        {
+            // Este código se ejecuta solo para órdenes grandes
+            ProcessLargeOrder(order);
+        }
+        else
+        {
+            ProcessRegularOrder(order);
+        }
+    }
+}
+```
+
+## Testing Avanzado
+
+### 1. Test-Driven Development (TDD)
+
+TDD es una metodología que sigue el ciclo Red-Green-Refactor.
+
+```csharp
+// 1. Red - Escribir test que falle
+[TestMethod]
+public void ValidateEmail_InvalidFormat_ReturnsFalse()
+{
+    // Arrange
+    var validator = new EmailValidator();
+    
+    // Act
+    bool result = validator.IsValid("invalid-email");
+    
+    // Assert
+    Assert.IsFalse(result);
+}
+
+// 2. Green - Implementar código mínimo para pasar el test
+public class EmailValidator
+{
+    public bool IsValid(string email)
+    {
+        return email.Contains("@") && email.Contains(".");
+    }
+}
+
+// 3. Refactor - Mejorar el código
+public class EmailValidator
+{
+    public bool IsValid(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return false;
+            
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+```
+
+### 2. Behavior-Driven Development (BDD)
+
+BDD extiende TDD con un lenguaje más natural.
+
+```csharp
+[TestClass]
+public class ShoppingCartSpecs
+{
+    [TestMethod]
+    public void Given_EmptyCart_When_AddItem_Then_CartContainsOneItem()
+    {
+        // Given
+        var cart = new ShoppingCart();
+        var item = new Product { Id = 1, Name = "Book", Price = 29.99m };
+        
+        // When
+        cart.AddItem(item, 1);
+        
+        // Then
+        Assert.AreEqual(1, cart.ItemCount);
+        Assert.AreEqual(29.99m, cart.Total);
+    }
+}
+```
+
+## Herramientas y Frameworks
+
+### 1. Test Runners
+- **MSTest**: Integrado con Visual Studio
+- **NUnit**: Framework popular y maduro
+- **xUnit**: Framework moderno y extensible
+
+### 2. Mocking Frameworks
+- **Moq**: Framework de mocking más popular
+- **NSubstitute**: Sintaxis más limpia
+- **FakeItEasy**: API fluida
+
+### 3. Assertion Libraries
+- **FluentAssertions**: Sintaxis más legible
+- **Shouldly**: Sintaxis natural
+- **NFluent**: API fluida
+
+## Mejores Prácticas
+
+### 1. Naming Conventions
+```csharp
+[TestMethod]
+public void MethodName_Scenario_ExpectedBehavior()
+{
+    // Arrange
+    // Act
+    // Assert
+}
+
+// Ejemplos:
+// Add_TwoPositiveNumbers_ReturnsSum()
+// Divide_ByZero_ThrowsException()
+// GetUser_ValidId_ReturnsUser()
+```
+
+### 2. Test Organization
+```csharp
+[TestClass]
+public class UserServiceTests
+{
+    // Tests de casos exitosos
+    [TestMethod]
+    public void CreateUser_ValidData_ReturnsUser() { }
+    
+    // Tests de casos de error
+    [TestMethod]
+    public void CreateUser_InvalidData_ThrowsException() { }
+    
+    // Tests de edge cases
+    [TestMethod]
+    public void CreateUser_EmptyName_ThrowsException() { }
+}
+```
+
+### 3. Test Data Management
+```csharp
+public class TestData
+{
+    public static User CreateValidUser()
+    {
+        return new User
+        {
+            Id = 1,
+            Name = "John Doe",
+            Email = "john@example.com"
+        };
+    }
+    
+    public static List<User> CreateUserList(int count)
+    {
+        return Enumerable.Range(1, count)
+            .Select(i => new User
+            {
+                Id = i,
+                Name = $"User {i}",
+                Email = $"user{i}@example.com"
+            })
+            .ToList();
+    }
+}
+```
+
+## Conclusión
+
+El testing y debugging son habilidades esenciales para cualquier desarrollador C#. Un buen conjunto de pruebas proporciona confianza para hacer cambios en el código y ayuda a mantener la calidad del software.
+
+Recuerda que el objetivo no es solo escribir tests, sino escribir tests que sean mantenibles, legibles y que realmente agreguen valor al proyecto. La combinación de diferentes tipos de pruebas junto con herramientas de debugging efectivas es la clave para desarrollar software robusto y confiable.

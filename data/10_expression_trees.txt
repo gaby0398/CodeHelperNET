@@ -1,0 +1,794 @@
+# EXPRESSION TREES EN C#
+
+## INTRODUCCIÓN A EXPRESSION TREES
+
+Los Expression Trees permiten representar código como estructuras de datos en lugar de código ejecutable, facilitando el análisis, modificación y generación dinámica de código.
+
+### Conceptos Básicos
+```csharp
+using System;
+using System.Linq.Expressions;
+using System.Collections.Generic;
+
+public class ExpressionTreesBasico
+{
+    public void ConceptosBasicos()
+    {
+        // Expression Tree simple
+        Expression<Func<int, int>> cuadrado = x => x * x;
+        
+        // Compilar y ejecutar
+        Func<int, int> funcion = cuadrado.Compile();
+        int resultado = funcion(5); // 25
+        
+        // Analizar la expresión
+        Console.WriteLine($"Tipo: {cuadrado.NodeType}");
+        Console.WriteLine($"Cuerpo: {cuadrado.Body}");
+        Console.WriteLine($"Parámetros: {cuadrado.Parameters.Count}");
+        
+        // Expression Tree con múltiples parámetros
+        Expression<Func<int, int, int>> suma = (a, b) => a + b;
+        Func<int, int, int> funcionSuma = suma.Compile();
+        int resultadoSuma = funcionSuma(10, 20); // 30
+        
+        // Expression Tree con condición
+        Expression<Func<int, bool>> esPar = x => x % 2 == 0;
+        Func<int, bool> funcionEsPar = esPar.Compile();
+        bool esParResultado = funcionEsPar(6); // true
+    }
+    
+    public void TiposDeExpresiones()
+    {
+        // Expresiones constantes
+        Expression constante = Expression.Constant(42);
+        Console.WriteLine($"Constante: {constante}");
+        
+        // Expresiones de parámetro
+        ParameterExpression parametro = Expression.Parameter(typeof(int), "x");
+        Console.WriteLine($"Parámetro: {parametro}");
+        
+        // Expresiones binarias
+        Expression suma = Expression.Add(
+            Expression.Constant(10),
+            Expression.Constant(20)
+        );
+        Console.WriteLine($"Suma: {suma}");
+        
+        // Expresiones de llamada a método
+        Expression llamadaMetodo = Expression.Call(
+            typeof(Math).GetMethod("Abs", new Type[] { typeof(int) }),
+            Expression.Constant(-5)
+        );
+        Console.WriteLine($"Llamada método: {llamadaMetodo}");
+        
+        // Expresiones de propiedad
+        var persona = Expression.Parameter(typeof(Persona), "p");
+        Expression propiedad = Expression.Property(persona, "Nombre");
+        Console.WriteLine($"Propiedad: {propiedad}");
+    }
+    
+    public void CrearExpresionesManualmente()
+    {
+        // Crear expresión: x => x * 2
+        ParameterExpression parametro = Expression.Parameter(typeof(int), "x");
+        Expression constante = Expression.Constant(2);
+        Expression multiplicacion = Expression.Multiply(parametro, constante);
+        
+        Expression<Func<int, int>> expresion = Expression.Lambda<Func<int, int>>(
+            multiplicacion, parametro);
+        
+        // Compilar y ejecutar
+        Func<int, int> funcion = expresion.Compile();
+        int resultado = funcion(5); // 10
+        
+        // Crear expresión: x => x > 0
+        ParameterExpression param = Expression.Parameter(typeof(int), "x");
+        Expression cero = Expression.Constant(0);
+        Expression comparacion = Expression.GreaterThan(param, cero);
+        
+        Expression<Func<int, bool>> expresionBool = Expression.Lambda<Func<int, bool>>(
+            comparacion, param);
+        
+        Func<int, bool> funcionBool = expresionBool.Compile();
+        bool esPositivo = funcionBool(5); // true
+    }
+}
+
+public class Persona
+{
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+}
+```
+
+### Expresiones Complejas
+```csharp
+public class ExpresionesComplejas
+{
+    public void ExpresionesConCondiciones()
+    {
+        // Crear expresión: x => x > 0 ? x * 2 : x * -1
+        ParameterExpression parametro = Expression.Parameter(typeof(int), "x");
+        
+        // Condición: x > 0
+        Expression condicion = Expression.GreaterThan(parametro, Expression.Constant(0));
+        
+        // Si verdadero: x * 2
+        Expression verdadero = Expression.Multiply(parametro, Expression.Constant(2));
+        
+        // Si falso: x * -1
+        Expression falso = Expression.Multiply(parametro, Expression.Constant(-1));
+        
+        // Expresión condicional
+        Expression condicional = Expression.Condition(condicion, verdadero, falso);
+        
+        Expression<Func<int, int>> expresion = Expression.Lambda<Func<int, int>>(
+            condicional, parametro);
+        
+        Func<int, int> funcion = expresion.Compile();
+        
+        Console.WriteLine(funcion(5));  // 10
+        Console.WriteLine(funcion(-3)); // 3
+    }
+    
+    public void ExpresionesConPropiedades()
+    {
+        // Crear expresión: p => p.Nombre.Length > 5
+        ParameterExpression persona = Expression.Parameter(typeof(Persona), "p");
+        
+        // p.Nombre
+        Expression propiedadNombre = Expression.Property(persona, "Nombre");
+        
+        // p.Nombre.Length
+        Expression longitud = Expression.Property(propiedadNombre, "Length");
+        
+        // p.Nombre.Length > 5
+        Expression comparacion = Expression.GreaterThan(longitud, Expression.Constant(5));
+        
+        Expression<Func<Persona, bool>> expresion = Expression.Lambda<Func<Persona, bool>>(
+            comparacion, persona);
+        
+        Func<Persona, bool> funcion = expresion.Compile();
+        
+        var persona1 = new Persona { Nombre = "Juan" }; // false
+        var persona2 = new Persona { Nombre = "María Elena" }; // true
+        
+        Console.WriteLine(funcion(persona1));
+        Console.WriteLine(funcion(persona2));
+    }
+    
+    public void ExpresionesConLlamadasAMetodos()
+    {
+        // Crear expresión: s => s.ToUpper().Contains("A")
+        ParameterExpression stringParam = Expression.Parameter(typeof(string), "s");
+        
+        // s.ToUpper()
+        MethodInfo toUpperMethod = typeof(string).GetMethod("ToUpper", Type.EmptyTypes);
+        Expression toUpper = Expression.Call(stringParam, toUpperMethod);
+        
+        // "A"
+        Expression constante = Expression.Constant("A");
+        
+        // s.ToUpper().Contains("A")
+        MethodInfo containsMethod = typeof(string).GetMethod("Contains", new Type[] { typeof(string) });
+        Expression contains = Expression.Call(toUpper, containsMethod, constante);
+        
+        Expression<Func<string, bool>> expresion = Expression.Lambda<Func<string, bool>>(
+            contains, stringParam);
+        
+        Func<string, bool> funcion = expresion.Compile();
+        
+        Console.WriteLine(funcion("hola")); // false
+        Console.WriteLine(funcion("casa")); // true
+    }
+    
+    public void ExpresionesConOperacionesLogicas()
+    {
+        // Crear expresión: x => x > 0 && x < 100
+        ParameterExpression parametro = Expression.Parameter(typeof(int), "x");
+        
+        // x > 0
+        Expression mayorQueCero = Expression.GreaterThan(parametro, Expression.Constant(0));
+        
+        // x < 100
+        Expression menorQueCien = Expression.LessThan(parametro, Expression.Constant(100));
+        
+        // x > 0 && x < 100
+        Expression and = Expression.AndAlso(mayorQueCero, menorQueCien);
+        
+        Expression<Func<int, bool>> expresion = Expression.Lambda<Func<int, bool>>(
+            and, parametro);
+        
+        Func<int, bool> funcion = expresion.Compile();
+        
+        Console.WriteLine(funcion(50));  // true
+        Console.WriteLine(funcion(0));   // false
+        Console.WriteLine(funcion(150)); // false
+    }
+}
+```
+
+## MANIPULACIÓN DE EXPRESSION TREES
+
+### Visitor Pattern para Expression Trees
+```csharp
+public class ExpressionVisitor
+{
+    public void VisitarExpresiones()
+    {
+        Expression<Func<int, int>> expresion = x => x * 2 + 1;
+        
+        var visitor = new MiExpressionVisitor();
+        Expression expresionModificada = visitor.Visit(expresion);
+        
+        Console.WriteLine($"Original: {expresion}");
+        Console.WriteLine($"Modificada: {expresionModificada}");
+    }
+    
+    public void AnalizarExpresion()
+    {
+        Expression<Func<Persona, bool>> expresion = p => p.Edad > 18 && p.Nombre.Length > 3;
+        
+        var analizador = new AnalizadorExpresiones();
+        analizador.Analizar(expresion);
+    }
+}
+
+public class MiExpressionVisitor : System.Linq.Expressions.ExpressionVisitor
+{
+    protected override Expression VisitBinary(BinaryExpression node)
+    {
+        // Intercambiar operadores de multiplicación por división
+        if (node.NodeType == ExpressionType.Multiply)
+        {
+            return Expression.Divide(Visit(node.Left), Visit(node.Right));
+        }
+        
+        return base.VisitBinary(node);
+    }
+    
+    protected override Expression VisitConstant(ConstantExpression node)
+    {
+        // Duplicar constantes numéricas
+        if (node.Type == typeof(int))
+        {
+            int valor = (int)node.Value;
+            return Expression.Constant(valor * 2);
+        }
+        
+        return base.VisitConstant(node);
+    }
+}
+
+public class AnalizadorExpresiones : System.Linq.Expressions.ExpressionVisitor
+{
+    private int nivel = 0;
+    
+    public void Analizar(Expression expresion)
+    {
+        Visit(expresion);
+    }
+    
+    protected override Expression VisitBinary(BinaryExpression node)
+    {
+        ImprimirIndentacion();
+        Console.WriteLine($"Operación binaria: {node.NodeType}");
+        Console.WriteLine($"Tipo: {node.Type}");
+        
+        nivel++;
+        var resultado = base.VisitBinary(node);
+        nivel--;
+        
+        return resultado;
+    }
+    
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        ImprimirIndentacion();
+        Console.WriteLine($"Parámetro: {node.Name} ({node.Type})");
+        return base.VisitParameter(node);
+    }
+    
+    protected override Expression VisitConstant(ConstantExpression node)
+    {
+        ImprimirIndentacion();
+        Console.WriteLine($"Constante: {node.Value} ({node.Type})");
+        return base.VisitConstant(node);
+    }
+    
+    protected override Expression VisitProperty(PropertyExpression node)
+    {
+        ImprimirIndentacion();
+        Console.WriteLine($"Propiedad: {node.Property.Name} ({node.Type})");
+        return base.VisitProperty(node);
+    }
+    
+    private void ImprimirIndentacion()
+    {
+        Console.Write(new string(' ', nivel * 2));
+    }
+}
+```
+
+### Modificación de Expression Trees
+```csharp
+public class ModificacionExpresiones
+{
+    public void ReemplazarPropiedades()
+    {
+        // Expresión original: p => p.Nombre
+        Expression<Func<Persona, string>> original = p => p.Nombre;
+        
+        var modificador = new ModificadorPropiedades();
+        Expression<Func<Persona, int>> modificada = modificador.Modificar(original);
+        
+        Console.WriteLine($"Original: {original}");
+        Console.WriteLine($"Modificada: {modificada}");
+        
+        // Probar la expresión modificada
+        Func<Persona, int> funcion = modificada.Compile();
+        var persona = new Persona { Nombre = "Juan" };
+        int longitud = funcion(persona); // 4
+        Console.WriteLine($"Longitud del nombre: {longitud}");
+    }
+    
+    public void OptimizarExpresiones()
+    {
+        // Expresión que puede ser optimizada
+        Expression<Func<int, int>> original = x => x * 1 + 0;
+        
+        var optimizador = new OptimizadorExpresiones();
+        Expression optimizada = optimizador.Optimizar(original);
+        
+        Console.WriteLine($"Original: {original}");
+        Console.WriteLine($"Optimizada: {optimizada}");
+    }
+}
+
+public class ModificadorPropiedades : System.Linq.Expressions.ExpressionVisitor
+{
+    public Expression<Func<Persona, int>> Modificar(Expression<Func<Persona, string>> expresion)
+    {
+        // Reemplazar p.Nombre por p.Nombre.Length
+        Expression cuerpoModificado = Visit(expresion.Body);
+        
+        return Expression.Lambda<Func<Persona, int>>(
+            cuerpoModificado, expresion.Parameters);
+    }
+    
+    protected override Expression VisitProperty(PropertyExpression node)
+    {
+        // Si es la propiedad Nombre, reemplazar por Length
+        if (node.Property.Name == "Nombre" && node.Property.DeclaringType == typeof(Persona))
+        {
+            // Obtener la propiedad Length de string
+            PropertyInfo lengthProperty = typeof(string).GetProperty("Length");
+            return Expression.Property(node.Expression, lengthProperty);
+        }
+        
+        return base.VisitProperty(node);
+    }
+}
+
+public class OptimizadorExpresiones : System.Linq.Expressions.ExpressionVisitor
+{
+    public Expression Optimizar(Expression expresion)
+    {
+        return Visit(expresion);
+    }
+    
+    protected override Expression VisitBinary(BinaryExpression node)
+    {
+        // Optimizar x * 1 -> x
+        if (node.NodeType == ExpressionType.Multiply)
+        {
+            var left = Visit(node.Left);
+            var right = Visit(node.Right);
+            
+            if (IsConstant(left, 1))
+                return right;
+            if (IsConstant(right, 1))
+                return left;
+        }
+        
+        // Optimizar x + 0 -> x
+        if (node.NodeType == ExpressionType.Add)
+        {
+            var left = Visit(node.Left);
+            var right = Visit(node.Right);
+            
+            if (IsConstant(left, 0))
+                return right;
+            if (IsConstant(right, 0))
+                return left;
+        }
+        
+        return base.VisitBinary(node);
+    }
+    
+    private bool IsConstant(Expression expresion, object valor)
+    {
+        return expresion.NodeType == ExpressionType.Constant &&
+               ((ConstantExpression)expresion).Value.Equals(valor);
+    }
+}
+```
+
+## EXPRESSION TREES CON LINQ
+
+### IQueryable y Expression Trees
+```csharp
+public class ExpressionTreesLinq
+{
+    public void QueryableVsEnumerable()
+    {
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Juan", Edad = 25 },
+            new Persona { Nombre = "María", Edad = 30 },
+            new Persona { Nombre = "Pedro", Edad = 22 },
+            new Persona { Nombre = "Ana", Edad = 35 }
+        };
+        
+        // IEnumerable - ejecuta en memoria
+        var resultado1 = personas.Where(p => p.Edad > 25).ToList();
+        
+        // IQueryable - crea expression tree
+        IQueryable<Persona> query = personas.AsQueryable();
+        var resultado2 = query.Where(p => p.Edad > 25).ToList();
+        
+        // La expresión se puede analizar
+        var expresion = query.Where(p => p.Edad > 25).Expression;
+        Console.WriteLine($"Expression: {expresion}");
+    }
+    
+    public void CrearQueryDinamico()
+    {
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Juan", Edad = 25 },
+            new Persona { Nombre = "María", Edad = 30 },
+            new Persona { Nombre = "Pedro", Edad = 22 },
+            new Persona { Nombre = "Ana", Edad = 35 }
+        }.AsQueryable();
+        
+        // Crear filtro dinámicamente
+        var filtro = CrearFiltroEdad(25);
+        var resultado = personas.Where(filtro).ToList();
+        
+        foreach (var persona in resultado)
+        {
+            Console.WriteLine($"{persona.Nombre}: {persona.Edad}");
+        }
+    }
+    
+    public Expression<Func<Persona, bool>> CrearFiltroEdad(int edadMinima)
+    {
+        ParameterExpression parametro = Expression.Parameter(typeof(Persona), "p");
+        Expression propiedadEdad = Expression.Property(parametro, "Edad");
+        Expression constante = Expression.Constant(edadMinima);
+        Expression comparacion = Expression.GreaterThan(propiedadEdad, constante);
+        
+        return Expression.Lambda<Func<Persona, bool>>(comparacion, parametro);
+    }
+    
+    public void QueryBuilder()
+    {
+        var queryBuilder = new QueryBuilder<Persona>();
+        
+        // Construir query dinámicamente
+        queryBuilder.Where(p => p.Edad > 25);
+        queryBuilder.Where(p => p.Nombre.Length > 3);
+        queryBuilder.OrderBy(p => p.Nombre);
+        
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Juan", Edad = 25 },
+            new Persona { Nombre = "María", Edad = 30 },
+            new Persona { Nombre = "Pedro", Edad = 22 },
+            new Persona { Nombre = "Ana", Edad = 35 }
+        }.AsQueryable();
+        
+        var resultado = queryBuilder.Build(personas).ToList();
+        
+        foreach (var persona in resultado)
+        {
+            Console.WriteLine($"{persona.Nombre}: {persona.Edad}");
+        }
+    }
+}
+
+public class QueryBuilder<T>
+{
+    private List<Expression<Func<T, bool>>> filtros = new List<Expression<Func<T, bool>>>();
+    private Expression<Func<T, object>> ordenamiento;
+    private bool ordenDescendente = false;
+    
+    public QueryBuilder<T> Where(Expression<Func<T, bool>> filtro)
+    {
+        filtros.Add(filtro);
+        return this;
+    }
+    
+    public QueryBuilder<T> OrderBy(Expression<Func<T, object>> orden)
+    {
+        ordenamiento = orden;
+        ordenDescendente = false;
+        return this;
+    }
+    
+    public QueryBuilder<T> OrderByDescending(Expression<Func<T, object>> orden)
+    {
+        ordenamiento = orden;
+        ordenDescendente = true;
+        return this;
+    }
+    
+    public IQueryable<T> Build(IQueryable<T> query)
+    {
+        // Aplicar filtros
+        foreach (var filtro in filtros)
+        {
+            query = query.Where(filtro);
+        }
+        
+        // Aplicar ordenamiento
+        if (ordenamiento != null)
+        {
+            if (ordenDescendente)
+            {
+                query = query.OrderByDescending(ordenamiento);
+            }
+            else
+            {
+                query = query.OrderBy(ordenamiento);
+            }
+        }
+        
+        return query;
+    }
+}
+```
+
+## CASOS DE USO PRÁCTICOS
+
+### Sistema de Filtros Dinámicos
+```csharp
+public class SistemaFiltros
+{
+    public void FiltrosDinamicos()
+    {
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Juan", Edad = 25 },
+            new Persona { Nombre = "María", Edad = 30 },
+            new Persona { Nombre = "Pedro", Edad = 22 },
+            new Persona { Nombre = "Ana", Edad = 35 }
+        }.AsQueryable();
+        
+        var filtros = new List<Filtro>
+        {
+            new Filtro { Propiedad = "Edad", Operador = ">", Valor = 25 },
+            new Filtro { Propiedad = "Nombre", Operador = "Contains", Valor = "a" }
+        };
+        
+        var filtroCompuesto = CrearFiltroCompuesto<Persona>(filtros);
+        var resultado = personas.Where(filtroCompuesto).ToList();
+        
+        foreach (var persona in resultado)
+        {
+            Console.WriteLine($"{persona.Nombre}: {persona.Edad}");
+        }
+    }
+    
+    public Expression<Func<T, bool>> CrearFiltroCompuesto<T>(List<Filtro> filtros)
+    {
+        ParameterExpression parametro = Expression.Parameter(typeof(T), "x");
+        Expression expresionFinal = Expression.Constant(true);
+        
+        foreach (var filtro in filtros)
+        {
+            Expression filtroExpresion = CrearFiltro<T>(parametro, filtro);
+            expresionFinal = Expression.AndAlso(expresionFinal, filtroExpresion);
+        }
+        
+        return Expression.Lambda<Func<T, bool>>(expresionFinal, parametro);
+    }
+    
+    private Expression CrearFiltro<T>(ParameterExpression parametro, Filtro filtro)
+    {
+        // Obtener propiedad
+        PropertyInfo propiedad = typeof(T).GetProperty(filtro.Propiedad);
+        if (propiedad == null)
+            return Expression.Constant(true);
+        
+        Expression propiedadExpresion = Expression.Property(parametro, propiedad);
+        Expression valorExpresion = Expression.Constant(filtro.Valor);
+        
+        // Crear comparación según operador
+        switch (filtro.Operador)
+        {
+            case ">":
+                return Expression.GreaterThan(propiedadExpresion, valorExpresion);
+            case "<":
+                return Expression.LessThan(propiedadExpresion, valorExpresion);
+            case ">=":
+                return Expression.GreaterThanOrEqual(propiedadExpresion, valorExpresion);
+            case "<=":
+                return Expression.LessThanOrEqual(propiedadExpresion, valorExpresion);
+            case "==":
+                return Expression.Equal(propiedadExpresion, valorExpresion);
+            case "!=":
+                return Expression.NotEqual(propiedadExpresion, valorExpresion);
+            case "Contains":
+                MethodInfo containsMethod = typeof(string).GetMethod("Contains", new Type[] { typeof(string) });
+                return Expression.Call(propiedadExpresion, containsMethod, valorExpresion);
+            default:
+                return Expression.Constant(true);
+        }
+    }
+}
+
+public class Filtro
+{
+    public string Propiedad { get; set; }
+    public string Operador { get; set; }
+    public object Valor { get; set; }
+}
+```
+
+### Sistema de Mapeo Dinámico
+```csharp
+public class SistemaMapeo
+{
+    public void MapeoDinamico()
+    {
+        var personas = new List<Persona>
+        {
+            new Persona { Nombre = "Juan", Edad = 25 },
+            new Persona { Nombre = "María", Edad = 30 }
+        };
+        
+        // Crear mapeo dinámico
+        var mapeo = new Dictionary<string, string>
+        {
+            { "Nombre", "Name" },
+            { "Edad", "Age" }
+        };
+        
+        var mapeador = new MapeadorDinamico<Persona, PersonaDto>();
+        var personasDto = personas.Select(mapeador.CrearMapeo(mapeo)).ToList();
+        
+        foreach (var dto in personasDto)
+        {
+            Console.WriteLine($"Name: {dto.Name}, Age: {dto.Age}");
+        }
+    }
+}
+
+public class PersonaDto
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+public class MapeadorDinamico<TSource, TTarget>
+{
+    public Func<TSource, TTarget> CrearMapeo(Dictionary<string, string> mapeo)
+    {
+        ParameterExpression source = Expression.Parameter(typeof(TSource), "source");
+        
+        // Crear constructor para TTarget
+        ConstructorInfo constructor = typeof(TTarget).GetConstructor(Type.EmptyTypes);
+        if (constructor == null)
+            throw new InvalidOperationException($"El tipo {typeof(TTarget)} debe tener un constructor sin parámetros");
+        
+        // Crear instancia
+        Expression target = Expression.New(constructor);
+        
+        // Crear asignaciones de propiedades
+        var asignaciones = new List<Expression>();
+        
+        foreach (var kvp in mapeo)
+        {
+            PropertyInfo sourceProperty = typeof(TSource).GetProperty(kvp.Key);
+            PropertyInfo targetProperty = typeof(TTarget).GetProperty(kvp.Value);
+            
+            if (sourceProperty != null && targetProperty != null)
+            {
+                Expression sourceValue = Expression.Property(source, sourceProperty);
+                Expression targetPropertyAccess = Expression.Property(target, targetProperty);
+                Expression asignacion = Expression.Assign(targetPropertyAccess, sourceValue);
+                asignaciones.Add(asignacion);
+            }
+        }
+        
+        // Crear bloque con asignaciones
+        Expression bloque = Expression.Block(asignaciones);
+        
+        // Crear lambda
+        Expression<Func<TSource, TTarget>> lambda = Expression.Lambda<Func<TSource, TTarget>>(bloque, source);
+        
+        return lambda.Compile();
+    }
+}
+```
+
+### Sistema de Validación Dinámica
+```csharp
+public class SistemaValidacion
+{
+    public void ValidacionDinamica()
+    {
+        var persona = new Persona { Nombre = "", Edad = 150 };
+        
+        var reglas = new List<ReglaValidacion>
+        {
+            new ReglaValidacion { Propiedad = "Nombre", Operador = "NotEmpty" },
+            new ReglaValidacion { Propiedad = "Nombre", Operador = "MaxLength", Valor = 50 },
+            new ReglaValidacion { Propiedad = "Edad", Operador = "Range", Valor = new int[] { 0, 120 } }
+        };
+        
+        var validador = new ValidadorDinamico<Persona>();
+        var errores = validador.Validar(persona, reglas);
+        
+        foreach (var error in errores)
+        {
+            Console.WriteLine(error);
+        }
+    }
+}
+
+public class ReglaValidacion
+{
+    public string Propiedad { get; set; }
+    public string Operador { get; set; }
+    public object Valor { get; set; }
+    public string Mensaje { get; set; }
+}
+
+public class ValidadorDinamico<T>
+{
+    public List<string> Validar(T objeto, List<ReglaValidacion> reglas)
+    {
+        var errores = new List<string>();
+        
+        foreach (var regla in reglas)
+        {
+            if (!ValidarRegla(objeto, regla))
+            {
+                string mensaje = regla.Mensaje ?? $"Error en {regla.Propiedad}";
+                errores.Add(mensaje);
+            }
+        }
+        
+        return errores;
+    }
+    
+    private bool ValidarRegla(T objeto, ReglaValidacion regla)
+    {
+        PropertyInfo propiedad = typeof(T).GetProperty(regla.Propiedad);
+        if (propiedad == null) return true;
+        
+        object valor = propiedad.GetValue(objeto);
+        
+        switch (regla.Operador)
+        {
+            case "NotEmpty":
+                return !string.IsNullOrWhiteSpace(valor?.ToString());
+            case "MaxLength":
+                if (valor is string str && regla.Valor is int maxLength)
+                    return str.Length <= maxLength;
+                return true;
+            case "Range":
+                if (valor is int num && regla.Valor is int[] range && range.Length == 2)
+                    return num >= range[0] && num <= range[1];
+                return true;
+            default:
+                return true;
+        }
+    }
+}
+```
+
+Esta guía completa de Expression Trees cubre desde los conceptos básicos hasta casos de uso avanzados, proporcionando ejemplos prácticos y patrones de diseño para el desarrollo dinámico y la manipulación de código en C#. 

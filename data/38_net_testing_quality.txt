@@ -1,0 +1,47 @@
+# Testing y Calidad en .NET
+
+## Tipos de Pruebas
+- Unitarias (xUnit, NUnit, MSTest)
+- Integración
+- End-to-End (Selenium, Playwright)
+- Mocking (Moq, NSubstitute)
+
+### Ejemplo de Test Unitario con xUnit
+```csharp
+public class CalculatorTests
+{
+    [Fact]
+    public void Add_ReturnsSum()
+    {
+        var calc = new Calculator();
+        Assert.Equal(5, calc.Add(2, 3));
+    }
+}
+```
+
+### Ejemplo de Test de Integración
+```csharp
+public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+    public ApiIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+    [Fact]
+    public async Task GetUsers_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/users");
+        response.EnsureSuccessStatusCode();
+    }
+}
+```
+
+### Buenas Prácticas
+- Automatizar pruebas en CI
+- Usar cobertura de código
+- Revisar aserciones y mocks
+- Pruebas de performance y seguridad
+
+### Recursos
+- [Testing en .NET](https://docs.microsoft.com/dotnet/core/testing/)

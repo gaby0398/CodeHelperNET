@@ -1,0 +1,1254 @@
+# GUÍA COMPLETA DE FUNDAMENTOS DE C# - DESDE BÁSICO HASTA AVANZADO
+
+## 1. INTRODUCCIÓN A C# Y .NET
+
+### ¿Qué es C#?
+C# (pronunciado "C Sharp") es un lenguaje de programación moderno, orientado a objetos y de propósito general desarrollado por Microsoft como parte de la plataforma .NET. Combina la potencia de C++ con la simplicidad de Visual Basic y la productividad de Java.
+
+**Características principales:**
+- **Tipado estático**: Los tipos se verifican en tiempo de compilación
+- **Orientado a objetos**: Soporte completo para programación orientada a objetos
+- **Componente de .NET**: Integrado con el framework .NET
+- **Multiplataforma**: Ejecutable en Windows, Linux, macOS
+- **Garbage Collection**: Gestión automática de memoria
+- **LINQ**: Language Integrated Query para consultas de datos
+
+### ¿Qué es .NET?
+.NET es una plataforma de desarrollo creada por Microsoft que proporciona un entorno de ejecución y un conjunto de bibliotecas para crear aplicaciones. Incluye:
+- **CLR (Common Language Runtime)**: Motor de ejecución
+- **FCL (Framework Class Library)**: Bibliotecas estándar
+- **Herramientas de desarrollo**: Compiladores, debuggers, etc.
+
+## 2. ESTRUCTURA BÁSICA DE UN PROGRAMA C#
+
+### Estructura mínima de un programa
+```csharp
+using System; // Directiva using para importar namespaces
+
+namespace MiPrimerPrograma // Namespace para organizar código
+{
+    class Program // Clase principal
+    {
+        static void Main(string[] args) // Punto de entrada
+        {
+            Console.WriteLine("¡Hola Mundo!");
+        }
+    }
+}
+```
+
+### Elementos fundamentales
+- **Namespace**: Contenedor lógico para organizar clases
+- **Class**: Plantilla para crear objetos
+- **Method**: Función que realiza una tarea específica
+- **Statement**: Instrucción individual de código
+
+## 3. TIPOS DE DATOS FUNDAMENTALES
+
+### Tipos de valor (Value Types)
+
+#### Tipos enteros
+```csharp
+// Tipos con signo
+sbyte numeroPequeno = 127;        // 8 bits, -128 a 127
+short numeroCorto = 32767;        // 16 bits, -32,768 a 32,767
+int numeroEntero = 2147483647;    // 32 bits, -2,147,483,648 a 2,147,483,647
+long numeroLargo = 9223372036854775807L; // 64 bits
+
+// Tipos sin signo
+byte numeroByte = 255;            // 8 bits, 0 a 255
+ushort numeroUShort = 65535;      // 16 bits, 0 a 65,535
+uint numeroUInt = 4294967295U;    // 32 bits, 0 a 4,294,967,295
+ulong numeroULong = 18446744073709551615UL; // 64 bits
+```
+
+#### Tipos de punto flotante
+```csharp
+float numeroFloat = 3.14f;        // 32 bits, precisión de 7 dígitos
+double numeroDouble = 3.14159265359; // 64 bits, precisión de 15-16 dígitos
+decimal numeroDecimal = 3.14159265359m; // 128 bits, alta precisión para finanzas
+```
+
+#### Tipos booleanos y caracteres
+```csharp
+bool esVerdadero = true;          // true o false
+char caracter = 'A';              // Carácter Unicode de 16 bits
+```
+
+### Tipos de referencia (Reference Types)
+
+#### String
+```csharp
+string texto = "Hola Mundo";
+string textoMultilinea = @"Esta es una cadena
+que puede tener múltiples líneas";
+
+// Interpolación de strings
+string nombre = "Juan";
+int edad = 25;
+string mensaje = $"Hola {nombre}, tienes {edad} años";
+
+// Concatenación
+string resultado = "Hola" + " " + "Mundo";
+```
+
+#### Object
+```csharp
+object cualquierTipo = "Puede contener cualquier cosa";
+object numero = 42;
+object fecha = DateTime.Now;
+```
+
+## 4. VARIABLES Y CONSTANTES
+
+### Declaración de variables
+```csharp
+// Declaración explícita
+int numero;
+numero = 10;
+
+// Declaración e inicialización
+int numeroInicializado = 20;
+
+// Inferencia de tipos (var)
+var texto = "Hola"; // El compilador infiere que es string
+var numero = 42;    // El compilador infere que es int
+
+// Múltiples declaraciones
+int a = 1, b = 2, c = 3;
+```
+
+### Constantes
+```csharp
+const double PI = 3.14159;
+const string NOMBRE_APLICACION = "Mi Aplicación";
+
+// Constantes de solo lectura (readonly)
+readonly int MAX_USUARIOS = 100;
+```
+
+## 5. OPERADORES
+
+### Operadores aritméticos
+```csharp
+int a = 10, b = 3;
+
+int suma = a + b;        // 13
+int resta = a - b;       // 7
+int multiplicacion = a * b; // 30
+int division = a / b;    // 3 (división entera)
+int modulo = a % b;      // 1 (resto de la división)
+
+// Operadores de incremento/decremento
+int preIncremento = ++a; // a se incrementa primero, luego se asigna
+int postIncremento = a++; // a se asigna primero, luego se incrementa
+```
+
+### Operadores de asignación
+```csharp
+int x = 10;
+x += 5;  // Equivale a: x = x + 5
+x -= 3;  // Equivale a: x = x - 3
+x *= 2;  // Equivale a: x = x * 2
+x /= 4;  // Equivale a: x = x / 4
+x %= 3;  // Equivale a: x = x % 3
+```
+
+### Operadores de comparación
+```csharp
+int a = 5, b = 10;
+
+bool igual = a == b;     // false
+bool diferente = a != b; // true
+bool mayor = a > b;      // false
+bool menor = a < b;      // true
+bool mayorIgual = a >= b; // false
+bool menorIgual = a <= b; // true
+```
+
+### Operadores lógicos
+```csharp
+bool p = true, q = false;
+
+bool and = p && q;       // false (AND lógico)
+bool or = p || q;        // true (OR lógico)
+bool not = !p;           // false (NOT lógico)
+
+// Operadores de bits
+int a = 5, b = 3;
+int andBit = a & b;      // 1 (AND de bits)
+int orBit = a | b;       // 7 (OR de bits)
+int xorBit = a ^ b;      // 6 (XOR de bits)
+int notBit = ~a;         // Complemento de bits
+```
+
+## 6. ESTRUCTURAS DE CONTROL
+
+### Estructuras condicionales
+
+#### if-else
+```csharp
+int edad = 18;
+
+if (edad >= 18)
+{
+    Console.WriteLine("Eres mayor de edad");
+}
+else if (edad >= 13)
+{
+    Console.WriteLine("Eres adolescente");
+}
+else
+{
+    Console.WriteLine("Eres menor de edad");
+}
+
+// Operador ternario
+string resultado = edad >= 18 ? "Mayor de edad" : "Menor de edad";
+```
+
+#### switch
+```csharp
+int dia = 3;
+string nombreDia;
+
+switch (dia)
+{
+    case 1:
+        nombreDia = "Lunes";
+        break;
+    case 2:
+        nombreDia = "Martes";
+        break;
+    case 3:
+        nombreDia = "Miércoles";
+        break;
+    default:
+        nombreDia = "Día desconocido";
+        break;
+}
+
+// Switch expression (C# 8.0+)
+string nombreDia2 = dia switch
+{
+    1 => "Lunes",
+    2 => "Martes",
+    3 => "Miércoles",
+    _ => "Día desconocido"
+};
+```
+
+### Estructuras de repetición
+
+#### for
+```csharp
+// Bucle for tradicional
+for (int i = 0; i < 10; i++)
+{
+    Console.WriteLine($"Número: {i}");
+}
+
+// Bucle for con múltiples variables
+for (int i = 0, j = 10; i < j; i++, j--)
+{
+    Console.WriteLine($"i: {i}, j: {j}");
+}
+```
+
+#### while
+```csharp
+int contador = 0;
+while (contador < 5)
+{
+    Console.WriteLine($"Contador: {contador}");
+    contador++;
+}
+```
+
+#### do-while
+```csharp
+int numero;
+do
+{
+    Console.Write("Ingresa un número positivo: ");
+    numero = int.Parse(Console.ReadLine());
+} while (numero <= 0);
+```
+
+#### foreach
+```csharp
+string[] frutas = { "Manzana", "Banana", "Naranja" };
+
+foreach (string fruta in frutas)
+{
+    Console.WriteLine(fruta);
+}
+
+// Con índice (C# 8.0+)
+foreach (var (fruta, indice) in frutas.Select((f, i) => (f, i)))
+{
+    Console.WriteLine($"{indice}: {fruta}");
+}
+```
+
+## 7. ARRAYS Y COLECCIONES
+
+### Arrays unidimensionales
+```csharp
+// Declaración e inicialización
+int[] numeros = { 1, 2, 3, 4, 5 };
+string[] nombres = new string[3] { "Ana", "Juan", "María" };
+
+// Declaración sin inicialización
+int[] arrayVacio = new int[5];
+
+// Acceso a elementos
+int primerNumero = numeros[0];
+numeros[2] = 10;
+
+// Propiedades del array
+int longitud = numeros.Length;
+```
+
+### Arrays multidimensionales
+```csharp
+// Array bidimensional
+int[,] matriz = new int[3, 3]
+{
+    { 1, 2, 3 },
+    { 4, 5, 6 },
+    { 7, 8, 9 }
+};
+
+// Array de arrays (jagged array)
+int[][] jaggedArray = new int[3][];
+jaggedArray[0] = new int[] { 1, 2, 3 };
+jaggedArray[1] = new int[] { 4, 5 };
+jaggedArray[2] = new int[] { 6, 7, 8, 9 };
+```
+
+### Colecciones básicas
+```csharp
+// List<T>
+List<string> lista = new List<string>();
+lista.Add("Elemento 1");
+lista.Add("Elemento 2");
+lista.Remove("Elemento 1");
+
+// Dictionary<TKey, TValue>
+Dictionary<string, int> diccionario = new Dictionary<string, int>();
+diccionario.Add("Uno", 1);
+diccionario["Dos"] = 2;
+
+// HashSet<T>
+HashSet<int> conjunto = new HashSet<int>();
+conjunto.Add(1);
+conjunto.Add(2);
+conjunto.Add(1); // No se duplica
+```
+
+## 8. MÉTODOS Y FUNCIONES
+
+### Definición de métodos
+```csharp
+public class Calculadora
+{
+    // Método sin parámetros y sin retorno
+    public void Saludar()
+    {
+        Console.WriteLine("¡Hola!");
+    }
+
+    // Método con parámetros y retorno
+    public int Sumar(int a, int b)
+    {
+        return a + b;
+    }
+
+    // Método con parámetros opcionales
+    public void ImprimirMensaje(string mensaje, int veces = 1)
+    {
+        for (int i = 0; i < veces; i++)
+        {
+            Console.WriteLine(mensaje);
+        }
+    }
+
+    // Método con múltiples valores de retorno (tuplas)
+    public (int suma, int producto) Calcular(int a, int b)
+    {
+        return (a + b, a * b);
+    }
+}
+```
+
+### Sobrecarga de métodos
+```csharp
+public class Utilidades
+{
+    public int Sumar(int a, int b)
+    {
+        return a + b;
+    }
+
+    public double Sumar(double a, double b)
+    {
+        return a + b;
+    }
+
+    public int Sumar(int a, int b, int c)
+    {
+        return a + b + c;
+    }
+}
+```
+
+### Métodos de extensión
+```csharp
+public static class StringExtensions
+{
+    public static int ContarVocales(this string texto)
+    {
+        return texto.Count(c => "aeiouAEIOU".Contains(c));
+    }
+}
+
+// Uso
+string texto = "Hola Mundo";
+int vocales = texto.ContarVocales(); // 4
+```
+
+## 9. MANEJO DE EXCEPCIONES
+
+### Estructura try-catch
+```csharp
+try
+{
+    Console.Write("Ingresa un número: ");
+    int numero = int.Parse(Console.ReadLine());
+    int resultado = 100 / numero;
+    Console.WriteLine($"Resultado: {resultado}");
+}
+catch (FormatException ex)
+{
+    Console.WriteLine("Error: Debes ingresar un número válido");
+    Console.WriteLine($"Detalles: {ex.Message}");
+}
+catch (DivideByZeroException ex)
+{
+    Console.WriteLine("Error: No se puede dividir por cero");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error inesperado: {ex.Message}");
+}
+finally
+{
+    Console.WriteLine("Este código siempre se ejecuta");
+}
+```
+
+### Creación de excepciones personalizadas
+```csharp
+public class EdadInvalidaException : Exception
+{
+    public EdadInvalidaException() : base("La edad debe ser mayor a 0")
+    {
+    }
+
+    public EdadInvalidaException(string mensaje) : base(mensaje)
+    {
+    }
+}
+
+// Uso
+public void ValidarEdad(int edad)
+{
+    if (edad <= 0)
+    {
+        throw new EdadInvalidaException();
+    }
+}
+```
+
+## 10. PROGRAMACIÓN ORIENTADA A OBJETOS
+
+### Clases y objetos
+```csharp
+public class Persona
+{
+    // Campos privados
+    private string nombre;
+    private int edad;
+
+    // Propiedades
+    public string Nombre
+    {
+        get { return nombre; }
+        set { nombre = value; }
+    }
+
+    public int Edad
+    {
+        get { return edad; }
+        set 
+        { 
+            if (value >= 0)
+                edad = value;
+            else
+                throw new ArgumentException("La edad no puede ser negativa");
+        }
+    }
+
+    // Constructor
+    public Persona(string nombre, int edad)
+    {
+        this.nombre = nombre;
+        this.edad = edad;
+    }
+
+    // Constructor por defecto
+    public Persona() : this("Sin nombre", 0)
+    {
+    }
+
+    // Métodos
+    public void Saludar()
+    {
+        Console.WriteLine($"Hola, soy {nombre} y tengo {edad} años");
+    }
+
+    public bool EsMayorDeEdad()
+    {
+        return edad >= 18;
+    }
+}
+```
+
+### Herencia
+```csharp
+public class Empleado : Persona
+{
+    public string Cargo { get; set; }
+    public decimal Salario { get; set; }
+
+    public Empleado(string nombre, int edad, string cargo, decimal salario)
+        : base(nombre, edad)
+    {
+        Cargo = cargo;
+        Salario = salario;
+    }
+
+    public override void Saludar()
+    {
+        base.Saludar();
+        Console.WriteLine($"Trabajo como {Cargo}");
+    }
+}
+```
+
+### Polimorfismo
+```csharp
+public abstract class Animal
+{
+    public abstract void HacerSonido();
+}
+
+public class Perro : Animal
+{
+    public override void HacerSonido()
+    {
+        Console.WriteLine("¡Guau!");
+    }
+}
+
+public class Gato : Animal
+{
+    public override void HacerSonido()
+    {
+        Console.WriteLine("¡Miau!");
+    }
+}
+
+// Uso del polimorfismo
+Animal[] animales = { new Perro(), new Gato() };
+foreach (var animal in animales)
+{
+    animal.HacerSonido(); // Cada uno hace su sonido específico
+}
+```
+
+### Interfaces
+```csharp
+public interface IReproducible
+{
+    void Reproducir();
+    void Pausar();
+    void Detener();
+}
+
+public class ReproductorMP3 : IReproducible
+{
+    public void Reproducir()
+    {
+        Console.WriteLine("Reproduciendo MP3...");
+    }
+
+    public void Pausar()
+    {
+        Console.WriteLine("MP3 pausado");
+    }
+
+    public void Detener()
+    {
+        Console.WriteLine("MP3 detenido");
+    }
+}
+```
+
+## 11. GENERICS
+
+### Clases genéricas
+```csharp
+public class Contenedor<T>
+{
+    private T elemento;
+
+    public Contenedor(T elemento)
+    {
+        this.elemento = elemento;
+    }
+
+    public T ObtenerElemento()
+    {
+        return elemento;
+    }
+
+    public void EstablecerElemento(T nuevoElemento)
+    {
+        elemento = nuevoElemento;
+    }
+}
+
+// Uso
+Contenedor<int> contenedorInt = new Contenedor<int>(42);
+Contenedor<string> contenedorString = new Contenedor<string>("Hola");
+```
+
+### Métodos genéricos
+```csharp
+public class UtilidadesGenericas
+{
+    public static void Intercambiar<T>(ref T a, ref T b)
+    {
+        T temp = a;
+        a = b;
+        b = temp;
+    }
+
+    public static bool SonIguales<T>(T a, T b) where T : IEquatable<T>
+    {
+        return a.Equals(b);
+    }
+}
+```
+
+## 12. DELEGADOS Y EVENTOS
+
+### Delegados
+```csharp
+// Definición de delegado
+public delegate int OperacionMatematica(int a, int b);
+
+public class CalculadoraAvanzada
+{
+    public int EjecutarOperacion(OperacionMatematica operacion, int a, int b)
+    {
+        return operacion(a, b);
+    }
+}
+
+// Métodos que coinciden con la firma del delegado
+public static int Sumar(int a, int b) => a + b;
+public static int Multiplicar(int a, int b) => a * b;
+
+// Uso
+var calculadora = new CalculadoraAvanzada();
+OperacionMatematica suma = Sumar;
+OperacionMatematica multiplicacion = Multiplicar;
+
+int resultado1 = calculadora.EjecutarOperacion(suma, 5, 3); // 8
+int resultado2 = calculadora.EjecutarOperacion(multiplicacion, 5, 3); // 15
+```
+
+### Eventos
+```csharp
+public class SensorTemperatura
+{
+    // Definición del evento
+    public event EventHandler<TemperaturaEventArgs> TemperaturaCambiada;
+
+    private double temperatura;
+
+    public double Temperatura
+    {
+        get { return temperatura; }
+        set
+        {
+            if (temperatura != value)
+            {
+                temperatura = value;
+                OnTemperaturaCambiada(new TemperaturaEventArgs(temperatura));
+            }
+        }
+    }
+
+    // Método para disparar el evento
+    protected virtual void OnTemperaturaCambiada(TemperaturaEventArgs e)
+    {
+        TemperaturaCambiada?.Invoke(this, e);
+    }
+}
+
+public class TemperaturaEventArgs : EventArgs
+{
+    public double Temperatura { get; }
+
+    public TemperaturaEventArgs(double temperatura)
+    {
+        Temperatura = temperatura;
+    }
+}
+
+// Uso
+var sensor = new SensorTemperatura();
+sensor.TemperaturaCambiada += (sender, e) =>
+{
+    Console.WriteLine($"Temperatura cambiada a: {e.Temperatura}°C");
+};
+
+sensor.Temperatura = 25.5; // Dispara el evento
+```
+
+## 13. LINQ (LANGUAGE INTEGRATED QUERY)
+
+### Consultas básicas
+```csharp
+var numeros = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+// Sintaxis de método
+var pares = numeros.Where(n => n % 2 == 0);
+var cuadrados = numeros.Select(n => n * n);
+var suma = numeros.Sum();
+var promedio = numeros.Average();
+
+// Sintaxis de consulta
+var paresQuery = from n in numeros
+                 where n % 2 == 0
+                 select n;
+
+var cuadradosQuery = from n in numeros
+                     select n * n;
+```
+
+### Consultas con objetos
+```csharp
+var personas = new List<Persona>
+{
+    new Persona("Ana", 25),
+    new Persona("Juan", 30),
+    new Persona("María", 22),
+    new Persona("Carlos", 35)
+};
+
+// Filtrado
+var mayoresDe25 = personas.Where(p => p.Edad > 25);
+
+// Ordenamiento
+var ordenadasPorEdad = personas.OrderBy(p => p.Edad);
+var ordenadasPorNombre = personas.OrderBy(p => p.Nombre);
+
+// Agrupación
+var porEdad = personas.GroupBy(p => p.Edad >= 25 ? "Adultos" : "Jóvenes");
+
+// Proyección
+var nombres = personas.Select(p => p.Nombre);
+var info = personas.Select(p => new { p.Nombre, p.Edad });
+```
+
+## 14. ASYNC/AWAIT
+
+### Programación asíncrona básica
+```csharp
+public class ServicioWeb
+{
+    public async Task<string> ObtenerDatosAsync()
+    {
+        // Simulación de operación asíncrona
+        await Task.Delay(2000);
+        return "Datos obtenidos";
+    }
+
+    public async Task GuardarDatosAsync(string datos)
+    {
+        await Task.Delay(1000);
+        Console.WriteLine($"Datos guardados: {datos}");
+    }
+}
+
+// Uso
+public async Task ProcesarDatosAsync()
+{
+    var servicio = new ServicioWeb();
+    
+    Console.WriteLine("Iniciando proceso...");
+    
+    var datos = await servicio.ObtenerDatosAsync();
+    Console.WriteLine(datos);
+    
+    await servicio.GuardarDatosAsync(datos);
+    
+    Console.WriteLine("Proceso completado");
+}
+```
+
+### Múltiples tareas asíncronas
+```csharp
+public async Task ProcesarMultiplesTareasAsync()
+{
+    var tareas = new List<Task<string>>();
+    
+    for (int i = 1; i <= 5; i++)
+    {
+        tareas.Add(ObtenerDatosAsync(i));
+    }
+    
+    // Esperar a que todas las tareas terminen
+    var resultados = await Task.WhenAll(tareas);
+    
+    foreach (var resultado in resultados)
+    {
+        Console.WriteLine(resultado);
+    }
+}
+
+private async Task<string> ObtenerDatosAsync(int id)
+{
+    await Task.Delay(1000);
+    return $"Datos {id}";
+}
+```
+
+## 15. REFLECTION Y METADATA
+
+### Información de tipos en tiempo de ejecución
+```csharp
+public class InformacionTipo
+{
+    public static void MostrarInformacionTipo<T>()
+    {
+        Type tipo = typeof(T);
+        
+        Console.WriteLine($"Nombre del tipo: {tipo.Name}");
+        Console.WriteLine($"Namespace: {tipo.Namespace}");
+        Console.WriteLine($"Es clase: {tipo.IsClass}");
+        Console.WriteLine($"Es interfaz: {tipo.IsInterface}");
+        
+        // Propiedades
+        var propiedades = tipo.GetProperties();
+        Console.WriteLine($"Propiedades: {propiedades.Length}");
+        
+        foreach (var prop in propiedades)
+        {
+            Console.WriteLine($"  - {prop.Name}: {prop.PropertyType.Name}");
+        }
+        
+        // Métodos
+        var metodos = tipo.GetMethods();
+        Console.WriteLine($"Métodos: {metodos.Length}");
+        
+        foreach (var metodo in metodos)
+        {
+            Console.WriteLine($"  - {metodo.Name}");
+        }
+    }
+}
+
+// Uso
+InformacionTipo.MostrarInformacionTipo<Persona>();
+```
+
+### Creación dinámica de objetos
+```csharp
+public class CreadorDinamico
+{
+    public static object CrearInstancia(string nombreTipo)
+    {
+        Type tipo = Type.GetType(nombreTipo);
+        if (tipo != null)
+        {
+            return Activator.CreateInstance(tipo);
+        }
+        return null;
+    }
+    
+    public static T CrearInstancia<T>(params object[] parametros)
+    {
+        return (T)Activator.CreateInstance(typeof(T), parametros);
+    }
+}
+
+// Uso
+var persona = CreadorDinamico.CrearInstancia<Persona>("Juan", 25);
+```
+
+## 16. ATRIBUTOS Y METADATA
+
+### Atributos personalizados
+```csharp
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class InformacionAttribute : Attribute
+{
+    public string Autor { get; set; }
+    public string Version { get; set; }
+    public string Descripcion { get; set; }
+    
+    public InformacionAttribute(string autor, string version)
+    {
+        Autor = autor;
+        Version = version;
+    }
+}
+
+// Uso de atributos
+[Informacion("Juan Pérez", "1.0", Descripcion = "Clase de ejemplo")]
+public class ClaseEjemplo
+{
+    [Informacion("Juan Pérez", "1.0")]
+    public void MetodoEjemplo()
+    {
+        // Código del método
+    }
+}
+```
+
+### Lectura de atributos
+```csharp
+public class LectorAtributos
+{
+    public static void LeerAtributos<T>()
+    {
+        Type tipo = typeof(T);
+        var atributos = tipo.GetCustomAttributes(typeof(InformacionAttribute), false);
+        
+        foreach (InformacionAttribute atributo in atributos)
+        {
+            Console.WriteLine($"Autor: {atributo.Autor}");
+            Console.WriteLine($"Versión: {atributo.Version}");
+            Console.WriteLine($"Descripción: {atributo.Descripcion}");
+        }
+    }
+}
+```
+
+## 17. MEMORY MANAGEMENT Y GARBAGE COLLECTION
+
+### Gestión de memoria
+```csharp
+public class GestorMemoria : IDisposable
+{
+    private bool disposed = false;
+    
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Liberar recursos administrados
+            }
+            
+            // Liberar recursos no administrados
+            
+            disposed = true;
+        }
+    }
+    
+    ~GestorMemoria()
+    {
+        Dispose(false);
+    }
+}
+
+// Uso con using
+using (var gestor = new GestorMemoria())
+{
+    // Trabajar con el gestor
+    Console.WriteLine("Trabajando con el gestor");
+} // Dispose se llama automáticamente
+```
+
+### WeakReference
+```csharp
+public class GestorCache
+{
+    private WeakReference<byte[]> cache;
+    
+    public void GuardarEnCache(byte[] datos)
+    {
+        cache = new WeakReference<byte[]>(datos);
+    }
+    
+    public byte[] ObtenerDeCache()
+    {
+        if (cache.TryGetTarget(out byte[] datos))
+        {
+            return datos;
+        }
+        return null;
+    }
+}
+```
+
+## 18. EXPRESSION TREES
+
+### Creación de expression trees
+```csharp
+using System.Linq.Expressions;
+
+public class GeneradorExpresiones
+{
+    public static Expression<Func<int, bool>> CrearExpresionPar()
+    {
+        ParameterExpression parametro = Expression.Parameter(typeof(int), "x");
+        Expression cuerpo = Expression.Equal(
+            Expression.Modulo(parametro, Expression.Constant(2)),
+            Expression.Constant(0)
+        );
+        
+        return Expression.Lambda<Func<int, bool>>(cuerpo, parametro);
+    }
+    
+    public static Expression<Func<T, bool>> CrearExpresionIgual<T>(string propiedad, object valor)
+    {
+        ParameterExpression parametro = Expression.Parameter(typeof(T), "x");
+        PropertyExpression propiedadExp = Expression.Property(parametro, propiedad);
+        ConstantExpression valorExp = Expression.Constant(valor);
+        BinaryExpression igual = Expression.Equal(propiedadExp, valorExp);
+        
+        return Expression.Lambda<Func<T, bool>>(igual, parametro);
+    }
+}
+
+// Uso
+var expresionPar = GeneradorExpresiones.CrearExpresionPar();
+var funcionPar = expresionPar.Compile();
+bool esPar = funcionPar(4); // true
+
+var expresionEdad = GeneradorExpresiones.CrearExpresionIgual<Persona>("Edad", 25);
+var funcionEdad = expresionEdad.Compile();
+```
+
+## 19. PATRONES DE DISEÑO COMUNES
+
+### Singleton
+```csharp
+public class Singleton
+{
+    private static Singleton instancia;
+    private static readonly object bloqueo = new object();
+    
+    private Singleton() { }
+    
+    public static Singleton Instancia
+    {
+        get
+        {
+            if (instancia == null)
+            {
+                lock (bloqueo)
+                {
+                    if (instancia == null)
+                    {
+                        instancia = new Singleton();
+                    }
+                }
+            }
+            return instancia;
+        }
+    }
+}
+```
+
+### Factory Method
+```csharp
+public abstract class Animal
+{
+    public abstract void HacerSonido();
+}
+
+public class Perro : Animal
+{
+    public override void HacerSonido() => Console.WriteLine("Guau");
+}
+
+public class Gato : Animal
+{
+    public override void HacerSonido() => Console.WriteLine("Miau");
+}
+
+public abstract class AnimalFactory
+{
+    public abstract Animal CrearAnimal();
+}
+
+public class PerroFactory : AnimalFactory
+{
+    public override Animal CrearAnimal() => new Perro();
+}
+
+public class GatoFactory : AnimalFactory
+{
+    public override Animal CrearAnimal() => new Gato();
+}
+```
+
+### Observer Pattern
+```csharp
+public interface IObserver
+{
+    void Actualizar(string mensaje);
+}
+
+public class Sujeto
+{
+    private List<IObserver> observadores = new List<IObserver>();
+    
+    public void AgregarObservador(IObserver observador)
+    {
+        observadores.Add(observador);
+    }
+    
+    public void RemoverObservador(IObserver observador)
+    {
+        observadores.Remove(observador);
+    }
+    
+    public void NotificarObservadores(string mensaje)
+    {
+        foreach (var observador in observadores)
+        {
+            observador.Actualizar(mensaje);
+        }
+    }
+}
+
+public class ObservadorConcreto : IObserver
+{
+    private string nombre;
+    
+    public ObservadorConcreto(string nombre)
+    {
+        this.nombre = nombre;
+    }
+    
+    public void Actualizar(string mensaje)
+    {
+        Console.WriteLine($"{nombre} recibió: {mensaje}");
+    }
+}
+```
+
+## 20. MEJORES PRÁCTICAS Y CONVENCIONES
+
+### Convenciones de nomenclatura
+```csharp
+// Clases y métodos: PascalCase
+public class MiClase
+{
+    public void MiMetodo() { }
+}
+
+// Variables y parámetros: camelCase
+int numeroEntero;
+string nombreVariable;
+
+// Constantes: UPPER_CASE
+const double PI = 3.14159;
+
+// Interfaces: I + PascalCase
+public interface IRepositorio { }
+
+// Enums: PascalCase
+public enum EstadoProceso
+{
+    Pendiente,
+    EnProceso,
+    Completado
+}
+```
+
+### Manejo de recursos
+```csharp
+public class GestorRecursos : IDisposable
+{
+    private bool disposed = false;
+    
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                // Liberar recursos administrados
+            }
+            
+            // Liberar recursos no administrados
+            
+            disposed = true;
+        }
+    }
+    
+    ~GestorRecursos()
+    {
+        Dispose(false);
+    }
+}
+```
+
+### Validación de parámetros
+```csharp
+public class Validador
+{
+    public static void ValidarNoNulo<T>(T valor, string nombreParametro) where T : class
+    {
+        if (valor == null)
+        {
+            throw new ArgumentNullException(nombreParametro);
+        }
+    }
+    
+    public static void ValidarRango(int valor, int min, int max, string nombreParametro)
+    {
+        if (valor < min || valor > max)
+        {
+            throw new ArgumentOutOfRangeException(nombreParametro, 
+                $"El valor debe estar entre {min} y {max}");
+        }
+    }
+}
+```
+
+Esta guía completa cubre desde los fundamentos básicos hasta conceptos avanzados de C#, proporcionando tanto definiciones teóricas como ejemplos prácticos extensos. Cada sección está diseñada para ser comprensible y aplicable en proyectos reales. 

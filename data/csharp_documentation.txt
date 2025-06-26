@@ -1,0 +1,714 @@
+# C# y .NET - Documentación Completa
+
+## FUNDAMENTOS DE C#
+
+### Variables y Tipos de Datos
+C# es un lenguaje de programación fuertemente tipado. Los tipos básicos incluyen:
+- int: números enteros (ej: 42, -17)
+- double: números de punto flotante (ej: 3.14, -2.5)
+- string: texto (ej: "Hola mundo")
+- bool: valores booleanos (true/false)
+- char: caracteres individuales (ej: 'A', '5')
+
+### Declaración de Variables
+```csharp
+int edad = 25;
+string nombre = "Juan";
+double precio = 19.99;
+bool activo = true;
+```
+
+### Constantes
+```csharp
+const double PI = 3.14159;
+const string VERSION = "1.0.0";
+```
+
+## ESTRUCTURAS DE CONTROL
+
+### Condicionales
+```csharp
+if (edad >= 18) {
+    Console.WriteLine("Eres mayor de edad");
+} else if (edad >= 13) {
+    Console.WriteLine("Eres adolescente");
+} else {
+    Console.WriteLine("Eres menor de edad");
+}
+```
+
+### Bucles
+```csharp
+// Bucle for
+for (int i = 0; i < 10; i++) {
+    Console.WriteLine($"Número: {i}");
+}
+
+// Bucle while
+int contador = 0;
+while (contador < 5) {
+    Console.WriteLine($"Contador: {contador}");
+    contador++;
+}
+
+// Bucle foreach
+string[] colores = {"rojo", "verde", "azul"};
+foreach (string color in colores) {
+    Console.WriteLine($"Color: {color}");
+}
+```
+
+## MÉTODOS Y FUNCIONES
+
+### Definición de Métodos
+```csharp
+public int Sumar(int a, int b) {
+    return a + b;
+}
+
+public void Saludar(string nombre) {
+    Console.WriteLine($"¡Hola {nombre}!");
+}
+
+public double CalcularArea(double radio) {
+    return Math.PI * radio * radio;
+}
+```
+
+### Métodos con Parámetros Opcionales
+```csharp
+public void Configurar(string nombre, int edad = 18, string ciudad = "Desconocida") {
+    Console.WriteLine($"Nombre: {nombre}, Edad: {edad}, Ciudad: {ciudad}");
+}
+```
+
+## CLASES Y OBJETOS
+
+### Definición de Clases
+```csharp
+public class Persona {
+    // Propiedades
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    
+    // Constructor
+    public Persona(string nombre, int edad) {
+        Nombre = nombre;
+        Edad = edad;
+    }
+    
+    // Métodos
+    public void Presentarse() {
+        Console.WriteLine($"Hola, soy {Nombre} y tengo {Edad} años");
+    }
+}
+```
+
+### Uso de Objetos
+```csharp
+Persona persona1 = new Persona("Ana", 25);
+persona1.Presentarse();
+```
+
+## COLECCIONES
+
+### Arrays
+```csharp
+int[] numeros = {1, 2, 3, 4, 5};
+string[] nombres = new string[3];
+nombres[0] = "Juan";
+nombres[1] = "María";
+nombres[2] = "Pedro";
+```
+
+### Listas
+```csharp
+List<string> frutas = new List<string>();
+frutas.Add("manzana");
+frutas.Add("banana");
+frutas.Add("naranja");
+
+// O inicializar directamente
+List<int> numeros = new List<int> {1, 2, 3, 4, 5};
+```
+
+### Diccionarios
+```csharp
+Dictionary<string, int> edades = new Dictionary<string, int>();
+edades["Juan"] = 25;
+edades["María"] = 30;
+edades["Pedro"] = 28;
+
+// Acceder a valores
+int edadJuan = edades["Juan"];
+```
+
+## MANEJO DE EXCEPCIONES
+
+### Try-Catch
+```csharp
+try {
+    int resultado = 10 / 0;
+} catch (DivideByZeroException ex) {
+    Console.WriteLine($"Error: {ex.Message}");
+} catch (Exception ex) {
+    Console.WriteLine($"Error general: {ex.Message}");
+} finally {
+    Console.WriteLine("Este código siempre se ejecuta");
+}
+```
+
+## LINQ (Language Integrated Query)
+
+### Consultas Básicas
+```csharp
+List<int> numeros = new List<int> {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+// Filtrar números pares
+var pares = numeros.Where(n => n % 2 == 0);
+
+// Ordenar
+var ordenados = numeros.OrderBy(n => n);
+
+// Proyección
+var cuadrados = numeros.Select(n => n * n);
+
+// Agregación
+int suma = numeros.Sum();
+int maximo = numeros.Max();
+int minimo = numeros.Min();
+```
+
+## ADO.NET - ACCESO A DATOS
+
+### Conexión a Base de Datos
+```csharp
+using System.Data.SqlClient;
+
+string connectionString = "Server=localhost;Database=MiDB;Trusted_Connection=true;";
+using (SqlConnection connection = new SqlConnection(connectionString)) {
+    connection.Open();
+    Console.WriteLine("Conexión exitosa");
+}
+```
+
+### Ejecutar Consultas
+```csharp
+string query = "SELECT * FROM Usuarios WHERE Edad > @edad";
+using (SqlCommand command = new SqlCommand(query, connection)) {
+    command.Parameters.AddWithValue("@edad", 18);
+    
+    using (SqlDataReader reader = command.ExecuteReader()) {
+        while (reader.Read()) {
+            string nombre = reader["Nombre"].ToString();
+            int edad = Convert.ToInt32(reader["Edad"]);
+            Console.WriteLine($"Nombre: {nombre}, Edad: {edad}");
+        }
+    }
+}
+```
+
+### Insertar Datos
+```csharp
+string insertQuery = "INSERT INTO Usuarios (Nombre, Edad) VALUES (@nombre, @edad)";
+using (SqlCommand command = new SqlCommand(insertQuery, connection)) {
+    command.Parameters.AddWithValue("@nombre", "Nuevo Usuario");
+    command.Parameters.AddWithValue("@edad", 25);
+    
+    int filasAfectadas = command.ExecuteNonQuery();
+    Console.WriteLine($"Filas insertadas: {filasAfectadas}");
+}
+```
+
+## ASP.NET CORE
+
+### Configuración Básica
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.UseRouting();
+app.MapControllers();
+app.Run();
+```
+
+### Controlador Web API
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsuariosController : ControllerBase {
+    [HttpGet]
+    public IActionResult ObtenerUsuarios() {
+        var usuarios = new List<object> {
+            new { Id = 1, Nombre = "Juan" },
+            new { Id = 2, Nombre = "María" }
+        };
+        return Ok(usuarios);
+    }
+    
+    [HttpGet("{id}")]
+    public IActionResult ObtenerUsuario(int id) {
+        // Lógica para obtener usuario por ID
+        return Ok(new { Id = id, Nombre = "Usuario" });
+    }
+    
+    [HttpPost]
+    public IActionResult CrearUsuario([FromBody] Usuario usuario) {
+        // Lógica para crear usuario
+        return CreatedAtAction(nameof(ObtenerUsuario), new { id = 1 }, usuario);
+    }
+}
+```
+
+## ENTITY FRAMEWORK
+
+### Configuración del Contexto
+```csharp
+public class ApplicationDbContext : DbContext {
+    public DbSet<Usuario> Usuarios { get; set; }
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
+        optionsBuilder.UseSqlServer("Server=localhost;Database=MiDB;Trusted_Connection=true;");
+    }
+}
+```
+
+### Modelo de Entidad
+```csharp
+public class Usuario {
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public string Email { get; set; }
+    public DateTime FechaCreacion { get; set; }
+}
+```
+
+### Operaciones CRUD
+```csharp
+using (var context = new ApplicationDbContext()) {
+    // Crear
+    var nuevoUsuario = new Usuario {
+        Nombre = "Nuevo Usuario",
+        Email = "nuevo@email.com",
+        FechaCreacion = DateTime.Now
+    };
+    context.Usuarios.Add(nuevoUsuario);
+    context.SaveChanges();
+    
+    // Leer
+    var usuarios = context.Usuarios.ToList();
+    var usuario = context.Usuarios.Find(1);
+    
+    // Actualizar
+    if (usuario != null) {
+        usuario.Nombre = "Nombre Actualizado";
+        context.SaveChanges();
+    }
+    
+    // Eliminar
+    var usuarioAEliminar = context.Usuarios.Find(1);
+    if (usuarioAEliminar != null) {
+        context.Usuarios.Remove(usuarioAEliminar);
+        context.SaveChanges();
+    }
+}
+```
+
+## PATRONES DE DISEÑO
+
+### Singleton
+```csharp
+public class Singleton {
+    private static Singleton instance;
+    private static readonly object lockObject = new object();
+    
+    private Singleton() { }
+    
+    public static Singleton Instance {
+        get {
+            if (instance == null) {
+                lock (lockObject) {
+                    if (instance == null) {
+                        instance = new Singleton();
+                    }
+                }
+            }
+            return instance;
+        }
+    }
+}
+```
+
+### Factory Pattern
+```csharp
+public interface IVehiculo {
+    void Conducir();
+}
+
+public class Coche : IVehiculo {
+    public void Conducir() {
+        Console.WriteLine("Conduciendo coche");
+    }
+}
+
+public class Moto : IVehiculo {
+    public void Conducir() {
+        Console.WriteLine("Conduciendo moto");
+    }
+}
+
+public class VehiculoFactory {
+    public static IVehiculo CrearVehiculo(string tipo) {
+        switch (tipo.ToLower()) {
+            case "coche":
+                return new Coche();
+            case "moto":
+                return new Moto();
+            default:
+                throw new ArgumentException("Tipo de vehículo no válido");
+        }
+    }
+}
+```
+
+## ASINCRONÍA
+
+### Async/Await
+```csharp
+public async Task<string> ObtenerDatosAsync() {
+    using (var client = new HttpClient()) {
+        var resultado = await client.GetStringAsync("https://api.ejemplo.com/datos");
+        return resultado;
+    }
+}
+
+public async Task ProcesarDatosAsync() {
+    Console.WriteLine("Iniciando procesamiento...");
+    var datos = await ObtenerDatosAsync();
+    Console.WriteLine($"Datos obtenidos: {datos}");
+}
+```
+
+## REFLEXIÓN
+
+### Obtener Información de Tipos
+```csharp
+Type tipo = typeof(Persona);
+Console.WriteLine($"Nombre del tipo: {tipo.Name}");
+Console.WriteLine($"Namespace: {tipo.Namespace}");
+
+// Obtener propiedades
+var propiedades = tipo.GetProperties();
+foreach (var prop in propiedades) {
+    Console.WriteLine($"Propiedad: {prop.Name} - Tipo: {prop.PropertyType}");
+}
+
+// Obtener métodos
+var metodos = tipo.GetMethods();
+foreach (var metodo in metodos) {
+    Console.WriteLine($"Método: {metodo.Name}");
+}
+```
+
+## SERIALIZACIÓN
+
+### JSON
+```csharp
+using System.Text.Json;
+
+var persona = new Persona("Juan", 25);
+
+// Serializar
+string json = JsonSerializer.Serialize(persona);
+Console.WriteLine(json);
+
+// Deserializar
+var personaDeserializada = JsonSerializer.Deserialize<Persona>(json);
+```
+
+### XML
+```csharp
+using System.Xml.Serialization;
+
+var serializer = new XmlSerializer(typeof(Persona));
+using (var writer = new StringWriter()) {
+    serializer.Serialize(writer, persona);
+    string xml = writer.ToString();
+    Console.WriteLine(xml);
+}
+```
+
+## LOGGING
+
+### Configuración Básica
+```csharp
+using Microsoft.Extensions.Logging;
+
+var loggerFactory = LoggerFactory.Create(builder => {
+    builder.AddConsole();
+});
+
+var logger = loggerFactory.CreateLogger<Program>();
+
+logger.LogInformation("Aplicación iniciada");
+logger.LogWarning("Advertencia: datos faltantes");
+logger.LogError("Error en el procesamiento");
+```
+
+## TESTING
+
+### Unit Tests con MSTest
+```csharp
+[TestClass]
+public class CalculadoraTests {
+    [TestMethod]
+    public void Sumar_DosNumeros_RetornaSuma() {
+        // Arrange
+        var calculadora = new Calculadora();
+        
+        // Act
+        int resultado = calculadora.Sumar(2, 3);
+        
+        // Assert
+        Assert.AreEqual(5, resultado);
+    }
+}
+```
+
+## MEJORES PRÁCTICAS
+
+### Nomenclatura
+- Usar PascalCase para clases, métodos y propiedades públicas
+- Usar camelCase para variables locales y parámetros
+- Usar UPPER_CASE para constantes
+- Usar verbos para métodos (GetUser, CreateOrder)
+- Usar sustantivos para clases y propiedades
+
+### Estructura de Proyectos
+```
+MiProyecto/
+├── src/
+│   ├── MiProyecto.Core/          # Lógica de negocio
+│   ├── MiProyecto.Infrastructure/ # Acceso a datos
+│   └── MiProyecto.Web/           # API o aplicación web
+├── tests/
+│   ├── MiProyecto.Core.Tests/
+│   └── MiProyecto.Infrastructure.Tests/
+└── docs/                         # Documentación
+```
+
+### Principios SOLID
+1. **S**ingle Responsibility: Una clase debe tener una sola responsabilidad
+2. **O**pen/Closed: Abierto para extensión, cerrado para modificación
+3. **L**iskov Substitution: Las clases derivadas deben poder sustituir a las base
+4. **I**nterface Segregation: Muchas interfaces específicas son mejores que una general
+5. **D**ependency Inversion: Depender de abstracciones, no de implementaciones
+
+## DEPENDENCY INJECTION
+
+### Configuración de Servicios
+```csharp
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+```
+
+### Uso en Controladores
+```csharp
+public class UsuariosController : ControllerBase {
+    private readonly IUsuarioService _usuarioService;
+    
+    public UsuariosController(IUsuarioService usuarioService) {
+        _usuarioService = usuarioService;
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> ObtenerUsuarios() {
+        var usuarios = await _usuarioService.ObtenerTodosAsync();
+        return Ok(usuarios);
+    }
+}
+```
+
+## CONFIGURACIÓN
+
+### appsettings.json
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MiDB;Trusted_Connection=true;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning"
+    }
+  },
+  "ApiSettings": {
+    "BaseUrl": "https://api.ejemplo.com",
+    "Timeout": 30
+  }
+}
+```
+
+### Lectura de Configuración
+```csharp
+public class ApiSettings {
+    public string BaseUrl { get; set; }
+    public int Timeout { get; set; }
+}
+
+// En Program.cs
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
+
+// En una clase
+public class MiServicio {
+    private readonly ApiSettings _settings;
+    
+    public MiServicio(IOptions<ApiSettings> settings) {
+        _settings = settings.Value;
+    }
+}
+```
+
+## SEGURIDAD
+
+### Autenticación JWT
+```csharp
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options => {
+        options.TokenValidationParameters = new TokenValidationParameters {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
+```
+
+### Autorización
+```csharp
+[Authorize]
+[ApiController]
+public class UsuariosController : ControllerBase {
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin")]
+    public IActionResult AdminOnly() {
+        return Ok("Solo para administradores");
+    }
+    
+    [Authorize(Policy = "EdadMinima")]
+    [HttpGet("adultos")]
+    public IActionResult SoloAdultos() {
+        return Ok("Solo para adultos");
+    }
+}
+```
+
+## OPTIMIZACIÓN
+
+### Caché
+```csharp
+builder.Services.AddMemoryCache();
+
+public class UsuarioService {
+    private readonly IMemoryCache _cache;
+    
+    public UsuarioService(IMemoryCache cache) {
+        _cache = cache;
+    }
+    
+    public async Task<Usuario> ObtenerUsuarioAsync(int id) {
+        string key = $"usuario_{id}";
+        
+        if (!_cache.TryGetValue(key, out Usuario usuario)) {
+            usuario = await ObtenerDeBaseDeDatos(id);
+            _cache.Set(key, usuario, TimeSpan.FromMinutes(10));
+        }
+        
+        return usuario;
+    }
+}
+```
+
+### Paginación
+```csharp
+public class PaginatedResult<T> {
+    public List<T> Items { get; set; }
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+public async Task<PaginatedResult<Usuario>> ObtenerUsuariosAsync(int pageNumber, int pageSize) {
+    var query = _context.Usuarios.AsQueryable();
+    
+    var totalCount = await query.CountAsync();
+    var items = await query
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+    
+    return new PaginatedResult<Usuario> {
+        Items = items,
+        TotalCount = totalCount,
+        PageNumber = pageNumber,
+        PageSize = pageSize
+    };
+}
+```
+
+## DEPLOYMENT
+
+### Docker
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /src
+COPY ["MiProyecto.csproj", "./"]
+RUN dotnet restore "MiProyecto.csproj"
+COPY . .
+RUN dotnet build "MiProyecto.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "MiProyecto.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "MiProyecto.dll"]
+```
+
+### Docker Compose
+```yaml
+version: '3.8'
+services:
+  webapp:
+    build: .
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=MiDB;User=sa;Password=Your_password123;
+  
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"
+```
+
+Esta documentación proporciona una base sólida para el desarrollo en C# y .NET, cubriendo desde conceptos básicos hasta patrones avanzados y mejores prácticas. 

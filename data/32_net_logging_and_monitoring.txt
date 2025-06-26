@@ -1,0 +1,705 @@
+# Logging y Monitoreo en .NET: Guía Completa
+
+## Introducción al Logging en .NET
+
+El logging es una parte fundamental del desarrollo de aplicaciones modernas. .NET proporciona un sistema de logging robusto y extensible que permite registrar información, errores y eventos de la aplicación de manera estructurada.
+
+### Sistema de Logging Integrado
+
+#### 1. Fundamentos del Logging
+
+**Definición**: El sistema de logging de .NET permite registrar mensajes con diferentes niveles de importancia y enviarlos a múltiples destinos.
+
+**Niveles de Log**:
+- **Trace**: Información muy detallada para debugging
+- **Debug**: Información de debugging
+- **Information**: Información general de la aplicación
+- **Warning**: Advertencias que no son errores críticos
+- **Error**: Errores que afectan la funcionalidad
+- **Critical**: Errores críticos que pueden causar fallos
+
+**Ejemplo Básico**:
+```csharp
+public class LoggingExample
+{
+    private readonly ILogger<LoggingExample> _logger;
+    
+    public LoggingExample(ILogger<LoggingExample> logger)
+    {
+        _logger = logger;
+    }
+    
+    public void DemonstrateLogging()
+    {
+        // Diferentes niveles de log
+        _logger.LogTrace("This is a trace message - very detailed information");
+        _logger.LogDebug("This is a debug message - useful for debugging");
+        _logger.LogInformation("This is an information message - general app info");
+        _logger.LogWarning("This is a warning message - something to be aware of");
+        _logger.LogError("This is an error message - something went wrong");
+        _logger.LogCritical("This is a critical message - critical error occurred");
+        
+        // Logging con parámetros
+        var userId = 123;
+        var action = "login";
+        _logger.LogInformation("User {UserId} performed {Action}", userId, action);
+        
+        // Logging con excepciones
+        try
+        {
+            throw new InvalidOperationException("Something went wrong");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while processing user {UserId}", userId);
+        }
+        
+        // Logging estructurado
+        var user = new { Id = 123, Name = "John Doe", Email = "john@example.com" };
+        _logger.LogInformation("User created: {@User}", user);
+    }
+}
+```
+
+#### 2. Configuración del Logging
+
+**Configuración en appsettings.json**:
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information",
+      "MyApplication": "Debug"
+    },
+    "Console": {
+      "LogLevel": {
+        "Default": "Information",
+        "MyApplication": "Debug"
+      },
+      "FormatterName": "json",
+      "FormatterOptions": {
+        "IncludeScopes": true,
+        "TimestampFormat": "yyyy-MM-dd HH:mm:ss "
+      }
+    },
+    "File": {
+      "LogLevel": {
+        "Default": "Information"
+      },
+      "Path": "logs/app-{Date}.txt",
+      "FileSizeLimitBytes": 10485760,
+      "MaxRollingFiles": 3
+    },
+    "EventLog": {
+      "LogLevel": {
+        "Default": "Warning"
+      },
+      "SourceName": "MyApplication"
+    }
+  }
+}
+```
+
+**Configuración en Program.cs**:
+```csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // Configurar logging
+        builder.Logging.ClearProviders();
+        builder.Logging.AddConsole();
+        builder.Logging.AddDebug();
+        builder.Logging.AddEventLog();
+        builder.Logging.AddFile("logs/app-{Date}.txt");
+        
+        // Configurar niveles de log específicos
+        builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+        builder.Logging.AddFilter("System", LogLevel.Warning);
+        builder.Logging.AddFilter("MyApplication", LogLevel.Debug);
+        
+        // Configurar formateadores personalizados
+        builder.Logging.AddConsole(options =>
+        {
+            options.FormatterName = "json";
+        });
+        
+        builder.Logging.AddJsonConsole(options =>
+        {
+            options.IncludeScopes = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+        });
+        
+        var app = builder.Build();
+        app.Run();
+    }
+}
+```
+
+### Proveedores de Logging
+
+#### 1. Console Provider
+
+**Ejemplo de Console Logging**:
+```csharp
+public class ConsoleLoggingExample
+{
+    public void ConfigureConsoleLogging(ILoggingBuilder builder)
+    {
+        // Logging básico a consola
+        builder.AddConsole();
+        
+        // Logging con formato JSON
+        builder.AddJsonConsole(options =>
+        {
+            options.IncludeScopes = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+            options.JsonWriterOptions = new JsonWriterOptions
+            {
+                Indented = true
+            };
+        });
+        
+        // Logging con formato personalizado
+        builder.AddConsole(options =>
+        {
+            options.FormatterName = "custom";
+        });
+        
+        // Configurar colores
+        builder.AddConsole(options =>
+        {
+            options.FormatterName = "color";
+        });
+    }
+}
+
+// Formateador personalizado
+public class CustomConsoleFormatter : ConsoleFormatter
+{
+    public CustomConsoleFormatter() : base("custom")
+    {
+    }
+    
+    public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider scopeProvider, TextWriter textWriter)
+    {
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var level = logEntry.LogLevel.ToString().ToUpper();
+        var category = logEntry.Category;
+        var message = logEntry.Formatter(logEntry.State, logEntry.Exception);
+        
+        textWriter.WriteLine($"[{timestamp}] [{level}] [{category}] {message}");
+        
+        if (logEntry.Exception != null)
+        {
+            textWriter.WriteLine($"Exception: {logEntry.Exception}");
+        }
+    }
+}
+```
+
+#### 2. File Provider
+
+**Ejemplo de File Logging**:
+```csharp
+public class FileLoggingExample
+{
+    public void ConfigureFileLogging(ILoggingBuilder builder)
+    {
+        // Logging básico a archivo
+        builder.AddFile("logs/app.log");
+        
+        // Logging con rotación de archivos
+        builder.AddFile("logs/app-{Date}.txt", options =>
+        {
+            options.FileSizeLimitBytes = 10 * 1024 * 1024; // 10MB
+            options.MaxRollingFiles = 5;
+            options.Append = true;
+        });
+        
+        // Logging con filtros
+        builder.AddFile("logs/errors.txt", options =>
+        {
+            options.Filter = (category, level) => level >= LogLevel.Error;
+        });
+        
+        // Logging con formato JSON
+        builder.AddJsonFile("logs/app-{Date}.json", options =>
+        {
+            options.FileSizeLimitBytes = 5 * 1024 * 1024; // 5MB
+            options.MaxRollingFiles = 10;
+        });
+    }
+}
+
+// Proveedor de logging personalizado
+public class CustomFileLoggerProvider : ILoggerProvider
+{
+    private readonly string _filePath;
+    private readonly object _lock = new object();
+    
+    public CustomFileLoggerProvider(string filePath)
+    {
+        _filePath = filePath;
+    }
+    
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new CustomFileLogger(_filePath, categoryName, _lock);
+    }
+    
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
+
+public class CustomFileLogger : ILogger
+{
+    private readonly string _filePath;
+    private readonly string _categoryName;
+    private readonly object _lock;
+    
+    public CustomFileLogger(string filePath, string categoryName, object lockObj)
+    {
+        _filePath = filePath;
+        _categoryName = categoryName;
+        _lock = lockObj;
+    }
+    
+    public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+    
+    public bool IsEnabled(LogLevel logLevel) => true;
+    
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+    {
+        if (!IsEnabled(logLevel)) return;
+        
+        var message = formatter(state, exception);
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var logEntry = $"[{timestamp}] [{logLevel}] [{_categoryName}] {message}";
+        
+        if (exception != null)
+        {
+            logEntry += $"\nException: {exception}";
+        }
+        
+        lock (_lock)
+        {
+            File.AppendAllText(_filePath, logEntry + Environment.NewLine);
+        }
+    }
+}
+
+public class NullScope : IDisposable
+{
+    public static NullScope Instance { get; } = new NullScope();
+    private NullScope() { }
+    public void Dispose() { }
+}
+```
+
+#### 3. EventLog Provider
+
+**Ejemplo de EventLog Logging**:
+```csharp
+public class EventLogExample
+{
+    public void ConfigureEventLog(ILoggingBuilder builder)
+    {
+        // Logging básico a EventLog
+        builder.AddEventLog();
+        
+        // Logging con configuración personalizada
+        builder.AddEventLog(options =>
+        {
+            options.SourceName = "MyApplication";
+            options.LogName = "Application";
+        });
+        
+        // Logging con filtros
+        builder.AddEventLog(options =>
+        {
+            options.SourceName = "MyApplication";
+        });
+    }
+}
+```
+
+### Logging Estructurado
+
+#### 1. Logging con Scopes
+
+**Ejemplo de Scopes**:
+```csharp
+public class StructuredLoggingExample
+{
+    private readonly ILogger<StructuredLoggingExample> _logger;
+    
+    public StructuredLoggingExample(ILogger<StructuredLoggingExample> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task ProcessOrderAsync(int orderId)
+    {
+        using (_logger.BeginScope("Processing order {OrderId}", orderId))
+        {
+            _logger.LogInformation("Starting order processing");
+            
+            try
+            {
+                await ValidateOrderAsync(orderId);
+                
+                using (_logger.BeginScope("Payment processing"))
+                {
+                    _logger.LogInformation("Processing payment for order {OrderId}", orderId);
+                    await ProcessPaymentAsync(orderId);
+                }
+                
+                using (_logger.BeginScope("Inventory update"))
+                {
+                    _logger.LogInformation("Updating inventory for order {OrderId}", orderId);
+                    await UpdateInventoryAsync(orderId);
+                }
+                
+                _logger.LogInformation("Order {OrderId} processed successfully", orderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process order {OrderId}", orderId);
+                throw;
+            }
+        }
+    }
+    
+    private async Task ValidateOrderAsync(int orderId)
+    {
+        _logger.LogDebug("Validating order {OrderId}", orderId);
+        await Task.Delay(100);
+    }
+    
+    private async Task ProcessPaymentAsync(int orderId)
+    {
+        _logger.LogDebug("Processing payment for order {OrderId}", orderId);
+        await Task.Delay(200);
+    }
+    
+    private async Task UpdateInventoryAsync(int orderId)
+    {
+        _logger.LogDebug("Updating inventory for order {OrderId}", orderId);
+        await Task.Delay(150);
+    }
+}
+```
+
+#### 2. Logging con Objetos Complejos
+
+**Ejemplo de Logging de Objetos**:
+```csharp
+public class UserService
+{
+    private readonly ILogger<UserService> _logger;
+    
+    public UserService(ILogger<UserService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task<User> CreateUserAsync(CreateUserDto dto)
+    {
+        _logger.LogInformation("Creating user with data: {@UserData}", dto);
+        
+        var user = new User
+        {
+            Name = dto.Name,
+            Email = dto.Email,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        _logger.LogInformation("User created successfully: {@User}", user);
+        
+        return user;
+    }
+    
+    public async Task<IEnumerable<User>> GetUsersAsync(UserFilters filters)
+    {
+        _logger.LogInformation("Retrieving users with filters: {@Filters}", filters);
+        
+        var users = new List<User>(); // Simulación
+        
+        _logger.LogInformation("Retrieved {Count} users", users.Count);
+        
+        return users;
+    }
+}
+
+public class CreateUserDto
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
+}
+
+public class UserFilters
+{
+    public string SearchTerm { get; set; }
+    public int? MinAge { get; set; }
+    public int? MaxAge { get; set; }
+    public string Role { get; set; }
+    public bool? IsActive { get; set; }
+}
+```
+
+### Logging Avanzado
+
+#### 1. Logging con Performance
+
+**Ejemplo de Performance Logging**:
+```csharp
+public class PerformanceLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<PerformanceLoggingMiddleware> _logger;
+    
+    public PerformanceLoggingMiddleware(RequestDelegate next, ILogger<PerformanceLoggingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var requestId = Guid.NewGuid().ToString();
+        
+        using (_logger.BeginScope("Request {RequestId}", requestId))
+        {
+            _logger.LogInformation("Request started: {Method} {Path}", 
+                context.Request.Method, context.Request.Path);
+            
+            try
+            {
+                await _next(context);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                
+                var duration = stopwatch.ElapsedMilliseconds;
+                var statusCode = context.Response.StatusCode;
+                
+                _logger.LogInformation("Request completed: {Method} {Path} => {StatusCode} ({Duration}ms)", 
+                    context.Request.Method, context.Request.Path, statusCode, duration);
+                
+                // Log performance warnings
+                if (duration > 1000)
+                {
+                    _logger.LogWarning("Slow request detected: {Method} {Path} took {Duration}ms", 
+                        context.Request.Method, context.Request.Path, duration);
+                }
+            }
+        }
+    }
+}
+```
+
+#### 2. Logging con Correlation ID
+
+**Ejemplo de Correlation ID**:
+```csharp
+public class CorrelationIdMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<CorrelationIdMiddleware> _logger;
+    
+    public CorrelationIdMiddleware(RequestDelegate next, ILogger<CorrelationIdMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var correlationId = GetOrCreateCorrelationId(context);
+        
+        // Agregar correlation ID al response headers
+        context.Response.Headers.Add("X-Correlation-ID", correlationId);
+        
+        using (_logger.BeginScope("CorrelationId: {CorrelationId}", correlationId))
+        {
+            _logger.LogInformation("Request started with correlation ID: {CorrelationId}", correlationId);
+            
+            await _next(context);
+            
+            _logger.LogInformation("Request completed with correlation ID: {CorrelationId}", correlationId);
+        }
+    }
+    
+    private string GetOrCreateCorrelationId(HttpContext context)
+    {
+        // Intentar obtener correlation ID del header
+        if (context.Request.Headers.TryGetValue("X-Correlation-ID", out var correlationId))
+        {
+            return correlationId.ToString();
+        }
+        
+        // Crear nuevo correlation ID
+        return Guid.NewGuid().ToString();
+    }
+}
+```
+
+### Monitoreo y Métricas
+
+#### 1. Health Checks
+
+**Ejemplo de Health Checks**:
+```csharp
+public class HealthCheckExample
+{
+    public void ConfigureHealthChecks(IServiceCollection services)
+    {
+        services.AddHealthChecks()
+            .AddCheck("database", new DatabaseHealthCheck())
+            .AddCheck("external-api", new ExternalApiHealthCheck())
+            .AddCheck("disk-space", new DiskSpaceHealthCheck())
+            .AddCheck("memory", new MemoryHealthCheck());
+    }
+}
+
+public class DatabaseHealthCheck : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Verificar conexión a base de datos
+            using var connection = new SqlConnection("connection-string");
+            await connection.OpenAsync(cancellationToken);
+            
+            return HealthCheckResult.Healthy("Database is healthy");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Database is unhealthy", ex);
+        }
+    }
+}
+
+public class ExternalApiHealthCheck : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var client = new HttpClient();
+            var response = await client.GetAsync("https://api.example.com/health", cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return HealthCheckResult.Healthy("External API is healthy");
+            }
+            
+            return HealthCheckResult.Degraded("External API is responding but with issues");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("External API is unhealthy", ex);
+        }
+    }
+}
+```
+
+#### 2. Métricas con Application Insights
+
+**Ejemplo de Application Insights**:
+```csharp
+public class ApplicationInsightsExample
+{
+    public void ConfigureApplicationInsights(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddApplicationInsightsTelemetry(configuration["ApplicationInsights:InstrumentationKey"]);
+        
+        // Configurar telemetría personalizada
+        services.Configure<TelemetryConfiguration>(config =>
+        {
+            config.TelemetryInitializers.Add(new CustomTelemetryInitializer());
+        });
+    }
+}
+
+public class CustomTelemetryInitializer : ITelemetryInitializer
+{
+    public void Initialize(ITelemetry telemetry)
+    {
+        telemetry.Context.Cloud.RoleName = "MyApplication";
+        telemetry.Context.Cloud.RoleInstance = Environment.MachineName;
+        
+        // Agregar propiedades personalizadas
+        telemetry.Context.Properties["Environment"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        telemetry.Context.Properties["Version"] = "1.0.0";
+    }
+}
+
+public class MetricsExample
+{
+    private readonly TelemetryClient _telemetryClient;
+    
+    public MetricsExample(TelemetryClient telemetryClient)
+    {
+        _telemetryClient = telemetryClient;
+    }
+    
+    public void TrackMetrics()
+    {
+        // Track custom metrics
+        _telemetryClient.TrackMetric("OrdersPerMinute", 15.5);
+        _telemetryClient.TrackMetric("ResponseTime", 125.3);
+        
+        // Track custom events
+        _telemetryClient.TrackEvent("OrderCreated", new Dictionary<string, string>
+        {
+            ["OrderId"] = "12345",
+            ["CustomerId"] = "67890",
+            ["Amount"] = "99.99"
+        });
+        
+        // Track dependencies
+        using (_telemetryClient.StartOperation<DependencyTelemetry>("DatabaseQuery"))
+        {
+            // Simular operación de base de datos
+            Thread.Sleep(100);
+        }
+    }
+}
+```
+
+### Conclusión
+
+El sistema de logging y monitoreo en .NET proporciona:
+
+**Ventajas Principales**:
+- **Flexibilidad**: Múltiples proveedores y destinos
+- **Estructurado**: Logging con parámetros y scopes
+- **Performance**: Logging asíncrono y optimizado
+- **Integración**: Fácil integración con herramientas de monitoreo
+- **Configurabilidad**: Configuración flexible por ambiente
+
+**Casos de Uso**:
+- **Debugging**: Información detallada para desarrollo
+- **Monitoreo**: Seguimiento de aplicación en producción
+- **Auditoría**: Registro de acciones importantes
+- **Performance**: Medición de tiempos de respuesta
+- **Alertas**: Detección de problemas automática
+
+**Próximos Pasos**:
+- Explorar Serilog y NLog
+- Aprender sobre Application Insights
+- Investigar Prometheus y Grafana
+- Profundizar en distributed tracing
+- Experimentar con log aggregation

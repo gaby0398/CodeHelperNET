@@ -1,0 +1,739 @@
+# Fundamentos de ASP.NET Core
+
+## Introducción a ASP.NET Core
+
+ASP.NET Core es un framework web moderno, de código abierto y multiplataforma para crear aplicaciones web, APIs y microservicios. Es la evolución de ASP.NET Framework, diseñado para ser modular, de alto rendimiento y optimizado para la nube.
+
+### Características Principales de ASP.NET Core
+
+#### 1. Multiplataforma
+
+**Definición**: ASP.NET Core puede ejecutarse en Windows, macOS y Linux.
+
+**Ventajas**:
+- **Desarrollo Cross-Platform**: Desarrolla en cualquier sistema operativo
+- **Despliegue Flexible**: Despliega en cualquier plataforma
+- **Contenedores**: Optimizado para Docker y Kubernetes
+- **Cloud Native**: Diseñado para la nube
+
+**Ejemplo de Configuración Multiplataforma**:
+```csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // Configuración multiplataforma
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+        
+        // Configurar CORS para aplicaciones web
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll", policy =>
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
+        
+        var app = builder.Build();
+        
+        // Configurar pipeline de middleware
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+        
+        app.UseHttpsRedirection();
+        app.UseCors("AllowAll");
+        app.UseAuthorization();
+        app.MapControllers();
+        
+        app.Run();
+    }
+}
+```
+
+#### 2. Middleware Pipeline
+
+**Definición**: Pipeline de componentes que procesan requests HTTP en secuencia.
+
+**Características**:
+- **Configurable**: Orden personalizable
+- **Extensible**: Fácil agregar middleware personalizado
+- **Eficiente**: Procesamiento optimizado
+- **Flexible**: Diferentes comportamientos por ruta
+
+**Ejemplo de Middleware Pipeline**:
+```csharp
+public class Startup
+{
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        // Orden del middleware es importante
+        
+        // 1. Exception Handling (debe ser primero)
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            app.UseHsts();
+        }
+        
+        // 2. HTTPS Redirection
+        app.UseHttpsRedirection();
+        
+        // 3. Static Files
+        app.UseStaticFiles();
+        
+        // 4. Routing
+        app.UseRouting();
+        
+        // 5. CORS
+        app.UseCors("AllowAll");
+        
+        // 6. Authentication
+        app.UseAuthentication();
+        
+        // 7. Authorization
+        app.UseAuthorization();
+        
+        // 8. Endpoints
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+            endpoints.MapRazorPages();
+        });
+    }
+}
+```
+
+#### 3. Middleware Personalizado
+
+**Ejemplo de Middleware de Logging**:
+```csharp
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+    
+    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            var endTime = DateTime.UtcNow;
+            var duration = endTime - startTime;
+            
+            _logger.LogInformation(
+                "Request {Method} {Path} => {StatusCode} ({Duration}ms)",
+                context.Request.Method,
+                context.Request.Path,
+                context.Response.StatusCode,
+                duration.TotalMilliseconds);
+        }
+    }
+}
+
+// Extensión para registrar el middleware
+public static class RequestLoggingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestLoggingMiddleware>();
+    }
+}
+
+// Uso en Program.cs
+app.UseRequestLogging();
+```
+
+**Ejemplo de Middleware de Manejo de Excepciones**:
+```csharp
+public class ExceptionHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unhandled exception occurred");
+            await HandleExceptionAsync(context, ex);
+        }
+    }
+    
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        context.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            error = new
+            {
+                message = "An error occurred while processing your request",
+                details = exception.Message,
+                timestamp = DateTime.UtcNow
+            }
+        };
+        
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        
+        await context.Response.WriteAsJsonAsync(response);
+    }
+}
+```
+
+### Controladores y Endpoints
+
+#### 1. Controladores Básicos
+
+**Ejemplo de Controlador REST**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+    
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    {
+        try
+        {
+            var users = await _userService.GetAllUsersAsync();
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving users");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserDto>> GetUser(int id)
+    {
+        var user = await _userService.GetUserByIdAsync(id);
+        
+        if (user == null)
+        {
+            return NotFound();
+        }
+        
+        return Ok(user);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto createUserDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        try
+        {
+            var user = await _userService.CreateUserAsync(createUserDto);
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateUser(int id, UpdateUserDto updateUserDto)
+    {
+        if (id != updateUserDto.Id)
+        {
+            return BadRequest();
+        }
+        
+        var success = await _userService.UpdateUserAsync(updateUserDto);
+        
+        if (!success)
+        {
+            return NotFound();
+        }
+        
+        return NoContent();
+    }
+    
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var success = await _userService.DeleteUserAsync(id);
+        
+        if (!success)
+        {
+            return NotFound();
+        }
+        
+        return NoContent();
+    }
+}
+```
+
+#### 2. Minimal APIs
+
+**Definición**: Sintaxis simplificada para crear APIs sin controladores.
+
+**Ejemplo de Minimal API**:
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// GET endpoint
+app.MapGet("/users", async (IUserService userService) =>
+{
+    var users = await userService.GetAllUsersAsync();
+    return Results.Ok(users);
+});
+
+// GET endpoint con parámetro
+app.MapGet("/users/{id}", async (int id, IUserService userService) =>
+{
+    var user = await userService.GetUserByIdAsync(id);
+    return user is null ? Results.NotFound() : Results.Ok(user);
+});
+
+// POST endpoint
+app.MapPost("/users", async (CreateUserDto dto, IUserService userService) =>
+{
+    try
+    {
+        var user = await userService.CreateUserAsync(dto);
+        return Results.Created($"/users/{user.Id}", user);
+    }
+    catch (ValidationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+});
+
+// PUT endpoint
+app.MapPut("/users/{id}", async (int id, UpdateUserDto dto, IUserService userService) =>
+{
+    if (id != dto.Id)
+        return Results.BadRequest();
+    
+    var success = await userService.UpdateUserAsync(dto);
+    return success ? Results.NoContent() : Results.NotFound();
+});
+
+// DELETE endpoint
+app.MapDelete("/users/{id}", async (int id, IUserService userService) =>
+{
+    var success = await userService.DeleteUserAsync(id);
+    return success ? Results.NoContent() : Results.NotFound();
+});
+
+app.Run();
+```
+
+### Model Binding y Validación
+
+#### 1. Model Binding
+
+**Definición**: Proceso de mapear datos de request a parámetros de método.
+
+**Tipos de Model Binding**:
+- **FromQuery**: Parámetros de query string
+- **FromRoute**: Parámetros de ruta
+- **FromBody**: Cuerpo de la request
+- **FromForm**: Datos de formulario
+- **FromHeader**: Headers de la request
+
+**Ejemplo de Model Binding**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
+        [FromQuery] string category,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var filters = new ProductFilters
+        {
+            Category = category,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            Page = page,
+            PageSize = pageSize
+        };
+        
+        var products = await _productService.GetProductsAsync(filters);
+        return Ok(products);
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ProductDto>> GetProduct([FromRoute] int id)
+    {
+        var product = await _productService.GetProductByIdAsync(id);
+        return product is null ? NotFound() : Ok(product);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto dto)
+    {
+        var product = await _productService.CreateProductAsync(dto);
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
+    }
+    
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadFile([FromForm] IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file uploaded");
+        
+        var fileName = await _fileService.SaveFileAsync(file);
+        return Ok(new { fileName });
+    }
+    
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<ProductDto>>> SearchProducts(
+        [FromHeader(Name = "X-Search-Term")] string searchTerm,
+        [FromQuery] string sortBy = "name")
+    {
+        var products = await _productService.SearchProductsAsync(searchTerm, sortBy);
+        return Ok(products);
+    }
+}
+```
+
+#### 2. Validación de Modelos
+
+**Ejemplo de Validación**:
+```csharp
+public class CreateProductDto
+{
+    [Required(ErrorMessage = "El nombre del producto es requerido")]
+    [StringLength(100, MinimumLength = 3, ErrorMessage = "El nombre debe tener entre 3 y 100 caracteres")]
+    public string Name { get; set; }
+    
+    [Required]
+    [StringLength(500)]
+    public string Description { get; set; }
+    
+    [Required]
+    [Range(0.01, 10000, ErrorMessage = "El precio debe estar entre 0.01 y 10000")]
+    public decimal Price { get; set; }
+    
+    [Required]
+    [Range(0, int.MaxValue, ErrorMessage = "El stock no puede ser negativo")]
+    public int Stock { get; set; }
+    
+    [Required]
+    [EmailAddress(ErrorMessage = "El email del proveedor no es válido")]
+    public string SupplierEmail { get; set; }
+    
+    [Url(ErrorMessage = "La URL de la imagen no es válida")]
+    public string ImageUrl { get; set; }
+    
+    [Required]
+    [RegularExpression(@"^[A-Z]{2,3}$", ErrorMessage = "La categoría debe ser 2-3 letras mayúsculas")]
+    public string Category { get; set; }
+}
+
+// Validación personalizada
+public class CustomValidationAttribute : ValidationAttribute
+{
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        if (value == null)
+            return new ValidationResult("El valor no puede ser nulo");
+        
+        var stringValue = value.ToString();
+        
+        if (stringValue.Length < 3)
+            return new ValidationResult("El valor debe tener al menos 3 caracteres");
+        
+        if (!stringValue.Any(char.IsUpper))
+            return new ValidationResult("El valor debe contener al menos una mayúscula");
+        
+        return ValidationResult.Success;
+    }
+}
+
+// FluentValidation (alternativa)
+public class CreateProductDtoValidator : AbstractValidator<CreateProductDto>
+{
+    public CreateProductDtoValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("El nombre es requerido")
+            .Length(3, 100).WithMessage("El nombre debe tener entre 3 y 100 caracteres");
+        
+        RuleFor(x => x.Price)
+            .GreaterThan(0).WithMessage("El precio debe ser mayor que 0")
+            .LessThanOrEqualTo(10000).WithMessage("El precio no puede exceder 10000");
+        
+        RuleFor(x => x.Stock)
+            .GreaterThanOrEqualTo(0).WithMessage("El stock no puede ser negativo");
+        
+        RuleFor(x => x.SupplierEmail)
+            .EmailAddress().WithMessage("El email del proveedor no es válido");
+        
+        RuleFor(x => x.Category)
+            .Matches(@"^[A-Z]{2,3}$").WithMessage("La categoría debe ser 2-3 letras mayúsculas");
+    }
+}
+```
+
+### Autenticación y Autorización
+
+#### 1. JWT Authentication
+
+**Configuración de JWT**:
+```csharp
+public class JwtSettings
+{
+    public string SecretKey { get; set; }
+    public string Issuer { get; set; }
+    public string Audience { get; set; }
+    public int ExpirationInMinutes { get; set; }
+}
+
+public class JwtService
+{
+    private readonly JwtSettings _jwtSettings;
+    
+    public JwtService(IOptions<JwtSettings> jwtSettings)
+    {
+        _jwtSettings = jwtSettings.Value;
+    }
+    
+    public string GenerateToken(User user)
+    {
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
+            signingCredentials: credentials
+        );
+        
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}
+
+// Configuración en Program.cs
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
+builder.Services.AddScoped<JwtService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["JWT:SecretKey"])),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["JWT:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["JWT:Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("Admin"));
+    
+    options.AddPolicy("MinimumAge", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var user = context.User;
+            var ageClaim = user.FindFirst("Age");
+            return ageClaim != null && int.TryParse(ageClaim.Value, out int age) && age >= 18;
+        }));
+});
+```
+
+#### 2. Controlador de Autenticación
+
+**Ejemplo de AuthController**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly JwtService _jwtService;
+    private readonly ILogger<AuthController> _logger;
+    
+    public AuthController(
+        IUserService userService,
+        JwtService jwtService,
+        ILogger<AuthController> logger)
+    {
+        _userService = userService;
+        _jwtService = jwtService;
+        _logger = logger;
+    }
+    
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        var user = await _userService.AuthenticateAsync(loginDto.Email, loginDto.Password);
+        
+        if (user == null)
+        {
+            return Unauthorized("Credenciales inválidas");
+        }
+        
+        var token = _jwtService.GenerateToken(user);
+        
+        _logger.LogInformation("User {UserId} logged in successfully", user.Id);
+        
+        return Ok(new LoginResponseDto
+        {
+            Token = token,
+            User = new UserDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Role = user.Role
+            }
+        });
+    }
+    
+    [HttpPost("register")]
+    public async Task<ActionResult<UserDto>> Register(CreateUserDto createUserDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        try
+        {
+            var user = await _userService.CreateUserAsync(createUserDto);
+            return CreatedAtAction(nameof(Login), new { id = user.Id }, user);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    [Authorize]
+    [HttpGet("profile")]
+    public async Task<ActionResult<UserDto>> GetProfile()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+        {
+            return Unauthorized();
+        }
+        
+        var user = await _userService.GetUserByIdAsync(id);
+        
+        if (user == null)
+        {
+            return NotFound();
+        }
+        
+        return Ok(user);
+    }
+    
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
+    {
+        var users = await _userService.GetAllUsersAsync();
+        return Ok(users);
+    }
+}
+```
+
+### Conclusión
+
+ASP.NET Core es un framework web moderno y poderoso que proporciona:
+
+**Ventajas Principales**:
+- **Multiplataforma**: Ejecuta en Windows, macOS y Linux
+- **Alto Rendimiento**: Optimizado para velocidad y escalabilidad
+- **Modular**: Solo incluye lo que necesitas
+- **Moderno**: Soporte para las últimas tecnologías web
+- **Cloud Native**: Diseñado para la nube
+
+**Casos de Uso**:
+- **APIs RESTful**: Crear APIs modernas y escalables
+- **Aplicaciones Web**: SPA, MVC, Razor Pages
+- **Microservicios**: Arquitectura distribuida
+- **APIs GraphQL**: Consultas flexibles
+- **SignalR**: Comunicación en tiempo real
+
+**Próximos Pasos**:
+- Explorar Entity Framework Core
+- Aprender sobre Blazor
+- Investigar SignalR
+- Profundizar en testing de APIs
+- Experimentar con contenedores Docker

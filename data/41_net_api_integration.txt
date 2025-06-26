@@ -1,0 +1,410 @@
+# Integración de APIs y Servicios Externos en .NET
+
+## Introducción
+La integración con APIs externas es fundamental en aplicaciones modernas. .NET proporciona herramientas robustas para consumir y crear APIs.
+
+### 1. HttpClient y Consumo de APIs
+```csharp
+public class ApiClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<ApiClient> _logger;
+    
+    public ApiClient(HttpClient httpClient, ILogger<ApiClient> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+    
+    public async Task<User> GetUserAsync(int id)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/users/{id}");
+            response.EnsureSuccessStatusCode();
+            
+            var user = await response.Content.ReadFromJsonAsync<User>();
+            return user;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Error fetching user {UserId}", id);
+            throw;
+        }
+    }
+    
+    public async Task<User> CreateUserAsync(CreateUserRequest request)
+    {
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        
+        var response = await _httpClient.PostAsync("/api/users", content);
+        response.EnsureSuccessStatusCode();
+        
+        return await response.Content.ReadFromJsonAsync<User>();
+    }
+}
+```
+
+### 2. HttpClient Factory
+```csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // Configurar HttpClient con Polly para retry
+        builder.Services.AddHttpClient<ApiClient>("ExternalApi", client =>
+        {
+            client.BaseAddress = new Uri("https://api.external.com");
+            client.DefaultRequestHeaders.Add("User-Agent", "MyApp/1.0");
+        })
+        .AddPolicyHandler(GetRetryPolicy())
+        .AddPolicyHandler(GetCircuitBreakerPolicy());
+        
+        var app = builder.Build();
+        app.Run();
+    }
+    
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(3, retryAttempt => 
+                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+    }
+    
+    private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+    }
+}
+```
+
+### 3. REST API Client con Refit
+```csharp
+public interface IUserApi
+{
+    [Get("/users/{id}")]
+    Task<User> GetUserAsync(int id);
+    
+    [Post("/users")]
+    Task<User> CreateUserAsync([Body] CreateUserRequest request);
+    
+    [Put("/users/{id}")]
+    Task<User> UpdateUserAsync(int id, [Body] UpdateUserRequest request);
+    
+    [Delete("/users/{id}")]
+    Task DeleteUserAsync(int id);
+}
+
+public class UserService
+{
+    private readonly IUserApi _userApi;
+    
+    public UserService(IUserApi userApi)
+    {
+        _userApi = userApi;
+    }
+    
+    public async Task<User> GetUserAsync(int id)
+    {
+        return await _userApi.GetUserAsync(id);
+    }
+}
+```
+
+### 4. GraphQL Client
+```csharp
+using StrawberryShake;
+
+public class GraphQLExample
+{
+    private readonly IGraphQLClient _client;
+    
+    public GraphQLExample(IGraphQLClient client)
+    {
+        _client = client;
+    }
+    
+    public async Task<User> GetUserWithPostsAsync(int userId)
+    {
+        var result = await _client.GetUserWithPosts.ExecuteAsync(userId);
+        
+        if (result.IsErrorResult())
+        {
+            throw new Exception("GraphQL query failed");
+        }
+        
+        return result.Data.User;
+    }
+}
+```
+
+### 5. gRPC Client
+```csharp
+public class GrpcUserService
+{
+    private readonly UserService.UserServiceClient _client;
+    
+    public GrpcUserService(UserService.UserServiceClient client)
+    {
+        _client = client;
+    }
+    
+    public async Task<UserResponse> GetUserAsync(int id)
+    {
+        var request = new UserRequest { Id = id };
+        return await _client.GetUserAsync(request);
+    }
+    
+    public async Task<UserResponse> CreateUserAsync(CreateUserRequest request)
+    {
+        return await _client.CreateUserAsync(request);
+    }
+}
+```
+
+### 6. OAuth 2.0 y Autenticación
+```csharp
+public class OAuthClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+    
+    public OAuthClient(HttpClient httpClient, IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _configuration = configuration;
+    }
+    
+    public async Task<string> GetAccessTokenAsync()
+    {
+        var tokenRequest = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("grant_type", "client_credentials"),
+            new KeyValuePair<string, string>("client_id", _configuration["OAuth:ClientId"]),
+            new KeyValuePair<string, string>("client_secret", _configuration["OAuth:ClientSecret"]),
+            new KeyValuePair<string, string>("scope", _configuration["OAuth:Scope"])
+        });
+        
+        var response = await _httpClient.PostAsync("/oauth/token", tokenRequest);
+        response.EnsureSuccessStatusCode();
+        
+        var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        return tokenResponse.AccessToken;
+    }
+}
+```
+
+### 7. WebSocket Client
+```csharp
+public class WebSocketClient
+{
+    private readonly Uri _uri;
+    private readonly ILogger<WebSocketClient> _logger;
+    
+    public WebSocketClient(string url, ILogger<WebSocketClient> logger)
+    {
+        _uri = new Uri(url);
+        _logger = logger;
+    }
+    
+    public async Task ConnectAndListenAsync()
+    {
+        using var client = new ClientWebSocket();
+        await client.ConnectAsync(_uri, CancellationToken.None);
+        
+        var buffer = new byte[1024];
+        
+        while (client.State == WebSocketState.Open)
+        {
+            var result = await client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            
+            if (result.MessageType == WebSocketMessageType.Text)
+            {
+                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                _logger.LogInformation("Received: {Message}", message);
+            }
+        }
+    }
+}
+```
+
+### 8. SignalR Client
+```csharp
+public class SignalRClient
+{
+    private readonly HubConnection _connection;
+    
+    public SignalRClient(string url)
+    {
+        _connection = new HubConnectionBuilder()
+            .WithUrl(url)
+            .WithAutomaticReconnect()
+            .Build();
+        
+        _connection.On<string>("ReceiveMessage", message =>
+        {
+            Console.WriteLine($"Received: {message}");
+        });
+    }
+    
+    public async Task StartAsync()
+    {
+        await _connection.StartAsync();
+    }
+    
+    public async Task SendMessageAsync(string message)
+    {
+        await _connection.InvokeAsync("SendMessage", message);
+    }
+}
+```
+
+### 9. API Rate Limiting
+```csharp
+public class RateLimitedApiClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly SemaphoreSlim _semaphore;
+    private readonly Queue<DateTime> _requestTimes;
+    private readonly int _maxRequestsPerMinute;
+    
+    public RateLimitedApiClient(HttpClient httpClient, int maxRequestsPerMinute = 60)
+    {
+        _httpClient = httpClient;
+        _semaphore = new SemaphoreSlim(1, 1);
+        _requestTimes = new Queue<DateTime>();
+        _maxRequestsPerMinute = maxRequestsPerMinute;
+    }
+    
+    public async Task<T> GetAsync<T>(string url)
+    {
+        await _semaphore.WaitAsync();
+        
+        try
+        {
+            await EnforceRateLimitAsync();
+            
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            
+            _requestTimes.Enqueue(DateTime.UtcNow);
+            
+            return await response.Content.ReadFromJsonAsync<T>();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+    
+    private async Task EnforceRateLimitAsync()
+    {
+        var now = DateTime.UtcNow;
+        var oneMinuteAgo = now.AddMinutes(-1);
+        
+        while (_requestTimes.Count > 0 && _requestTimes.Peek() < oneMinuteAgo)
+        {
+            _requestTimes.Dequeue();
+        }
+        
+        if (_requestTimes.Count >= _maxRequestsPerMinute)
+        {
+            var oldestRequest = _requestTimes.Peek();
+            var waitTime = oldestRequest.AddMinutes(1) - now;
+            await Task.Delay(waitTime);
+        }
+    }
+}
+```
+
+### 10. API Caching
+```csharp
+public class CachedApiClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<CachedApiClient> _logger;
+    
+    public CachedApiClient(HttpClient httpClient, IMemoryCache cache, ILogger<CachedApiClient> logger)
+    {
+        _httpClient = httpClient;
+        _cache = cache;
+        _logger = logger;
+    }
+    
+    public async Task<User> GetUserAsync(int id)
+    {
+        var cacheKey = $"user_{id}";
+        
+        if (_cache.TryGetValue(cacheKey, out User cachedUser))
+        {
+            _logger.LogInformation("Returning cached user {UserId}", id);
+            return cachedUser;
+        }
+        
+        var response = await _httpClient.GetAsync($"/api/users/{id}");
+        response.EnsureSuccessStatusCode();
+        
+        var user = await response.Content.ReadFromJsonAsync<User>();
+        
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+            .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+        
+        _cache.Set(cacheKey, user, cacheOptions);
+        
+        return user;
+    }
+}
+```
+
+### 11. API Health Checks
+```csharp
+public class ApiHealthCheck : IHealthCheck
+{
+    private readonly HttpClient _httpClient;
+    
+    public ApiHealthCheck(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+    
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/health", cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return HealthCheckResult.Healthy("API is healthy");
+            }
+            
+            return HealthCheckResult.Degraded("API is responding but with issues");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("API is unhealthy", ex);
+        }
+    }
+}
+```
+
+### Conclusión
+La integración de APIs en .NET requiere:
+- Manejo adecuado de errores y timeouts
+- Implementación de retry policies
+- Caching para mejorar performance
+- Rate limiting para respetar límites de APIs
+- Monitoreo y health checks
+
+### Recursos
+- [HttpClient Documentation](https://docs.microsoft.com/dotnet/api/system.net.http.httpclient)
+- [Polly Documentation](https://github.com/App-vNext/Polly)
+- [Refit Documentation](https://github.com/reactiveui/refit)

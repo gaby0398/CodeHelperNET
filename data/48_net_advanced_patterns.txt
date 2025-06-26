@@ -1,0 +1,647 @@
+# Patrones Avanzados de Diseño y Arquitectura en .NET
+
+## Introducción
+Los patrones avanzados de diseño son fundamentales para construir aplicaciones escalables, mantenibles y robustas. .NET proporciona herramientas para implementar estos patrones de manera eficiente.
+
+### 1. Repository Pattern con Generic Repository
+```csharp
+public interface IRepository<T> where T : class
+{
+    Task<T> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(T entity);
+    Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate);
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate = null);
+}
+
+public class Repository<T> : IRepository<T> where T : class
+{
+    private readonly DbContext _context;
+    private readonly DbSet<T> _dbSet;
+    
+    public Repository(DbContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<T>();
+    }
+    
+    public async Task<T> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+    
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+    
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.Where(predicate).ToListAsync();
+    }
+    
+    public async Task<T> AddAsync(T entity)
+    {
+        var result = await _dbSet.AddAsync(entity);
+        await _context.SaveChangesAsync();
+        return result.Entity;
+    }
+    
+    public async Task UpdateAsync(T entity)
+    {
+        _dbSet.Update(entity);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task DeleteAsync(T entity)
+    {
+        _dbSet.Remove(entity);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.AnyAsync(predicate);
+    }
+    
+    public async Task<int> CountAsync(Expression<Func<T, bool>> predicate = null)
+    {
+        if (predicate == null)
+            return await _dbSet.CountAsync();
+        
+        return await _dbSet.CountAsync(predicate);
+    }
+}
+
+// Especialización para entidades específicas
+public interface IUserRepository : IRepository<User>
+{
+    Task<User> GetByEmailAsync(string email);
+    Task<IEnumerable<User>> GetActiveUsersAsync();
+}
+
+public class UserRepository : Repository<User>, IUserRepository
+{
+    public UserRepository(DbContext context) : base(context)
+    {
+    }
+    
+    public async Task<User> GetByEmailAsync(string email)
+    {
+        return await _dbSet.FirstOrDefaultAsync(u => u.Email == email);
+    }
+    
+    public async Task<IEnumerable<User>> GetActiveUsersAsync()
+    {
+        return await _dbSet.Where(u => u.IsActive).ToListAsync();
+    }
+}
+```
+
+### 2. Unit of Work Pattern
+```csharp
+public interface IUnitOfWork : IDisposable
+{
+    IUserRepository Users { get; }
+    IProductRepository Products { get; }
+    IOrderRepository Orders { get; }
+    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly DbContext _context;
+    private IDbContextTransaction _transaction;
+    
+    public UnitOfWork(DbContext context)
+    {
+        _context = context;
+        Users = new UserRepository(context);
+        Products = new ProductRepository(context);
+        Orders = new OrderRepository(context);
+    }
+    
+    public IUserRepository Users { get; }
+    public IProductRepository Products { get; }
+    public IOrderRepository Orders { get; }
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+    
+    public async Task BeginTransactionAsync()
+    {
+        _transaction = await _context.Database.BeginTransactionAsync();
+    }
+    
+    public async Task CommitTransactionAsync()
+    {
+        try
+        {
+            await _transaction?.CommitAsync();
+        }
+        catch
+        {
+            await RollbackTransactionAsync();
+            throw;
+        }
+    }
+    
+    public async Task RollbackTransactionAsync()
+    {
+        await _transaction?.RollbackAsync();
+    }
+    
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        _context?.Dispose();
+    }
+}
+
+// Uso en servicios
+public class OrderService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<OrderService> _logger;
+    
+    public OrderService(IUnitOfWork unitOfWork, ILogger<OrderService> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+    
+    public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
+    {
+        try
+        {
+            await _unitOfWork.BeginTransactionAsync();
+            
+            var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
+            if (user == null)
+                throw new ArgumentException("User not found");
+            
+            var product = await _unitOfWork.Products.GetByIdAsync(request.ProductId);
+            if (product == null)
+                throw new ArgumentException("Product not found");
+            
+            var order = new Order
+            {
+                UserId = request.UserId,
+                ProductId = request.ProductId,
+                Quantity = request.Quantity,
+                TotalAmount = product.Price * request.Quantity,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            await _unitOfWork.Orders.AddAsync(order);
+            await _unitOfWork.SaveChangesAsync();
+            
+            await _unitOfWork.CommitTransactionAsync();
+            
+            return order;
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Error creating order");
+            throw;
+        }
+    }
+}
+```
+
+### 3. Specification Pattern
+```csharp
+public interface ISpecification<T>
+{
+    Expression<Func<T, bool>> Criteria { get; }
+    List<Expression<Func<T, object>>> Includes { get; }
+    Expression<Func<T, object>> OrderBy { get; }
+    Expression<Func<T, object>> OrderByDescending { get; }
+    int Take { get; }
+    int Skip { get; }
+    bool IsPagingEnabled { get; }
+}
+
+public abstract class BaseSpecification<T> : ISpecification<T>
+{
+    public Expression<Func<T, bool>> Criteria { get; private set; }
+    public List<Expression<Func<T, object>>> Includes { get; } = new();
+    public Expression<Func<T, object>> OrderBy { get; private set; }
+    public Expression<Func<T, object>> OrderByDescending { get; private set; }
+    public int Take { get; private set; }
+    public int Skip { get; private set; }
+    public bool IsPagingEnabled { get; private set; }
+    
+    protected void AddCriteria(Expression<Func<T, bool>> criteria)
+    {
+        Criteria = criteria;
+    }
+    
+    protected void AddInclude(Expression<Func<T, object>> includeExpression)
+    {
+        Includes.Add(includeExpression);
+    }
+    
+    protected void AddOrderBy(Expression<Func<T, object>> orderByExpression)
+    {
+        OrderBy = orderByExpression;
+    }
+    
+    protected void AddOrderByDescending(Expression<Func<T, object>> orderByDescExpression)
+    {
+        OrderByDescending = orderByDescExpression;
+    }
+    
+    protected void ApplyPaging(int skip, int take)
+    {
+        Skip = skip;
+        Take = take;
+        IsPagingEnabled = true;
+    }
+}
+
+public class UserSpecification : BaseSpecification<User>
+{
+    public UserSpecification()
+    {
+        AddInclude(u => u.Orders);
+    }
+    
+    public UserSpecification(int id) : this()
+    {
+        AddCriteria(u => u.Id == id);
+    }
+    
+    public UserSpecification(string email) : this()
+    {
+        AddCriteria(u => u.Email == email);
+    }
+    
+    public UserSpecification(bool isActive) : this()
+    {
+        AddCriteria(u => u.IsActive == isActive);
+        AddOrderBy(u => u.Name);
+    }
+}
+
+// Extensión del Repository para soportar Specifications
+public interface IRepository<T> where T : class
+{
+    // ... métodos existentes ...
+    Task<T> GetBySpecAsync(ISpecification<T> spec);
+    Task<IEnumerable<T>> ListAsync(ISpecification<T> spec);
+    Task<int> CountAsync(ISpecification<T> spec);
+}
+
+public class Repository<T> : IRepository<T> where T : class
+{
+    // ... implementación existente ...
+    
+    public async Task<T> GetBySpecAsync(ISpecification<T> spec)
+    {
+        return await ApplySpecification(spec).FirstOrDefaultAsync();
+    }
+    
+    public async Task<IEnumerable<T>> ListAsync(ISpecification<T> spec)
+    {
+        return await ApplySpecification(spec).ToListAsync();
+    }
+    
+    public async Task<int> CountAsync(ISpecification<T> spec)
+    {
+        return await ApplySpecification(spec).CountAsync();
+    }
+    
+    private IQueryable<T> ApplySpecification(ISpecification<T> spec)
+    {
+        return SpecificationEvaluator<T>.GetQuery(_dbSet.AsQueryable(), spec);
+    }
+}
+
+public class SpecificationEvaluator<T> where T : class
+{
+    public static IQueryable<T> GetQuery(IQueryable<T> inputQuery, ISpecification<T> spec)
+    {
+        var query = inputQuery;
+        
+        if (spec.Criteria != null)
+        {
+            query = query.Where(spec.Criteria);
+        }
+        
+        if (spec.OrderBy != null)
+        {
+            query = query.OrderBy(spec.OrderBy);
+        }
+        
+        if (spec.OrderByDescending != null)
+        {
+            query = query.OrderByDescending(spec.OrderByDescending);
+        }
+        
+        if (spec.IsPagingEnabled)
+        {
+            query = query.Skip(spec.Skip).Take(spec.Take);
+        }
+        
+        query = spec.Includes.Aggregate(query, (current, include) => current.Include(include));
+        
+        return query;
+    }
+}
+```
+
+### 4. CQRS Pattern (Command Query Responsibility Segregation)
+```csharp
+// Commands
+public interface ICommand
+{
+}
+
+public interface ICommandHandler<TCommand> where TCommand : ICommand
+{
+    Task HandleAsync(TCommand command);
+}
+
+public interface ICommandHandler<TCommand, TResult> where TCommand : ICommand
+{
+    Task<TResult> HandleAsync(TCommand command);
+}
+
+// Queries
+public interface IQuery<TResult>
+{
+}
+
+public interface IQueryHandler<TQuery, TResult> where TQuery : IQuery<TResult>
+{
+    Task<TResult> HandleAsync(TQuery query);
+}
+
+// Implementaciones
+public class CreateUserCommand : ICommand
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
+}
+
+public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, int>
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPasswordHasher _passwordHasher;
+    
+    public CreateUserCommandHandler(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher)
+    {
+        _unitOfWork = unitOfWork;
+        _passwordHasher = passwordHasher;
+    }
+    
+    public async Task<int> HandleAsync(CreateUserCommand command)
+    {
+        var hashedPassword = _passwordHasher.HashPassword(command.Password);
+        
+        var user = new User
+        {
+            Name = command.Name,
+            Email = command.Email,
+            PasswordHash = hashedPassword,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        await _unitOfWork.Users.AddAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+        
+        return user.Id;
+    }
+}
+
+public class GetUserQuery : IQuery<UserDto>
+{
+    public int Id { get; set; }
+}
+
+public class GetUserQueryHandler : IQueryHandler<GetUserQuery, UserDto>
+{
+    private readonly IUserRepository _userRepository;
+    private readonly IMapper _mapper;
+    
+    public GetUserQueryHandler(IUserRepository userRepository, IMapper mapper)
+    {
+        _userRepository = userRepository;
+        _mapper = mapper;
+    }
+    
+    public async Task<UserDto> HandleAsync(GetUserQuery query)
+    {
+        var user = await _userRepository.GetByIdAsync(query.Id);
+        return _mapper.Map<UserDto>(user);
+    }
+}
+
+// Mediator para CQRS
+public interface IMediator
+{
+    Task<TResult> SendAsync<TResult>(IQuery<TResult> query);
+    Task SendAsync(ICommand command);
+    Task<TResult> SendAsync<TResult>(ICommand<TResult> command);
+}
+
+public class Mediator : IMediator
+{
+    private readonly IServiceProvider _serviceProvider;
+    
+    public Mediator(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+    
+    public async Task<TResult> SendAsync<TResult>(IQuery<TResult> query)
+    {
+        var handlerType = typeof(IQueryHandler<,>).MakeGenericType(query.GetType(), typeof(TResult));
+        var handler = _serviceProvider.GetService(handlerType);
+        
+        var method = handlerType.GetMethod("HandleAsync");
+        return await (Task<TResult>)method.Invoke(handler, new object[] { query });
+    }
+    
+    public async Task SendAsync(ICommand command)
+    {
+        var handlerType = typeof(ICommandHandler<>).MakeGenericType(command.GetType());
+        var handler = _serviceProvider.GetService(handlerType);
+        
+        var method = handlerType.GetMethod("HandleAsync");
+        await (Task)method.Invoke(handler, new object[] { command });
+    }
+    
+    public async Task<TResult> SendAsync<TResult>(ICommand<TResult> command)
+    {
+        var handlerType = typeof(ICommandHandler<,>).MakeGenericType(command.GetType(), typeof(TResult));
+        var handler = _serviceProvider.GetService(handlerType);
+        
+        var method = handlerType.GetMethod("HandleAsync");
+        return await (Task<TResult>)method.Invoke(handler, new object[] { command });
+    }
+}
+```
+
+### 5. Event Sourcing Pattern
+```csharp
+public abstract class Event
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public string EventType { get; set; }
+    public long Version { get; set; }
+}
+
+public class UserCreatedEvent : Event
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+
+public class UserUpdatedEvent : Event
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+
+public class UserDeletedEvent : Event
+{
+}
+
+public interface IEventStore
+{
+    Task SaveEventsAsync(Guid aggregateId, IEnumerable<Event> events, long expectedVersion);
+    Task<IEnumerable<Event>> GetEventsAsync(Guid aggregateId);
+}
+
+public class EventStore : IEventStore
+{
+    private readonly DbContext _context;
+    
+    public EventStore(DbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task SaveEventsAsync(Guid aggregateId, IEnumerable<Event> events, long expectedVersion)
+    {
+        var eventList = events.ToList();
+        
+        foreach (var @event in eventList)
+        {
+            @event.Version = expectedVersion + 1;
+            expectedVersion++;
+        }
+        
+        // Guardar eventos en base de datos
+        _context.Set<Event>().AddRange(eventList);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task<IEnumerable<Event>> GetEventsAsync(Guid aggregateId)
+    {
+        return await _context.Set<Event>()
+            .Where(e => e.Id == aggregateId)
+            .OrderBy(e => e.Version)
+            .ToListAsync();
+    }
+}
+
+public abstract class AggregateRoot
+{
+    private readonly List<Event> _changes = new();
+    
+    public Guid Id { get; protected set; }
+    public long Version { get; protected set; }
+    
+    public IEnumerable<Event> GetUncommittedChanges()
+    {
+        return _changes;
+    }
+    
+    public void MarkChangesAsCommitted()
+    {
+        _changes.Clear();
+    }
+    
+    protected void ApplyChange(Event @event)
+    {
+        Apply(@event);
+        _changes.Add(@event);
+    }
+    
+    protected abstract void Apply(Event @event);
+}
+
+public class UserAggregate : AggregateRoot
+{
+    public string Name { get; private set; }
+    public string Email { get; private set; }
+    public bool IsActive { get; private set; } = true;
+    
+    public UserAggregate()
+    {
+    }
+    
+    public UserAggregate(string name, string email)
+    {
+        ApplyChange(new UserCreatedEvent { Name = name, Email = email });
+    }
+    
+    public void Update(string name, string email)
+    {
+        ApplyChange(new UserUpdatedEvent { Name = name, Email = email });
+    }
+    
+    public void Delete()
+    {
+        ApplyChange(new UserDeletedEvent());
+    }
+    
+    protected override void Apply(Event @event)
+    {
+        switch (@event)
+        {
+            case UserCreatedEvent e:
+                Id = e.Id;
+                Name = e.Name;
+                Email = e.Email;
+                break;
+            case UserUpdatedEvent e:
+                Name = e.Name;
+                Email = e.Email;
+                break;
+            case UserDeletedEvent:
+                IsActive = false;
+                break;
+        }
+        
+        Version++;
+    }
+}
+```
+
+### Conclusión
+Los patrones avanzados proporcionan:
+- Separación de responsabilidades
+- Código más mantenible y testeable
+- Escalabilidad y flexibilidad
+- Mejor organización del código
+
+### Recursos
+- [Repository Pattern](https://docs.microsoft.com/ef/core/)
+- [CQRS Pattern](https://docs.microsoft.com/azure/architecture/patterns/cqrs)
+- [Event Sourcing](https://docs.microsoft.com/azure/architecture/patterns/event-sourcing)
+- [Specification Pattern](https://en.wikipedia.org/wiki/Specification_pattern)

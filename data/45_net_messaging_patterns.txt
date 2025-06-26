@@ -1,0 +1,563 @@
+# Patrones de Mensajería y Comunicación Asíncrona en .NET
+
+## Introducción
+Los patrones de mensajería son fundamentales para construir sistemas distribuidos, microservicios y aplicaciones escalables. .NET proporciona múltiples tecnologías para implementar estos patrones.
+
+### 1. Message Queue con Azure Service Bus
+```csharp
+public class ServiceBusMessageService
+{
+    private readonly ServiceBusClient _client;
+    private readonly ServiceBusSender _sender;
+    private readonly ServiceBusProcessor _processor;
+    private readonly ILogger<ServiceBusMessageService> _logger;
+    
+    public ServiceBusMessageService(
+        string connectionString,
+        string queueName,
+        ILogger<ServiceBusMessageService> logger)
+    {
+        _client = new ServiceBusClient(connectionString);
+        _sender = _client.CreateSender(queueName);
+        _processor = _client.CreateProcessor(queueName);
+        _logger = logger;
+        
+        _processor.ProcessMessageAsync += ProcessMessageAsync;
+        _processor.ProcessErrorAsync += ProcessErrorAsync;
+    }
+    
+    public async Task SendMessageAsync<T>(T message, string sessionId = null)
+    {
+        var json = JsonSerializer.Serialize(message);
+        var serviceBusMessage = new ServiceBusMessage(json)
+        {
+            SessionId = sessionId,
+            ContentType = "application/json"
+        };
+        
+        await _sender.SendMessageAsync(serviceBusMessage);
+        _logger.LogInformation("Message sent to queue");
+    }
+    
+    private async Task ProcessMessageAsync(ProcessMessageEventArgs args)
+    {
+        var body = args.Message.Body.ToString();
+        var message = JsonSerializer.Deserialize<EmailMessage>(body);
+        
+        try
+        {
+            await ProcessEmailMessageAsync(message);
+            await args.CompleteMessageAsync(args.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing message");
+            await args.DeadLetterMessageAsync(args.Message);
+        }
+    }
+    
+    private Task ProcessErrorAsync(ProcessErrorEventArgs args)
+    {
+        _logger.LogError(args.Exception, "Error in message processing");
+        return Task.CompletedTask;
+    }
+    
+    public async Task StartProcessingAsync()
+    {
+        await _processor.StartProcessingAsync();
+    }
+    
+    public async Task StopProcessingAsync()
+    {
+        await _processor.StopProcessingAsync();
+    }
+}
+```
+
+### 2. Event-Driven Architecture con MediatR
+```csharp
+public class OrderCreatedEvent : INotification
+{
+    public int OrderId { get; set; }
+    public string CustomerEmail { get; set; }
+    public decimal TotalAmount { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class OrderCreatedEventHandler : INotificationHandler<OrderCreatedEvent>
+{
+    private readonly IEmailService _emailService;
+    private readonly ILogger<OrderCreatedEventHandler> _logger;
+    
+    public OrderCreatedEventHandler(
+        IEmailService emailService,
+        ILogger<OrderCreatedEventHandler> logger)
+    {
+        _emailService = emailService;
+        _logger = logger;
+    }
+    
+    public async Task Handle(OrderCreatedEvent notification, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Processing order created event for order {OrderId}", notification.OrderId);
+        
+        var email = new EmailMessage
+        {
+            To = notification.CustomerEmail,
+            Subject = "Order Confirmation",
+            Body = $"Your order #{notification.OrderId} has been created with total: ${notification.TotalAmount}"
+        };
+        
+        await _emailService.SendEmailAsync(email);
+    }
+}
+
+public class OrderService
+{
+    private readonly IMediator _mediator;
+    private readonly IOrderRepository _orderRepository;
+    
+    public OrderService(IMediator mediator, IOrderRepository orderRepository)
+    {
+        _mediator = mediator;
+        _orderRepository = orderRepository;
+    }
+    
+    public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
+    {
+        var order = new Order
+        {
+            CustomerEmail = request.CustomerEmail,
+            TotalAmount = request.TotalAmount,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        await _orderRepository.SaveAsync(order);
+        
+        // Publicar evento
+        await _mediator.Publish(new OrderCreatedEvent
+        {
+            OrderId = order.Id,
+            CustomerEmail = order.CustomerEmail,
+            TotalAmount = order.TotalAmount,
+            CreatedAt = order.CreatedAt
+        });
+        
+        return order;
+    }
+}
+```
+
+### 3. Publish/Subscribe con Redis
+```csharp
+public class RedisPubSubService
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly ILogger<RedisPubSubService> _logger;
+    
+    public RedisPubSubService(
+        IConnectionMultiplexer redis,
+        ILogger<RedisPubSubService> logger)
+    {
+        _redis = redis;
+        _logger = logger;
+    }
+    
+    public async Task PublishAsync<T>(string channel, T message)
+    {
+        var subscriber = _redis.GetSubscriber();
+        var json = JsonSerializer.Serialize(message);
+        
+        await subscriber.PublishAsync(channel, json);
+        _logger.LogInformation("Message published to channel {Channel}", channel);
+    }
+    
+    public async Task SubscribeAsync<T>(string channel, Func<T, Task> handler)
+    {
+        var subscriber = _redis.GetSubscriber();
+        
+        await subscriber.SubscribeAsync(channel, async (_, value) =>
+        {
+            try
+            {
+                var message = JsonSerializer.Deserialize<T>(value);
+                await handler(message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing message from channel {Channel}", channel);
+            }
+        });
+        
+        _logger.LogInformation("Subscribed to channel {Channel}", channel);
+    }
+}
+
+// Uso
+public class NotificationService
+{
+    private readonly RedisPubSubService _pubSubService;
+    
+    public NotificationService(RedisPubSubService pubSubService)
+    {
+        _pubSubService = pubSubService;
+    }
+    
+    public async Task StartListeningAsync()
+    {
+        await _pubSubService.SubscribeAsync<UserActivityEvent>("user-activity", async (event) =>
+        {
+            await ProcessUserActivityAsync(event);
+        });
+    }
+    
+    public async Task PublishUserActivityAsync(UserActivityEvent activity)
+    {
+        await _pubSubService.PublishAsync("user-activity", activity);
+    }
+}
+```
+
+### 4. Message Broker con RabbitMQ
+```csharp
+public class RabbitMQMessageBroker
+{
+    private readonly IConnection _connection;
+    private readonly IModel _channel;
+    private readonly ILogger<RabbitMQMessageBroker> _logger;
+    
+    public RabbitMQMessageBroker(
+        IConnectionFactory connectionFactory,
+        ILogger<RabbitMQMessageBroker> logger)
+    {
+        _connection = connectionFactory.CreateConnection();
+        _channel = _connection.CreateModel();
+        _logger = logger;
+        
+        // Declarar exchange y colas
+        _channel.ExchangeDeclare("order-events", ExchangeType.Topic, durable: true);
+        _channel.QueueDeclare("email-queue", durable: true, exclusive: false, autoDelete: false);
+        _channel.QueueDeclare("notification-queue", durable: true, exclusive: false, autoDelete: false);
+        
+        _channel.QueueBind("email-queue", "order-events", "order.*");
+        _channel.QueueBind("notification-queue", "order-events", "order.created");
+    }
+    
+    public void PublishMessage<T>(T message, string routingKey)
+    {
+        var json = JsonSerializer.Serialize(message);
+        var body = Encoding.UTF8.GetBytes(json);
+        
+        var properties = _channel.CreateBasicProperties();
+        properties.Persistent = true;
+        properties.ContentType = "application/json";
+        
+        _channel.BasicPublish(
+            exchange: "order-events",
+            routingKey: routingKey,
+            basicProperties: properties,
+            body: body);
+        
+        _logger.LogInformation("Message published with routing key {RoutingKey}", routingKey);
+    }
+    
+    public void StartConsuming(string queueName, Func<string, Task> messageHandler)
+    {
+        var consumer = new EventingBasicConsumer(_channel);
+        
+        consumer.Received += async (model, ea) =>
+        {
+            var body = ea.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            
+            try
+            {
+                await messageHandler(message);
+                _channel.BasicAck(ea.DeliveryTag, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing message");
+                _channel.BasicNack(ea.DeliveryTag, false, true);
+            }
+        };
+        
+        _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
+    }
+}
+```
+
+### 5. SignalR para Comunicación en Tiempo Real
+```csharp
+public class NotificationHub : Hub
+{
+    private readonly ILogger<NotificationHub> _logger;
+    
+    public NotificationHub(ILogger<NotificationHub> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task JoinGroup(string groupName)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+        _logger.LogInformation("User {ConnectionId} joined group {GroupName}", 
+            Context.ConnectionId, groupName);
+    }
+    
+    public async Task LeaveGroup(string groupName)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+        _logger.LogInformation("User {ConnectionId} left group {GroupName}", 
+            Context.ConnectionId, groupName);
+    }
+    
+    public override async Task OnConnectedAsync()
+    {
+        _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception exception)
+    {
+        _logger.LogInformation("Client disconnected: {ConnectionId}", Context.ConnectionId);
+        await base.OnDisconnectedAsync(exception);
+    }
+}
+
+public class NotificationService
+{
+    private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly ILogger<NotificationService> _logger;
+    
+    public NotificationService(
+        IHubContext<NotificationHub> hubContext,
+        ILogger<NotificationService> logger)
+    {
+        _hubContext = hubContext;
+        _logger = logger;
+    }
+    
+    public async Task SendNotificationToUserAsync(string userId, NotificationMessage message)
+    {
+        await _hubContext.Clients.Group($"user-{userId}")
+            .SendAsync("ReceiveNotification", message);
+        
+        _logger.LogInformation("Notification sent to user {UserId}", userId);
+    }
+    
+    public async Task SendNotificationToAllAsync(NotificationMessage message)
+    {
+        await _hubContext.Clients.All.SendAsync("ReceiveNotification", message);
+        _logger.LogInformation("Notification sent to all users");
+    }
+}
+```
+
+### 6. Message Patterns con MassTransit
+```csharp
+public class OrderCreatedEvent
+{
+    public int OrderId { get; set; }
+    public string CustomerEmail { get; set; }
+    public decimal TotalAmount { get; set; }
+}
+
+public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
+{
+    private readonly IEmailService _emailService;
+    private readonly ILogger<OrderCreatedConsumer> _logger;
+    
+    public OrderCreatedConsumer(
+        IEmailService emailService,
+        ILogger<OrderCreatedConsumer> logger)
+    {
+        _emailService = emailService;
+        _logger = logger;
+    }
+    
+    public async Task Consume(ConsumeContext<OrderCreatedEvent> context)
+    {
+        var message = context.Message;
+        
+        _logger.LogInformation("Processing order created event for order {OrderId}", message.OrderId);
+        
+        var email = new EmailMessage
+        {
+            To = message.CustomerEmail,
+            Subject = "Order Confirmation",
+            Body = $"Your order #{message.OrderId} has been created with total: ${message.TotalAmount}"
+        };
+        
+        await _emailService.SendEmailAsync(email);
+    }
+}
+
+public class OrderService
+{
+    private readonly IPublishEndpoint _publishEndpoint;
+    
+    public OrderService(IPublishEndpoint publishEndpoint)
+    {
+        _publishEndpoint = publishEndpoint;
+    }
+    
+    public async Task CreateOrderAsync(CreateOrderRequest request)
+    {
+        var order = new Order
+        {
+            CustomerEmail = request.CustomerEmail,
+            TotalAmount = request.TotalAmount
+        };
+        
+        // Guardar orden en base de datos
+        // ...
+        
+        // Publicar evento
+        await _publishEndpoint.Publish(new OrderCreatedEvent
+        {
+            OrderId = order.Id,
+            CustomerEmail = order.CustomerEmail,
+            TotalAmount = order.TotalAmount
+        });
+    }
+}
+
+// Configuración en Program.cs
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<OrderCreatedConsumer>();
+    
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+        
+        cfg.ConfigureEndpoints(context);
+    });
+});
+```
+
+### 7. Message Routing y Filtros
+```csharp
+public class MessageRouter
+{
+    private readonly Dictionary<string, Func<object, Task>> _handlers;
+    private readonly ILogger<MessageRouter> _logger;
+    
+    public MessageRouter(ILogger<MessageRouter> logger)
+    {
+        _handlers = new Dictionary<string, Func<object, Task>>();
+        _logger = logger;
+    }
+    
+    public void RegisterHandler<T>(string messageType, Func<T, Task> handler)
+    {
+        _handlers[messageType] = async (message) => await handler((T)message);
+    }
+    
+    public async Task RouteMessageAsync(string messageType, object message)
+    {
+        if (_handlers.TryGetValue(messageType, out var handler))
+        {
+            try
+            {
+                await handler(message);
+                _logger.LogInformation("Message of type {MessageType} processed successfully", messageType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing message of type {MessageType}", messageType);
+                throw;
+            }
+        }
+        else
+        {
+            _logger.LogWarning("No handler registered for message type {MessageType}", messageType);
+        }
+    }
+}
+
+// Uso
+var router = new MessageRouter(logger);
+router.RegisterHandler<EmailMessage>("email", async (message) => await emailService.SendAsync(message));
+router.RegisterHandler<NotificationMessage>("notification", async (message) => await notificationService.SendAsync(message));
+```
+
+### 8. Dead Letter Queue y Retry Policies
+```csharp
+public class MessageProcessorWithRetry
+{
+    private readonly ILogger<MessageProcessorWithRetry> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    
+    public MessageProcessorWithRetry(
+        ILogger<MessageProcessorWithRetry> logger,
+        IServiceProvider serviceProvider)
+    {
+        _logger = logger;
+        _serviceProvider = serviceProvider;
+    }
+    
+    public async Task ProcessMessageWithRetryAsync<T>(T message, int maxRetries = 3)
+    {
+        var retryCount = 0;
+        
+        while (retryCount < maxRetries)
+        {
+            try
+            {
+                await ProcessMessageAsync(message);
+                return; // Éxito, salir del bucle
+            }
+            catch (Exception ex)
+            {
+                retryCount++;
+                _logger.LogWarning(ex, "Attempt {RetryCount} failed for message processing", retryCount);
+                
+                if (retryCount >= maxRetries)
+                {
+                    await MoveToDeadLetterQueueAsync(message, ex);
+                    throw;
+                }
+                
+                // Esperar antes del siguiente intento (backoff exponencial)
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)));
+            }
+        }
+    }
+    
+    private async Task ProcessMessageAsync<T>(T message)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var processor = scope.ServiceProvider.GetRequiredService<IMessageProcessor<T>>();
+        await processor.ProcessAsync(message);
+    }
+    
+    private async Task MoveToDeadLetterQueueAsync<T>(T message, Exception exception)
+    {
+        _logger.LogError(exception, "Moving message to dead letter queue after {MaxRetries} retries", 3);
+        
+        // Implementar lógica para mover a DLQ
+        // ...
+    }
+}
+```
+
+### Conclusión
+Los patrones de mensajería proporcionan:
+- Desacoplamiento entre componentes
+- Escalabilidad horizontal
+- Tolerancia a fallos
+- Comunicación asíncrona
+- Procesamiento distribuido
+
+### Recursos
+- [Azure Service Bus Documentation](https://docs.microsoft.com/azure/service-bus-messaging/)
+- [MediatR Documentation](https://github.com/jbogard/MediatR)
+- [MassTransit Documentation](https://masstransit.io/)
+- [SignalR Documentation](https://docs.microsoft.com/aspnet/core/signalr)
+- [RabbitMQ .NET Client](https://www.rabbitmq.com/dotnet.html)

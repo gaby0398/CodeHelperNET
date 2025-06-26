@@ -1,0 +1,923 @@
+# Ejemplos Prácticos de C# y .NET - Guía Completa
+
+## 1. EJEMPLOS BÁSICOS DE C#
+
+### Programa "Hola Mundo"
+```csharp
+using System;
+
+namespace MiPrimerPrograma
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("¡Hola Mundo desde C#!");
+            Console.WriteLine("Bienvenido al mundo de la programación");
+        }
+    }
+}
+```
+
+### Variables y Tipos de Datos
+```csharp
+using System;
+
+class VariablesExample
+{
+    static void Main()
+    {
+        // Tipos de datos básicos
+        string nombre = "Juan Pérez";
+        int edad = 25;
+        double altura = 1.75;
+        bool esEstudiante = true;
+        char inicial = 'J';
+        
+        // Interpolación de strings
+        Console.WriteLine($"Nombre: {nombre}");
+        Console.WriteLine($"Edad: {edad} años");
+        Console.WriteLine($"Altura: {altura} metros");
+        Console.WriteLine($"¿Es estudiante? {esEstudiante}");
+        Console.WriteLine($"Inicial: {inicial}");
+        
+        // Constantes
+        const double PI = 3.14159;
+        const string VERSION = "1.0.0";
+        
+        Console.WriteLine($"Valor de PI: {PI}");
+        Console.WriteLine($"Versión: {VERSION}");
+    }
+}
+```
+
+### Estructuras de Control
+```csharp
+using System;
+
+class ControlStructuresExample
+{
+    static void Main()
+    {
+        // Condicionales
+        int edad = 18;
+        
+        if (edad >= 18)
+        {
+            Console.WriteLine("Eres mayor de edad");
+        }
+        else if (edad >= 13)
+        {
+            Console.WriteLine("Eres adolescente");
+        }
+        else
+        {
+            Console.WriteLine("Eres menor de edad");
+        }
+        
+        // Switch statement
+        string dia = "Lunes";
+        switch (dia)
+        {
+            case "Lunes":
+                Console.WriteLine("Inicio de semana");
+                break;
+            case "Viernes":
+                Console.WriteLine("¡Fin de semana!");
+                break;
+            default:
+                Console.WriteLine("Día normal");
+                break;
+        }
+        
+        // Bucles
+        Console.WriteLine("Bucle for:");
+        for (int i = 1; i <= 5; i++)
+        {
+            Console.WriteLine($"Iteración {i}");
+        }
+        
+        Console.WriteLine("Bucle while:");
+        int contador = 0;
+        while (contador < 3)
+        {
+            Console.WriteLine($"Contador: {contador}");
+            contador++;
+        }
+        
+        Console.WriteLine("Bucle foreach:");
+        string[] colores = { "rojo", "verde", "azul" };
+        foreach (string color in colores)
+        {
+            Console.WriteLine($"Color: {color}");
+        }
+    }
+}
+```
+
+## 2. CLASES Y OBJETOS
+
+### Clase Básica
+```csharp
+using System;
+
+public class Persona
+{
+    // Propiedades
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    public string Email { get; set; }
+    
+    // Constructor
+    public Persona(string nombre, int edad, string email)
+    {
+        Nombre = nombre;
+        Edad = edad;
+        Email = email;
+    }
+    
+    // Constructor por defecto
+    public Persona()
+    {
+        Nombre = "Sin nombre";
+        Edad = 0;
+        Email = "";
+    }
+    
+    // Métodos
+    public void Presentarse()
+    {
+        Console.WriteLine($"Hola, soy {Nombre} y tengo {Edad} años");
+    }
+    
+    public bool EsMayorDeEdad()
+    {
+        return Edad >= 18;
+    }
+    
+    public void ActualizarEmail(string nuevoEmail)
+    {
+        Email = nuevoEmail;
+        Console.WriteLine($"Email actualizado: {Email}");
+    }
+}
+
+// Uso de la clase
+class Program
+{
+    static void Main()
+    {
+        // Crear objetos
+        Persona persona1 = new Persona("Ana García", 25, "ana@email.com");
+        Persona persona2 = new Persona("Carlos López", 17, "carlos@email.com");
+        
+        // Usar métodos
+        persona1.Presentarse();
+        persona2.Presentarse();
+        
+        Console.WriteLine($"¿{persona1.Nombre} es mayor de edad? {persona1.EsMayorDeEdad()}");
+        Console.WriteLine($"¿{persona2.Nombre} es mayor de edad? {persona2.EsMayorDeEdad()}");
+        
+        // Actualizar propiedades
+        persona1.ActualizarEmail("ana.nueva@email.com");
+    }
+}
+```
+
+### Herencia
+```csharp
+using System;
+
+// Clase base
+public class Empleado
+{
+    public string Nombre { get; set; }
+    public string Departamento { get; set; }
+    public decimal Salario { get; set; }
+    
+    public Empleado(string nombre, string departamento, decimal salario)
+    {
+        Nombre = nombre;
+        Departamento = departamento;
+        Salario = salario;
+    }
+    
+    public virtual void MostrarInformacion()
+    {
+        Console.WriteLine($"Empleado: {Nombre}");
+        Console.WriteLine($"Departamento: {Departamento}");
+        Console.WriteLine($"Salario: ${Salario:F2}");
+    }
+}
+
+// Clase derivada
+public class Gerente : Empleado
+{
+    public int Subordinados { get; set; }
+    
+    public Gerente(string nombre, string departamento, decimal salario, int subordinados)
+        : base(nombre, departamento, salario)
+    {
+        Subordinados = subordinados;
+    }
+    
+    public override void MostrarInformacion()
+    {
+        base.MostrarInformacion();
+        Console.WriteLine($"Subordinados: {Subordinados}");
+    }
+    
+    public void DirigirEquipo()
+    {
+        Console.WriteLine($"{Nombre} está dirigiendo su equipo de {Subordinados} personas");
+    }
+}
+
+// Uso de herencia
+class Program
+{
+    static void Main()
+    {
+        Empleado empleado = new Empleado("Juan", "IT", 50000);
+        Gerente gerente = new Gerente("María", "Desarrollo", 75000, 5);
+        
+        empleado.MostrarInformacion();
+        Console.WriteLine();
+        gerente.MostrarInformacion();
+        gerente.DirigirEquipo();
+    }
+}
+```
+
+## 3. COLECCIONES
+
+### Arrays y Listas
+```csharp
+using System;
+using System.Collections.Generic;
+
+class CollectionsExample
+{
+    static void Main()
+    {
+        // Arrays
+        Console.WriteLine("=== ARRAYS ===");
+        int[] numeros = { 1, 2, 3, 4, 5 };
+        string[] nombres = new string[3];
+        nombres[0] = "Ana";
+        nombres[1] = "Carlos";
+        nombres[2] = "Elena";
+        
+        foreach (int num in numeros)
+        {
+            Console.WriteLine($"Número: {num}");
+        }
+        
+        foreach (string nombre in nombres)
+        {
+            Console.WriteLine($"Nombre: {nombre}");
+        }
+        
+        // Listas
+        Console.WriteLine("\n=== LISTAS ===");
+        List<string> frutas = new List<string>();
+        frutas.Add("manzana");
+        frutas.Add("banana");
+        frutas.Add("naranja");
+        
+        // Inicializar lista directamente
+        List<int> edades = new List<int> { 25, 30, 35, 40 };
+        
+        Console.WriteLine("Frutas:");
+        foreach (string fruta in frutas)
+        {
+            Console.WriteLine($"- {fruta}");
+        }
+        
+        Console.WriteLine("Edades:");
+        foreach (int edad in edades)
+        {
+            Console.WriteLine($"- {edad} años");
+        }
+        
+        // Diccionarios
+        Console.WriteLine("\n=== DICCIONARIOS ===");
+        Dictionary<string, int> edadesPersonas = new Dictionary<string, int>();
+        edadesPersonas["Ana"] = 25;
+        edadesPersonas["Carlos"] = 30;
+        edadesPersonas["Elena"] = 28;
+        
+        foreach (var kvp in edadesPersonas)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value} años");
+        }
+        
+        // Verificar si existe una clave
+        if (edadesPersonas.ContainsKey("Ana"))
+        {
+            Console.WriteLine($"La edad de Ana es: {edadesPersonas["Ana"]}");
+        }
+    }
+}
+```
+
+## 4. MANEJO DE EXCEPCIONES
+
+### Try-Catch Básico
+```csharp
+using System;
+
+class ExceptionHandlingExample
+{
+    static void Main()
+    {
+        // Ejemplo básico
+        try
+        {
+            Console.Write("Ingrese un número: ");
+            string input = Console.ReadLine();
+            int numero = Convert.ToInt32(input);
+            
+            int resultado = 100 / numero;
+            Console.WriteLine($"Resultado: {resultado}");
+        }
+        catch (FormatException)
+        {
+            Console.WriteLine("Error: Debe ingresar un número válido");
+        }
+        catch (DivideByZeroException)
+        {
+            Console.WriteLine("Error: No se puede dividir por cero");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error general: {ex.Message}");
+        }
+        finally
+        {
+            Console.WriteLine("Este código siempre se ejecuta");
+        }
+        
+        // Ejemplo con múltiples catch
+        try
+        {
+            string[] array = { "uno", "dos", "tres" };
+            Console.WriteLine(array[10]); // Índice fuera de rango
+        }
+        catch (IndexOutOfRangeException ex)
+        {
+            Console.WriteLine($"Error de índice: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error general: {ex.Message}");
+        }
+    }
+}
+```
+
+## 5. LINQ (Language Integrated Query)
+
+### Consultas Básicas
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+class LINQExample
+{
+    static void Main()
+    {
+        // Lista de números
+        List<int> numeros = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        
+        // Filtrar números pares
+        var pares = numeros.Where(n => n % 2 == 0);
+        Console.WriteLine("Números pares:");
+        foreach (int num in pares)
+        {
+            Console.WriteLine(num);
+        }
+        
+        // Ordenar números
+        var ordenados = numeros.OrderByDescending(n => n);
+        Console.WriteLine("\nNúmeros ordenados descendente:");
+        foreach (int num in ordenados)
+        {
+            Console.WriteLine(num);
+        }
+        
+        // Proyección (transformar)
+        var cuadrados = numeros.Select(n => n * n);
+        Console.WriteLine("\nCuadrados de los números:");
+        foreach (int num in cuadrados)
+        {
+            Console.WriteLine(num);
+        }
+        
+        // Agregación
+        int suma = numeros.Sum();
+        int maximo = numeros.Max();
+        int minimo = numeros.Min();
+        double promedio = numeros.Average();
+        
+        Console.WriteLine($"\nSuma: {suma}");
+        Console.WriteLine($"Máximo: {maximo}");
+        Console.WriteLine($"Mínimo: {minimo}");
+        Console.WriteLine($"Promedio: {promedio:F2}");
+        
+        // Lista de personas para ejemplos más complejos
+        var personas = new List<Persona>
+        {
+            new Persona("Ana", 25, "ana@email.com"),
+            new Persona("Carlos", 30, "carlos@email.com"),
+            new Persona("Elena", 22, "elena@email.com"),
+            new Persona("David", 35, "david@email.com")
+        };
+        
+        // Filtrar personas mayores de 25 años
+        var mayores25 = personas.Where(p => p.Edad > 25);
+        Console.WriteLine("\nPersonas mayores de 25 años:");
+        foreach (var persona in mayores25)
+        {
+            Console.WriteLine($"{persona.Nombre}: {persona.Edad} años");
+        }
+        
+        // Ordenar por edad
+        var ordenadasPorEdad = personas.OrderBy(p => p.Edad);
+        Console.WriteLine("\nPersonas ordenadas por edad:");
+        foreach (var persona in ordenadasPorEdad)
+        {
+            Console.WriteLine($"{persona.Nombre}: {persona.Edad} años");
+        }
+    }
+}
+```
+
+## 6. ASP.NET CORE - WEB API
+
+### API Básica
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Agregar servicios
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configurar pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+
+// Controlador de ejemplo
+[ApiController]
+[Route("api/[controller]")]
+public class ProductosController : ControllerBase
+{
+    private static List<Producto> productos = new List<Producto>
+    {
+        new Producto { Id = 1, Nombre = "Laptop", Precio = 999.99m },
+        new Producto { Id = 2, Nombre = "Mouse", Precio = 25.50m },
+        new Producto { Id = 3, Nombre = "Teclado", Precio = 75.00m }
+    };
+    
+    [HttpGet]
+    public ActionResult<IEnumerable<Producto>> Get()
+    {
+        return Ok(productos);
+    }
+    
+    [HttpGet("{id}")]
+    public ActionResult<Producto> Get(int id)
+    {
+        var producto = productos.FirstOrDefault(p => p.Id == id);
+        if (producto == null)
+            return NotFound();
+        
+        return Ok(producto);
+    }
+    
+    [HttpPost]
+    public ActionResult<Producto> Post(Producto producto)
+    {
+        producto.Id = productos.Max(p => p.Id) + 1;
+        productos.Add(producto);
+        return CreatedAtAction(nameof(Get), new { id = producto.Id }, producto);
+    }
+    
+    [HttpPut("{id}")]
+    public IActionResult Put(int id, Producto producto)
+    {
+        var existingProducto = productos.FirstOrDefault(p => p.Id == id);
+        if (existingProducto == null)
+            return NotFound();
+        
+        existingProducto.Nombre = producto.Nombre;
+        existingProducto.Precio = producto.Precio;
+        
+        return NoContent();
+    }
+    
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
+    {
+        var producto = productos.FirstOrDefault(p => p.Id == id);
+        if (producto == null)
+            return NotFound();
+        
+        productos.Remove(producto);
+        return NoContent();
+    }
+}
+
+public class Producto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public decimal Precio { get; set; }
+}
+```
+
+## 7. ENTITY FRAMEWORK CORE
+
+### Configuración Básica
+```csharp
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+
+// Modelo de datos
+public class Usuario
+{
+    public int Id { get; set; }
+    
+    [Required]
+    [MaxLength(100)]
+    public string Nombre { get; set; }
+    
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+    
+    public DateTime FechaRegistro { get; set; }
+}
+
+// Contexto de base de datos
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+    
+    public DbSet<Usuario> Usuarios { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Configuraciones adicionales del modelo
+        modelBuilder.Entity<Usuario>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+    }
+}
+
+// Servicio de ejemplo
+public class UsuarioService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public UsuarioService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<List<Usuario>> ObtenerTodosAsync()
+    {
+        return await _context.Usuarios.ToListAsync();
+    }
+    
+    public async Task<Usuario> ObtenerPorIdAsync(int id)
+    {
+        return await _context.Usuarios.FindAsync(id);
+    }
+    
+    public async Task<Usuario> CrearAsync(Usuario usuario)
+    {
+        usuario.FechaRegistro = DateTime.Now;
+        _context.Usuarios.Add(usuario);
+        await _context.SaveChangesAsync();
+        return usuario;
+    }
+    
+    public async Task<bool> ActualizarAsync(Usuario usuario)
+    {
+        _context.Usuarios.Update(usuario);
+        var resultado = await _context.SaveChangesAsync();
+        return resultado > 0;
+    }
+    
+    public async Task<bool> EliminarAsync(int id)
+    {
+        var usuario = await _context.Usuarios.FindAsync(id);
+        if (usuario == null)
+            return false;
+        
+        _context.Usuarios.Remove(usuario);
+        var resultado = await _context.SaveChangesAsync();
+        return resultado > 0;
+    }
+}
+```
+
+## 8. ASYNC/AWAIT
+
+### Programación Asíncrona
+```csharp
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+class AsyncExample
+{
+    static async Task Main()
+    {
+        Console.WriteLine("Iniciando operaciones asíncronas...");
+        
+        // Ejecutar tareas en paralelo
+        var tarea1 = ObtenerDatosAsync("https://api.example.com/data1");
+        var tarea2 = ObtenerDatosAsync("https://api.example.com/data2");
+        var tarea3 = ProcesarDatosAsync();
+        
+        // Esperar a que todas terminen
+        await Task.WhenAll(tarea1, tarea2, tarea3);
+        
+        Console.WriteLine("Todas las tareas han terminado");
+        
+        // Ejemplo con manejo de errores
+        try
+        {
+            var resultado = await OperacionRiesgosaAsync();
+            Console.WriteLine($"Resultado: {resultado}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+    
+    static async Task<string> ObtenerDatosAsync(string url)
+    {
+        using (var client = new HttpClient())
+        {
+            Console.WriteLine($"Obteniendo datos de {url}...");
+            await Task.Delay(2000); // Simular operación lenta
+            Console.WriteLine($"Datos obtenidos de {url}");
+            return $"Datos de {url}";
+        }
+    }
+    
+    static async Task ProcesarDatosAsync()
+    {
+        Console.WriteLine("Procesando datos...");
+        await Task.Delay(1500); // Simular procesamiento
+        Console.WriteLine("Datos procesados");
+    }
+    
+    static async Task<int> OperacionRiesgosaAsync()
+    {
+        await Task.Delay(1000);
+        
+        // Simular error aleatorio
+        if (new Random().Next(1, 10) > 5)
+        {
+            throw new Exception("Error simulado en operación asíncrona");
+        }
+        
+        return 42;
+    }
+}
+```
+
+## 9. PATRONES DE DISEÑO
+
+### Singleton Pattern
+```csharp
+using System;
+
+public class DatabaseConnection
+{
+    private static DatabaseConnection _instance;
+    private static readonly object _lock = new object();
+    
+    private DatabaseConnection()
+    {
+        // Constructor privado
+    }
+    
+    public static DatabaseConnection Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                    {
+                        _instance = new DatabaseConnection();
+                    }
+                }
+            }
+            return _instance;
+        }
+    }
+    
+    public void Connect()
+    {
+        Console.WriteLine("Conectando a la base de datos...");
+    }
+    
+    public void Disconnect()
+    {
+        Console.WriteLine("Desconectando de la base de datos...");
+    }
+}
+
+// Uso del Singleton
+class Program
+{
+    static void Main()
+    {
+        var connection1 = DatabaseConnection.Instance;
+        var connection2 = DatabaseConnection.Instance;
+        
+        Console.WriteLine($"¿Son la misma instancia? {ReferenceEquals(connection1, connection2)}");
+        
+        connection1.Connect();
+        connection2.Disconnect();
+    }
+}
+```
+
+### Factory Pattern
+```csharp
+using System;
+
+// Interfaz para productos
+public interface IVehiculo
+{
+    void Conducir();
+}
+
+// Implementaciones concretas
+public class Coche : IVehiculo
+{
+    public void Conducir()
+    {
+        Console.WriteLine("Conduciendo un coche");
+    }
+}
+
+public class Moto : IVehiculo
+{
+    public void Conducir()
+    {
+        Console.WriteLine("Conduciendo una moto");
+    }
+}
+
+public class Bicicleta : IVehiculo
+{
+    public void Conducir()
+    {
+        Console.WriteLine("Conduciendo una bicicleta");
+    }
+}
+
+// Factory
+public class VehiculoFactory
+{
+    public static IVehiculo CrearVehiculo(string tipo)
+    {
+        return tipo.ToLower() switch
+        {
+            "coche" => new Coche(),
+            "moto" => new Moto(),
+            "bicicleta" => new Bicicleta(),
+            _ => throw new ArgumentException($"Tipo de vehículo no válido: {tipo}")
+        };
+    }
+}
+
+// Uso del Factory
+class Program
+{
+    static void Main()
+    {
+        var coche = VehiculoFactory.CrearVehiculo("coche");
+        var moto = VehiculoFactory.CrearVehiculo("moto");
+        var bicicleta = VehiculoFactory.CrearVehiculo("bicicleta");
+        
+        coche.Conducir();
+        moto.Conducir();
+        bicicleta.Conducir();
+    }
+}
+```
+
+## 10. TESTING
+
+### Pruebas Unitarias con xUnit
+```csharp
+using Xunit;
+using System;
+
+public class Calculadora
+{
+    public int Sumar(int a, int b)
+    {
+        return a + b;
+    }
+    
+    public int Restar(int a, int b)
+    {
+        return a - b;
+    }
+    
+    public int Multiplicar(int a, int b)
+    {
+        return a * b;
+    }
+    
+    public double Dividir(int a, int b)
+    {
+        if (b == 0)
+            throw new DivideByZeroException("No se puede dividir por cero");
+        
+        return (double)a / b;
+    }
+}
+
+public class CalculadoraTests
+{
+    private readonly Calculadora _calculadora;
+    
+    public CalculadoraTests()
+    {
+        _calculadora = new Calculadora();
+    }
+    
+    [Fact]
+    public void Sumar_DosNumerosPositivos_RetornaSuma()
+    {
+        // Arrange
+        int a = 5;
+        int b = 3;
+        
+        // Act
+        int resultado = _calculadora.Sumar(a, b);
+        
+        // Assert
+        Assert.Equal(8, resultado);
+    }
+    
+    [Theory]
+    [InlineData(10, 5, 5)]
+    [InlineData(0, 5, -5)]
+    [InlineData(-5, -3, -2)]
+    public void Restar_DiferentesNumeros_RetornaResta(int a, int b, int esperado)
+    {
+        // Act
+        int resultado = _calculadora.Restar(a, b);
+        
+        // Assert
+        Assert.Equal(esperado, resultado);
+    }
+    
+    [Fact]
+    public void Dividir_PorCero_LanzaExcepcion()
+    {
+        // Act & Assert
+        var excepcion = Assert.Throws<DivideByZeroException>(() => 
+            _calculadora.Dividir(10, 0));
+        
+        Assert.Equal("No se puede dividir por cero", excepcion.Message);
+    }
+}
+```
+
+Estos ejemplos cubren los conceptos más importantes de C# y .NET, desde lo básico hasta patrones avanzados. Cada ejemplo está diseñado para ser claro, práctico y fácil de entender. 

@@ -1,0 +1,1067 @@
+# Desarrollo Web con ASP.NET Core
+
+## Introducción al Desarrollo Web con ASP.NET Core
+
+ASP.NET Core es un framework moderno y multiplataforma para el desarrollo de aplicaciones web. Proporciona un entorno de desarrollo robusto, escalable y de alto rendimiento para crear APIs RESTful, aplicaciones web y microservicios.
+
+### Fundamentos de ASP.NET Core
+
+#### 1. Arquitectura de ASP.NET Core
+
+**Middleware Pipeline**:
+- **Definición**: Pipeline de componentes que procesan requests HTTP.
+- **Características**: Configurable, extensible y de alto rendimiento.
+- **Orden**: Los middlewares se ejecutan en el orden de configuración.
+
+**Hosting Model**:
+- **Kestrel**: Servidor web interno de alto rendimiento.
+- **IIS**: Integración con Internet Information Services.
+- **HTTP.sys**: Servidor HTTP de Windows.
+- **Docker**: Contenedores para despliegue.
+
+**Dependency Injection**:
+- **Container**: Contenedor IoC integrado.
+- **Lifetime**: Singleton, Scoped, Transient.
+- **Configuration**: Configuración automática de servicios.
+
+#### 2. Configuración de la Aplicación
+
+**Program.cs**:
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Agregar servicios al contenedor
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configurar CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Configurar base de datos
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configurar servicios personalizados
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+var app = builder.Build();
+
+// Configurar pipeline de middleware
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseCors("AllowAll");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+**appsettings.json**:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MyApp;Trusted_Connection=true;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "EmailSettings": {
+    "SmtpServer": "smtp.gmail.com",
+    "Port": 587,
+    "Username": "your-email@gmail.com",
+    "Password": "your-password"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-secret-key-here",
+    "Issuer": "your-app",
+    "Audience": "your-users",
+    "ExpirationInMinutes": 60
+  }
+}
+```
+
+### Desarrollo de APIs RESTful
+
+#### 1. Controladores y Endpoints
+
+**Controlador Básico**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+    
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    {
+        try
+        {
+            var users = await _userService.GetAllUsersAsync();
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener usuarios");
+            return StatusCode(500, "Error interno del servidor");
+        }
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserDto>> GetUser(int id)
+    {
+        var user = await _userService.GetUserByIdAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+        
+        return Ok(user);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto createUserDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        var user = await _userService.CreateUserAsync(createUserDto);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+    
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateUser(int id, UpdateUserDto updateUserDto)
+    {
+        if (id != updateUserDto.Id)
+        {
+            return BadRequest();
+        }
+        
+        var success = await _userService.UpdateUserAsync(updateUserDto);
+        if (!success)
+        {
+            return NotFound();
+        }
+        
+        return NoContent();
+    }
+    
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var success = await _userService.DeleteUserAsync(id);
+        if (!success)
+        {
+            return NotFound();
+        }
+        
+        return NoContent();
+    }
+}
+```
+
+**DTOs (Data Transfer Objects)**:
+```csharp
+public class UserDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateUserDto
+{
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; }
+    
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+    
+    [Required]
+    [StringLength(100, MinimumLength = 6)]
+    public string Password { get; set; }
+}
+
+public class UpdateUserDto
+{
+    public int Id { get; set; }
+    
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; }
+    
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+}
+```
+
+#### 2. Validación y Model Binding
+
+**Validación Personalizada**:
+```csharp
+public class CustomValidationAttribute : ValidationAttribute
+{
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        if (value == null)
+        {
+            return new ValidationResult("El valor no puede ser nulo");
+        }
+        
+        var stringValue = value.ToString();
+        if (stringValue.Length < 3)
+        {
+            return new ValidationResult("El valor debe tener al menos 3 caracteres");
+        }
+        
+        return ValidationResult.Success;
+    }
+}
+
+public class UserModel
+{
+    [Required]
+    [CustomValidation]
+    public string Name { get; set; }
+    
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+    
+    [Required]
+    [MinLength(6)]
+    public string Password { get; set; }
+}
+```
+
+**Model Binding Personalizado**:
+```csharp
+public class CustomModelBinder : IModelBinder
+{
+    public Task BindModelAsync(ModelBindingContext bindingContext)
+    {
+        if (bindingContext == null)
+        {
+            throw new ArgumentNullException(nameof(bindingContext));
+        }
+        
+        var valueProviderResult = bindingContext.ValueProvider.GetValue(bindingContext.ModelName);
+        if (valueProviderResult == ValueProviderResult.None)
+        {
+            return Task.CompletedTask;
+        }
+        
+        bindingContext.ModelState.SetModelValue(bindingContext.ModelName, valueProviderResult);
+        var value = valueProviderResult.FirstValue;
+        
+        if (string.IsNullOrEmpty(value))
+        {
+            return Task.CompletedTask;
+        }
+        
+        // Lógica de binding personalizada
+        bindingContext.Result = ModelBindingResult.Success(value);
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Entity Framework Core
+
+#### 1. Configuración de DbContext
+
+**ApplicationDbContext**:
+```csharp
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+    
+    public DbSet<User> Users { get; set; }
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<Product> Products { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Configuración de entidades
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
+        });
+        
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+            entity.HasOne(e => e.User)
+                  .WithMany(e => e.Orders)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+        });
+    }
+}
+```
+
+**Entidades**:
+```csharp
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string PasswordHash { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
+    
+    public virtual ICollection<Order> Orders { get; set; }
+}
+
+public class Order
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public DateTime OrderDate { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+    
+    public virtual User User { get; set; }
+    public virtual ICollection<OrderItem> OrderItems { get; set; }
+}
+
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+    public string Category { get; set; }
+}
+
+public class OrderItem
+{
+    public int Id { get; set; }
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    
+    public virtual Order Order { get; set; }
+    public virtual Product Product { get; set; }
+}
+```
+
+#### 2. Repositorios y Servicios
+
+**Repositorio Genérico**:
+```csharp
+public interface IRepository<T> where T : class
+{
+    Task<T> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+}
+
+public class Repository<T> : IRepository<T> where T : class
+{
+    protected readonly ApplicationDbContext _context;
+    protected readonly DbSet<T> _dbSet;
+    
+    public Repository(ApplicationDbContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<T>();
+    }
+    
+    public async Task<T> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+    
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+    
+    public async Task<T> AddAsync(T entity)
+    {
+        await _dbSet.AddAsync(entity);
+        await _context.SaveChangesAsync();
+        return entity;
+    }
+    
+    public async Task UpdateAsync(T entity)
+    {
+        _dbSet.Update(entity);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await GetByIdAsync(id);
+        if (entity != null)
+        {
+            _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
+    }
+    
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.Where(predicate).ToListAsync();
+    }
+}
+```
+
+**Servicio de Usuarios**:
+```csharp
+public interface IUserService
+{
+    Task<IEnumerable<UserDto>> GetAllUsersAsync();
+    Task<UserDto> GetUserByIdAsync(int id);
+    Task<UserDto> CreateUserAsync(CreateUserDto createUserDto);
+    Task<bool> UpdateUserAsync(UpdateUserDto updateUserDto);
+    Task<bool> DeleteUserAsync(int id);
+    Task<UserDto> GetUserByEmailAsync(string email);
+}
+
+public class UserService : IUserService
+{
+    private readonly IRepository<User> _userRepository;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UserService> _logger;
+    
+    public UserService(
+        IRepository<User> userRepository,
+        IEmailService emailService,
+        ILogger<UserService> logger)
+    {
+        _userRepository = userRepository;
+        _emailService = emailService;
+        _logger = logger;
+    }
+    
+    public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
+    {
+        var users = await _userRepository.GetAllAsync();
+        return users.Select(u => new UserDto
+        {
+            Id = u.Id,
+            Name = u.Name,
+            Email = u.Email,
+            CreatedAt = u.CreatedAt
+        });
+    }
+    
+    public async Task<UserDto> GetUserByIdAsync(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+            return null;
+        
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
+        };
+    }
+    
+    public async Task<UserDto> CreateUserAsync(CreateUserDto createUserDto)
+    {
+        // Verificar si el email ya existe
+        var existingUser = await _userRepository.FindAsync(u => u.Email == createUserDto.Email);
+        if (existingUser.Any())
+        {
+            throw new InvalidOperationException("El email ya está registrado");
+        }
+        
+        // Crear hash de la contraseña
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(createUserDto.Password);
+        
+        var user = new User
+        {
+            Name = createUserDto.Name,
+            Email = createUserDto.Email,
+            PasswordHash = passwordHash,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        await _userRepository.AddAsync(user);
+        
+        // Enviar email de bienvenida
+        await _emailService.SendWelcomeEmailAsync(user.Email, user.Name);
+        
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
+        };
+    }
+    
+    public async Task<bool> UpdateUserAsync(UpdateUserDto updateUserDto)
+    {
+        var user = await _userRepository.GetByIdAsync(updateUserDto.Id);
+        if (user == null)
+            return false;
+        
+        user.Name = updateUserDto.Name;
+        user.Email = updateUserDto.Email;
+        
+        await _userRepository.UpdateAsync(user);
+        return true;
+    }
+    
+    public async Task<bool> DeleteUserAsync(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+            return false;
+        
+        await _userRepository.DeleteAsync(id);
+        return true;
+    }
+    
+    public async Task<UserDto> GetUserByEmailAsync(string email)
+    {
+        var users = await _userRepository.FindAsync(u => u.Email == email);
+        var user = users.FirstOrDefault();
+        
+        if (user == null)
+            return null;
+        
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
+        };
+    }
+}
+```
+
+### Autenticación y Autorización
+
+#### 1. JWT Authentication
+
+**Configuración de JWT**:
+```csharp
+public class JwtSettings
+{
+    public string SecretKey { get; set; }
+    public string Issuer { get; set; }
+    public string Audience { get; set; }
+    public int ExpirationInMinutes { get; set; }
+}
+
+public class JwtService
+{
+    private readonly JwtSettings _jwtSettings;
+    
+    public JwtService(IOptions<JwtSettings> jwtSettings)
+    {
+        _jwtSettings = jwtSettings.Value;
+    }
+    
+    public string GenerateToken(User user)
+    {
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+        
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
+            signingCredentials: credentials
+        );
+        
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+    
+    public ClaimsPrincipal ValidateToken(string token)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
+        
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = _jwtSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = _jwtSettings.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+        
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+            return principal;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+```
+
+**Controlador de Autenticación**:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly JwtService _jwtService;
+    private readonly ILogger<AuthController> _logger;
+    
+    public AuthController(
+        IUserService userService,
+        JwtService jwtService,
+        ILogger<AuthController> logger)
+    {
+        _userService = userService;
+        _jwtService = jwtService;
+        _logger = logger;
+    }
+    
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        var user = await _userService.GetUserByEmailAsync(loginDto.Email);
+        if (user == null)
+        {
+            return Unauthorized("Credenciales inválidas");
+        }
+        
+        // Verificar contraseña (implementar lógica de verificación)
+        if (!VerifyPassword(loginDto.Password, user.PasswordHash))
+        {
+            return Unauthorized("Credenciales inválidas");
+        }
+        
+        var token = _jwtService.GenerateToken(user);
+        
+        return Ok(new LoginResponseDto
+        {
+            Token = token,
+            User = user
+        });
+    }
+    
+    [HttpPost("register")]
+    public async Task<ActionResult<UserDto>> Register(CreateUserDto createUserDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        try
+        {
+            var user = await _userService.CreateUserAsync(createUserDto);
+            return CreatedAtAction(nameof(Login), new { id = user.Id }, user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    private bool VerifyPassword(string password, string passwordHash)
+    {
+        return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+    }
+}
+
+public class LoginDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+    
+    [Required]
+    public string Password { get; set; }
+}
+
+public class LoginResponseDto
+{
+    public string Token { get; set; }
+    public UserDto User { get; set; }
+}
+```
+
+#### 2. Autorización con Roles
+
+**Configuración de Autorización**:
+```csharp
+public class RoleAuthorizationHandler : AuthorizationHandler<RoleRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        RoleRequirement requirement)
+    {
+        var roleClaim = context.User.FindFirst(ClaimTypes.Role);
+        
+        if (roleClaim != null && requirement.Roles.Contains(roleClaim.Value))
+        {
+            context.Succeed(requirement);
+        }
+        
+        return Task.CompletedTask;
+    }
+}
+
+public class RoleRequirement : IAuthorizationRequirement
+{
+    public string[] Roles { get; }
+    
+    public RoleRequirement(params string[] roles)
+    {
+        Roles = roles;
+    }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class AdminController : ControllerBase
+{
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public IActionResult AdminOnly()
+    {
+        return Ok("Solo administradores pueden ver esto");
+    }
+    
+    [HttpGet("manager")]
+    [Authorize(Roles = "Admin,Manager")]
+    public IActionResult ManagerOrAdmin()
+    {
+        return Ok("Administradores y managers pueden ver esto");
+    }
+}
+```
+
+### Middleware Personalizado
+
+#### 1. Middleware de Logging
+
+```csharp
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+    
+    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            var endTime = DateTime.UtcNow;
+            var duration = endTime - startTime;
+            
+            _logger.LogInformation(
+                "Request {Method} {Path} => {StatusCode} ({Duration}ms)",
+                context.Request.Method,
+                context.Request.Path,
+                context.Response.StatusCode,
+                duration.TotalMilliseconds);
+        }
+    }
+}
+
+public static class RequestLoggingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestLoggingMiddleware>();
+    }
+}
+```
+
+#### 2. Middleware de Manejo de Excepciones
+
+```csharp
+public class ExceptionHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error no manejado");
+            await HandleExceptionAsync(context, ex);
+        }
+    }
+    
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        context.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            error = new
+            {
+                message = "Ha ocurrido un error interno del servidor",
+                details = exception.Message
+            }
+        };
+        
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        
+        await context.Response.WriteAsJsonAsync(response);
+    }
+}
+```
+
+### Testing de APIs
+
+#### 1. Testing de Controladores
+
+```csharp
+[TestFixture]
+public class UsersControllerTests
+{
+    private Mock<IUserService> _mockUserService;
+    private UsersController _controller;
+    
+    [SetUp]
+    public void Setup()
+    {
+        _mockUserService = new Mock<IUserService>();
+        _controller = new UsersController(_mockUserService.Object, Mock.Of<ILogger<UsersController>>());
+    }
+    
+    [Test]
+    public async Task GetUsers_ReturnsOkResult_WithUsers()
+    {
+        // Arrange
+        var users = new List<UserDto>
+        {
+            new UserDto { Id = 1, Name = "Test User", Email = "test@test.com" }
+        };
+        
+        _mockUserService.Setup(s => s.GetAllUsersAsync())
+                       .ReturnsAsync(users);
+        
+        // Act
+        var result = await _controller.GetUsers();
+        
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        Assert.IsNotNull(okResult);
+        Assert.AreEqual(200, okResult.StatusCode);
+        
+        var returnedUsers = okResult.Value as IEnumerable<UserDto>;
+        Assert.IsNotNull(returnedUsers);
+        Assert.AreEqual(1, returnedUsers.Count());
+    }
+    
+    [Test]
+    public async Task GetUser_WithValidId_ReturnsUser()
+    {
+        // Arrange
+        var user = new UserDto { Id = 1, Name = "Test User", Email = "test@test.com" };
+        _mockUserService.Setup(s => s.GetUserByIdAsync(1))
+                       .ReturnsAsync(user);
+        
+        // Act
+        var result = await _controller.GetUser(1);
+        
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        Assert.IsNotNull(okResult);
+        Assert.AreEqual(200, okResult.StatusCode);
+        
+        var returnedUser = okResult.Value as UserDto;
+        Assert.IsNotNull(returnedUser);
+        Assert.AreEqual(user.Id, returnedUser.Id);
+    }
+    
+    [Test]
+    public async Task GetUser_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        _mockUserService.Setup(s => s.GetUserByIdAsync(999))
+                       .ReturnsAsync((UserDto)null);
+        
+        // Act
+        var result = await _controller.GetUser(999);
+        
+        // Assert
+        Assert.IsInstanceOf<NotFoundResult>(result.Result);
+    }
+}
+```
+
+#### 2. Testing de Integración
+
+```csharp
+public class UsersControllerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    
+    public UsersControllerIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+    
+    [Test]
+    public async Task GetUsers_ReturnsSuccessStatusCode()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        
+        // Act
+        var response = await client.GetAsync("/api/users");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        Assert.AreEqual("application/json; charset=utf-8", response.Content.Headers.ContentType.ToString());
+    }
+    
+    [Test]
+    public async Task CreateUser_WithValidData_ReturnsCreated()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var createUserDto = new CreateUserDto
+        {
+            Name = "Test User",
+            Email = "test@test.com",
+            Password = "password123"
+        };
+        
+        var json = JsonSerializer.Serialize(createUserDto);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        
+        // Act
+        var response = await client.PostAsync("/api/users", content);
+        
+        // Assert
+        Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+    }
+}
+```
+
+### Conclusión
+
+ASP.NET Core proporciona un framework robusto y moderno para el desarrollo de aplicaciones web. Sus características incluyen:
+
+**Ventajas**:
+- **Alto Rendimiento**: Optimizado para velocidad y escalabilidad.
+- **Multiplataforma**: Funciona en Windows, Linux y macOS.
+- **Dependency Injection**: Contenedor IoC integrado.
+- **Middleware Pipeline**: Arquitectura flexible y extensible.
+- **Entity Framework Core**: ORM moderno y eficiente.
+- **Testing**: Soporte completo para testing unitario e integración.
+
+**Mejores Prácticas**:
+- **Separación de Responsabilidades**: Usar patrones como Repository y Service.
+- **Validación**: Implementar validación robusta en DTOs.
+- **Manejo de Errores**: Usar middleware para manejo centralizado de excepciones.
+- **Logging**: Implementar logging estructurado.
+- **Testing**: Escribir tests unitarios e integración.
+- **Seguridad**: Implementar autenticación y autorización apropiadas.
+
+**Próximos Pasos**:
+- **Microservicios**: Arquitectura de microservicios con ASP.NET Core.
+- **SignalR**: Comunicación en tiempo real.
+- **gRPC**: APIs de alto rendimiento.
+- **Blazor**: Desarrollo de aplicaciones web con C#.
+- **Docker**: Contenedores y orquestación.
+- **Azure**: Despliegue en la nube.

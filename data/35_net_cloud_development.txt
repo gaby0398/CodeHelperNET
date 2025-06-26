@@ -1,0 +1,58 @@
+# Desarrollo Cloud con .NET (Azure, AWS, GCP)
+
+## Introducción
+.NET es ideal para aplicaciones cloud-native, soportando Azure, AWS y Google Cloud Platform.
+
+### 1. Azure
+- Azure App Service, Azure Functions, Azure SQL
+- Ejemplo: Azure Function
+```csharp
+public static class HelloFunction
+{
+    [FunctionName("HelloFunction")]
+    public static IActionResult Run(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
+        ILogger log)
+    {
+        log.LogInformation("C# HTTP trigger function processed a request.");
+        return new OkObjectResult("Hello from Azure Function!");
+    }
+}
+```
+
+### 2. AWS
+- AWS Lambda, DynamoDB, S3
+- Ejemplo: Lambda Function
+```csharp
+public class Function
+{
+    public string FunctionHandler(string input, ILambdaContext context)
+    {
+        return $"Hello from AWS Lambda! Input: {input}";
+    }
+}
+```
+
+### 3. Google Cloud
+- Cloud Run, Cloud Functions, Firestore
+- Ejemplo: Cloud Function
+```csharp
+public class HelloHttp : IHttpFunction
+{
+    public async Task HandleAsync(HttpContext context)
+    {
+        await context.Response.WriteAsync("Hello from Google Cloud Function!");
+    }
+}
+```
+
+### Buenas Prácticas
+- Usar configuración externa (appsettings, secrets)
+- Desplegar con CI/CD
+- Monitorear con Application Insights, CloudWatch, Stackdriver
+- Escalar horizontalmente
+
+### Recursos
+- [Azure for .NET Developers](https://docs.microsoft.com/dotnet/azure/)
+- [AWS for .NET Developers](https://aws.amazon.com/dotnet/)
+- [Google Cloud for .NET](https://cloud.google.com/dotnet/)

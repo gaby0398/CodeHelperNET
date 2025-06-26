@@ -1,0 +1,453 @@
+# Integración Completa de Bases de Datos en .NET
+
+## Introducción
+.NET proporciona múltiples tecnologías para trabajar con bases de datos, desde ORMs modernos hasta acceso directo a datos. Esta guía cubre las principales opciones y mejores prácticas.
+
+## Entity Framework Core
+
+### ¿Qué es Entity Framework Core?
+Entity Framework Core es un ORM (Object-Relational Mapping) moderno y multiplataforma que permite trabajar con bases de datos usando objetos .NET.
+
+### Configuración Básica
+```csharp
+// Program.cs
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ApplicationDbContext.cs
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options) { }
+    
+    public DbSet<Product> Products { get; set; }
+    public DbSet<Category> Categories { get; set; }
+}
+```
+
+### Migrations
+```csharp
+// Crear migración
+dotnet ef migrations add InitialCreate
+
+// Aplicar migraciones
+dotnet ef database update
+
+// Revertir migración
+dotnet ef database update PreviousMigrationName
+```
+
+### Consultas LINQ
+```csharp
+// Consulta básica
+var products = await context.Products
+    .Where(p => p.Price > 100)
+    .Include(p => p.Category)
+    .ToListAsync();
+
+// Consulta con proyección
+var productNames = await context.Products
+    .Select(p => new { p.Name, p.Price })
+    .ToListAsync();
+```
+
+## ADO.NET
+
+### Conexión Directa
+```csharp
+using (var connection = new SqlConnection(connectionString))
+{
+    await connection.OpenAsync();
+    
+    using var command = new SqlCommand("SELECT * FROM Products", connection);
+    using var reader = await command.ExecuteReaderAsync();
+    
+    while (await reader.ReadAsync())
+    {
+        var product = new Product
+        {
+            Id = reader.GetInt32("Id"),
+            Name = reader.GetString("Name"),
+            Price = reader.GetDecimal("Price")
+        };
+    }
+}
+```
+
+### Comandos Parametrizados
+```csharp
+using var command = new SqlCommand(
+    "SELECT * FROM Products WHERE CategoryId = @CategoryId AND Price > @MinPrice", 
+    connection);
+
+command.Parameters.AddWithValue("@CategoryId", categoryId);
+command.Parameters.AddWithValue("@MinPrice", minPrice);
+```
+
+### Transacciones
+```csharp
+using var transaction = await connection.BeginTransactionAsync();
+try
+{
+    using var command1 = new SqlCommand("UPDATE Accounts SET Balance = Balance - @Amount WHERE Id = @FromId", connection, transaction);
+    using var command2 = new SqlCommand("UPDATE Accounts SET Balance = Balance + @Amount WHERE Id = @ToId", connection, transaction);
+    
+    command1.Parameters.AddWithValue("@Amount", amount);
+    command1.Parameters.AddWithValue("@FromId", fromAccountId);
+    await command1.ExecuteNonQueryAsync();
+    
+    command2.Parameters.AddWithValue("@Amount", amount);
+    command2.Parameters.AddWithValue("@ToId", toAccountId);
+    await command2.ExecuteNonQueryAsync();
+    
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+```
+
+## Dapper - Micro ORM
+
+### Instalación
+```bash
+dotnet add package Dapper
+```
+
+### Consultas Básicas
+```csharp
+using var connection = new SqlConnection(connectionString);
+
+// Consulta simple
+var products = await connection.QueryAsync<Product>("SELECT * FROM Products");
+
+// Consulta con parámetros
+var products = await connection.QueryAsync<Product>(
+    "SELECT * FROM Products WHERE CategoryId = @CategoryId",
+    new { CategoryId = 1 });
+
+// Consulta con múltiples tipos
+var sql = @"
+    SELECT p.*, c.Name as CategoryName 
+    FROM Products p 
+    INNER JOIN Categories c ON p.CategoryId = c.Id";
+
+var products = await connection.QueryAsync<Product, Category, Product>(
+    sql,
+    (product, category) => { product.Category = category; return product; },
+    splitOn: "CategoryName");
+```
+
+### Operaciones CRUD
+```csharp
+// Insert
+var product = new Product { Name = "New Product", Price = 99.99m };
+var sql = "INSERT INTO Products (Name, Price) VALUES (@Name, @Price); SELECT CAST(SCOPE_IDENTITY() as int)";
+var id = await connection.QuerySingleAsync<int>(sql, product);
+
+// Update
+var updateSql = "UPDATE Products SET Name = @Name, Price = @Price WHERE Id = @Id";
+await connection.ExecuteAsync(updateSql, product);
+
+// Delete
+var deleteSql = "DELETE FROM Products WHERE Id = @Id";
+await connection.ExecuteAsync(deleteSql, new { Id = productId });
+```
+
+## Proveedores de Bases de Datos
+
+### SQL Server
+```csharp
+// Connection string
+"Server=localhost;Database=MyDb;Trusted_Connection=true;"
+
+// Entity Framework
+options.UseSqlServer(connectionString);
+
+// ADO.NET
+using var connection = new SqlConnection(connectionString);
+```
+
+### PostgreSQL
+```csharp
+// Instalación
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+
+// Connection string
+"Host=localhost;Database=mydb;Username=myuser;Password=mypassword"
+
+// Entity Framework
+options.UseNpgsql(connectionString);
+
+// ADO.NET
+using var connection = new NpgsqlConnection(connectionString);
+```
+
+### MySQL
+```csharp
+// Instalación
+dotnet add package Pomelo.EntityFrameworkCore.MySql
+
+// Connection string
+"Server=localhost;Database=mydb;Uid=myuser;Pwd=mypassword;"
+
+// Entity Framework
+options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+
+// ADO.NET
+using var connection = new MySqlConnection(connectionString);
+```
+
+### SQLite
+```csharp
+// Instalación
+dotnet add package Microsoft.EntityFrameworkCore.Sqlite
+
+// Connection string
+"Data Source=app.db"
+
+// Entity Framework
+options.UseSqlite(connectionString);
+
+// ADO.NET
+using var connection = new SqliteConnection(connectionString);
+```
+
+## Patrones de Acceso a Datos
+
+### Repository Pattern
+```csharp
+public interface IProductRepository
+{
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task<Product> GetByIdAsync(int id);
+    Task<Product> AddAsync(Product product);
+    Task UpdateAsync(Product product);
+    Task DeleteAsync(int id);
+}
+
+public class ProductRepository : IProductRepository
+{
+    private readonly ApplicationDbContext _context;
+    
+    public ProductRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<IEnumerable<Product>> GetAllAsync()
+    {
+        return await _context.Products.Include(p => p.Category).ToListAsync();
+    }
+    
+    public async Task<Product> GetByIdAsync(int id)
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
+    
+    public async Task<Product> AddAsync(Product product)
+    {
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
+        return product;
+    }
+    
+    public async Task UpdateAsync(Product product)
+    {
+        _context.Products.Update(product);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task DeleteAsync(int id)
+    {
+        var product = await _context.Products.FindAsync(id);
+        if (product != null)
+        {
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+        }
+    }
+}
+```
+
+### Unit of Work Pattern
+```csharp
+public interface IUnitOfWork
+{
+    IProductRepository Products { get; }
+    ICategoryRepository Categories { get; }
+    Task<int> SaveChangesAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly ApplicationDbContext _context;
+    
+    public UnitOfWork(ApplicationDbContext context)
+    {
+        _context = context;
+        Products = new ProductRepository(context);
+        Categories = new CategoryRepository(context);
+    }
+    
+    public IProductRepository Products { get; }
+    public ICategoryRepository Categories { get; }
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+}
+```
+
+## Configuración en ASP.NET Core
+
+### Program.cs
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Configurar Entity Framework
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Registrar repositorios
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Configurar Dapper
+builder.Services.AddScoped<IDbConnection>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    return new SqlConnection(configuration.GetConnectionString("DefaultConnection"));
+});
+```
+
+### appsettings.json
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MyDb;Trusted_Connection=true;TrustServerCertificate=true;",
+    "PostgreSQL": "Host=localhost;Database=mydb;Username=myuser;Password=mypassword",
+    "MySQL": "Server=localhost;Database=mydb;Uid=myuser;Pwd=mypassword;",
+    "SQLite": "Data Source=app.db"
+  }
+}
+```
+
+## Mejores Prácticas
+
+### Performance
+```csharp
+// Usar Include para evitar N+1 queries
+var products = await context.Products
+    .Include(p => p.Category)
+    .Include(p => p.Reviews)
+    .ToListAsync();
+
+// Usar AsNoTracking para consultas de solo lectura
+var products = await context.Products
+    .AsNoTracking()
+    .ToListAsync();
+
+// Usar paginación para grandes conjuntos de datos
+var products = await context.Products
+    .Skip((page - 1) * pageSize)
+    .Take(pageSize)
+    .ToListAsync();
+```
+
+### Seguridad
+```csharp
+// Siempre usar parámetros para evitar SQL injection
+var sql = "SELECT * FROM Users WHERE Username = @Username AND Password = @Password";
+var user = await connection.QueryFirstOrDefaultAsync<User>(sql, new { Username, Password });
+
+// Usar connection strings seguras
+// Evitar credenciales hardcodeadas
+// Usar Azure Key Vault o User Secrets para desarrollo
+```
+
+### Manejo de Errores
+```csharp
+try
+{
+    await context.SaveChangesAsync();
+}
+catch (DbUpdateConcurrencyException ex)
+{
+    // Manejar conflictos de concurrencia
+    foreach (var entry in ex.Entries)
+    {
+        var databaseValues = await entry.GetDatabaseValuesAsync();
+        var clientValues = entry.CurrentValues;
+        
+        // Resolver conflicto
+    }
+}
+catch (DbUpdateException ex)
+{
+    // Manejar errores de actualización
+    _logger.LogError(ex, "Error updating database");
+    throw new ApplicationException("Error saving changes", ex);
+}
+```
+
+## Monitoreo y Logging
+
+### Entity Framework Logging
+```csharp
+// Program.cs
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
+    options.UseSqlServer(connectionString);
+    options.LogTo(Console.WriteLine, LogLevel.Information);
+    options.EnableSensitiveDataLogging(); // Solo para desarrollo
+});
+```
+
+### Dapper Logging
+```csharp
+public class LoggingDbConnection : SqlConnection
+{
+    private readonly ILogger<LoggingDbConnection> _logger;
+    
+    public LoggingDbConnection(string connectionString, ILogger<LoggingDbConnection> logger)
+        : base(connectionString)
+    {
+        _logger = logger;
+    }
+    
+    public override async Task<int> ExecuteAsync(string sql, object param = null)
+    {
+        _logger.LogInformation("Executing SQL: {Sql}", sql);
+        var result = await base.ExecuteAsync(sql, param);
+        _logger.LogInformation("Affected rows: {Rows}", result);
+        return result;
+    }
+}
+```
+
+## Conclusión
+
+.NET ofrece un ecosistema completo para trabajar con bases de datos:
+
+**Ventajas Principales:**
+- **Entity Framework Core**: ORM moderno y multiplataforma
+- **ADO.NET**: Acceso directo y control total
+- **Dapper**: Micro ORM para performance máxima
+- **Múltiples proveedores**: SQL Server, PostgreSQL, MySQL, SQLite
+- **Patrones establecidos**: Repository, Unit of Work
+- **Integración nativa**: Con ASP.NET Core y DI
+- **Performance optimizada**: Lazy loading, caching, paginación
+- **Seguridad robusta**: Parámetros, transacciones, logging
+
+**Casos de Uso:**
+- **Entity Framework**: Aplicaciones empresariales, desarrollo rápido
+- **ADO.NET**: Consultas complejas, control total, legacy systems
+- **Dapper**: APIs de alto rendimiento, microservicios
+- **Múltiples bases**: Aplicaciones híbridas, migración gradual 

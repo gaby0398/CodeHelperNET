@@ -1,0 +1,13 @@
+sentence-transformers
+chromadb
+transformers
+torch
+accelerate
+bitsandbytes
+langchain
+langchain-community
+numpy
+pandas
+scikit-learn
+tiktoken
+safetensors

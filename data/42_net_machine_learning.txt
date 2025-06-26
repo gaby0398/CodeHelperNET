@@ -1,0 +1,405 @@
+# Machine Learning y Inteligencia Artificial en .NET
+
+## Introducción
+.NET proporciona herramientas robustas para machine learning e inteligencia artificial, incluyendo ML.NET, ONNX Runtime, y integración con servicios cloud.
+
+### 1. ML.NET - Machine Learning Nativo
+```csharp
+using Microsoft.ML;
+using Microsoft.ML.Data;
+
+public class HouseData
+{
+    [LoadColumn(0)]
+    public float Size { get; set; }
+    
+    [LoadColumn(1)]
+    public float Price { get; set; }
+}
+
+public class HousePrediction
+{
+    [ColumnName("Score")]
+    public float Price { get; set; }
+}
+
+public class MLNetExample
+{
+    public void TrainModel()
+    {
+        var context = new MLContext();
+        
+        // Cargar datos
+        var data = context.Data.LoadFromTextFile<HouseData>("house_data.csv", separatorChar: ',');
+        
+        // Dividir en training y test
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        // Definir pipeline
+        var pipeline = context.Transforms.Concatenate("Features", "Size")
+            .Append(context.Transforms.NormalizeMinMax("Features"))
+            .Append(context.Regression.Trainers.Sdca());
+        
+        // Entrenar modelo
+        var model = pipeline.Fit(split.TrainSet);
+        
+        // Evaluar modelo
+        var predictions = model.Transform(split.TestSet);
+        var metrics = context.Regression.Evaluate(predictions);
+        
+        Console.WriteLine($"R² Score: {metrics.RSquared}");
+        Console.WriteLine($"RMSE: {metrics.RootMeanSquaredError}");
+        
+        // Guardar modelo
+        context.Model.Save(model, data.Schema, "house_price_model.zip");
+    }
+    
+    public float PredictPrice(float size)
+    {
+        var context = new MLContext();
+        var model = context.Model.Load("house_price_model.zip", out var schema);
+        
+        var predictor = context.Model.CreatePredictionEngine<HouseData, HousePrediction>(model);
+        
+        var prediction = predictor.Predict(new HouseData { Size = size });
+        return prediction.Price;
+    }
+}
+```
+
+### 2. Clasificación de Texto
+```csharp
+public class TextClassificationExample
+{
+    public class TextData
+    {
+        [LoadColumn(0)]
+        public string Text { get; set; }
+        
+        [LoadColumn(1)]
+        public string Category { get; set; }
+    }
+    
+    public class TextPrediction
+    {
+        [ColumnName("PredictedLabel")]
+        public string Category { get; set; }
+        
+        public float[] Score { get; set; }
+    }
+    
+    public void TrainTextClassifier()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<TextData>("text_data.csv", separatorChar: ',');
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        var pipeline = context.Transforms.Text.FeaturizeText("Features", "Text")
+            .Append(context.Transforms.NormalizeMinMax("Features"))
+            .Append(context.MulticlassClassification.Trainers.SdcaMaximumEntropy())
+            .Append(context.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
+        
+        var model = pipeline.Fit(split.TrainSet);
+        
+        var predictions = model.Transform(split.TestSet);
+        var metrics = context.MulticlassClassification.Evaluate(predictions);
+        
+        Console.WriteLine($"Accuracy: {metrics.MacroAccuracy}");
+    }
+}
+```
+
+### 3. ONNX Runtime Integration
+```csharp
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+
+public class OnnxExample
+{
+    public float[] RunInference(float[] input)
+    {
+        using var session = new InferenceSession("model.onnx");
+        
+        var inputMeta = session.InputMetadata;
+        var inputName = inputMeta.Keys.First();
+        
+        var inputTensor = new DenseTensor<float>(input, inputMeta[inputName].Dimensions);
+        var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, inputTensor) };
+        
+        using var results = session.Run(inputs);
+        var output = results.First();
+        var outputTensor = output.AsTensor<float>();
+        
+        return outputTensor.ToArray();
+    }
+}
+```
+
+### 4. Computer Vision con ML.NET
+```csharp
+public class ImageClassificationExample
+{
+    public class ImageData
+    {
+        [LoadColumn(0)]
+        public string ImagePath { get; set; }
+        
+        [LoadColumn(1)]
+        public string Label { get; set; }
+    }
+    
+    public class ImagePrediction
+    {
+        [ColumnName("softmax2")]
+        public float[] Score { get; set; }
+        
+        [ColumnName("softmax2")]
+        public string PredictedLabel { get; set; }
+    }
+    
+    public void TrainImageClassifier()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<ImageData>("image_data.csv", separatorChar: ',');
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        var pipeline = context.Transforms.LoadImages("input", "ImagePath")
+            .Append(context.Transforms.ResizeImages("input", ImageNetSettings.ImageWidth, ImageNetSettings.ImageHeight))
+            .Append(context.Transforms.ExtractPixels("input"))
+            .Append(context.Transforms.ApplyOnnxModel("softmax2", "mobilenetv2-1.0.onnx", "input"));
+        
+        var model = pipeline.Fit(split.TrainSet);
+        context.Model.Save(model, data.Schema, "image_classifier.zip");
+    }
+}
+```
+
+### 5. Azure Cognitive Services
+```csharp
+using Azure.AI.TextAnalytics;
+using Azure.AI.Vision;
+using Azure.AI.OpenAI;
+
+public class AzureAIServices
+{
+    private readonly TextAnalyticsClient _textClient;
+    private readonly OpenAIClient _openAIClient;
+    
+    public AzureAIServices(string textAnalyticsKey, string openAIKey)
+    {
+        _textClient = new TextAnalyticsClient(new Uri("https://your-resource.cognitiveservices.azure.com/"), 
+            new AzureKeyCredential(textAnalyticsKey));
+        _openAIClient = new OpenAIClient(new Uri("https://your-resource.openai.azure.com/"), 
+            new AzureKeyCredential(openAIKey));
+    }
+    
+    public async Task<DocumentSentiment> AnalyzeSentimentAsync(string text)
+    {
+        var response = await _textClient.AnalyzeSentimentAsync(text);
+        return response.Value;
+    }
+    
+    public async Task<string> GenerateTextAsync(string prompt)
+    {
+        var options = new ChatCompletionsOptions
+        {
+            Messages = { new ChatMessage(ChatRole.User, prompt) },
+            MaxTokens = 100
+        };
+        
+        var response = await _openAIClient.GetChatCompletionsAsync("gpt-35-turbo", options);
+        return response.Value.Choices[0].Message.Content;
+    }
+}
+```
+
+### 6. TensorFlow.NET
+```csharp
+using Tensorflow;
+using Tensorflow.Keras;
+using Tensorflow.Keras.Layers;
+
+public class TensorFlowExample
+{
+    public void CreateNeuralNetwork()
+    {
+        var model = keras.Sequential();
+        
+        model.add(keras.layers.Dense(128, activation: "relu", input_shape: new int[] { 784 }));
+        model.add(keras.layers.Dropout(0.2f));
+        model.add(keras.layers.Dense(64, activation: "relu"));
+        model.add(keras.layers.Dropout(0.2f));
+        model.add(keras.layers.Dense(10, activation: "softmax"));
+        
+        model.compile(optimizer: "adam",
+                     loss: "sparse_categorical_crossentropy",
+                     metrics: new string[] { "accuracy" });
+        
+        // Entrenar modelo
+        // model.fit(x_train, y_train, epochs: 5);
+    }
+}
+```
+
+### 7. Análisis de Sentimientos
+```csharp
+public class SentimentAnalysis
+{
+    public class SentimentData
+    {
+        [LoadColumn(0)]
+        public string Text { get; set; }
+        
+        [LoadColumn(1)]
+        public bool IsPositive { get; set; }
+    }
+    
+    public class SentimentPrediction
+    {
+        [ColumnName("PredictedLabel")]
+        public bool IsPositive { get; set; }
+        
+        public float Probability { get; set; }
+    }
+    
+    public void TrainSentimentModel()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<SentimentData>("sentiment_data.csv", separatorChar: ',');
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        var pipeline = context.Transforms.Text.FeaturizeText("Features", "Text")
+            .Append(context.Transforms.NormalizeMinMax("Features"))
+            .Append(context.BinaryClassification.Trainers.LbfgsLogisticRegression());
+        
+        var model = pipeline.Fit(split.TrainSet);
+        
+        var predictions = model.Transform(split.TestSet);
+        var metrics = context.BinaryClassification.Evaluate(predictions);
+        
+        Console.WriteLine($"Accuracy: {metrics.Accuracy}");
+        Console.WriteLine($"AUC: {metrics.AreaUnderRocCurve}");
+    }
+}
+```
+
+### 8. Recomendación de Productos
+```csharp
+public class RecommendationSystem
+{
+    public class ProductRating
+    {
+        [LoadColumn(0)]
+        public int UserId { get; set; }
+        
+        [LoadColumn(1)]
+        public int ProductId { get; set; }
+        
+        [LoadColumn(2)]
+        public float Rating { get; set; }
+    }
+    
+    public class ProductPrediction
+    {
+        [ColumnName("Score")]
+        public float Rating { get; set; }
+    }
+    
+    public void TrainRecommendationModel()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<ProductRating>("ratings.csv", separatorChar: ',');
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        var pipeline = context.Transforms.Conversion.MapValueToKey("UserId")
+            .Append(context.Transforms.Conversion.MapValueToKey("ProductId"))
+            .Append(context.Recommendation().Trainers.MatrixFactorization(
+                labelColumnName: "Rating",
+                matrixColumnIndexColumnName: "UserId",
+                matrixRowIndexColumnName: "ProductId"));
+        
+        var model = pipeline.Fit(split.TrainSet);
+        context.Model.Save(model, data.Schema, "recommendation_model.zip");
+    }
+}
+```
+
+### 9. Análisis de Series Temporales
+```csharp
+public class TimeSeriesAnalysis
+{
+    public class TimeSeriesData
+    {
+        [LoadColumn(0)]
+        public DateTime Date { get; set; }
+        
+        [LoadColumn(1)]
+        public float Value { get; set; }
+    }
+    
+    public void AnalyzeTimeSeries()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<TimeSeriesData>("timeseries.csv", separatorChar: ',');
+        
+        // Análisis de tendencias
+        var trendPipeline = context.Transforms.Concatenate("Features", "Date")
+            .Append(context.Transforms.NormalizeMinMax("Features"))
+            .Append(context.Regression.Trainers.Sdca());
+        
+        var trendModel = trendPipeline.Fit(data);
+        
+        // Predicción de valores futuros
+        var predictions = trendModel.Transform(data);
+        var metrics = context.Regression.Evaluate(predictions);
+        
+        Console.WriteLine($"Trend R²: {metrics.RSquared}");
+    }
+}
+```
+
+### 10. AutoML con ML.NET
+```csharp
+public class AutoMLExample
+{
+    public async Task<ITransformer> TrainWithAutoML()
+    {
+        var context = new MLContext();
+        
+        var data = context.Data.LoadFromTextFile<HouseData>("house_data.csv", separatorChar: ',');
+        var split = context.Data.TrainTestSplit(data, testFraction: 0.2);
+        
+        var experimentSettings = new AutoMLExperimentSettings
+        {
+            MaxExperimentTimeInSeconds = 60,
+            OptimizingMetric = OptimizingMetric.RSquared
+        };
+        
+        var experiment = context.Auto().CreateExperiment(experimentSettings);
+        experiment.SetDataset(split.TrainSet, split.TestSet);
+        
+        var result = await experiment.RunAsync();
+        
+        return result.Model;
+    }
+}
+```
+
+### Conclusión
+.NET ofrece un ecosistema completo para ML/AI:
+- ML.NET para ML nativo
+- Integración con ONNX para modelos pre-entrenados
+- Azure Cognitive Services para servicios cloud
+- TensorFlow.NET para deep learning
+- AutoML para automatización
+
+### Recursos
+- [ML.NET Documentation](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet)
+- [ONNX Runtime](https://onnxruntime.ai/)
+- [Azure Cognitive Services](https://azure.microsoft.com/services/cognitive-services/)
+- [TensorFlow.NET](https://github.com/SciSharp/TensorFlow.NET)

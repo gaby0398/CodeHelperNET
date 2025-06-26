@@ -1,0 +1,43 @@
+# DevOps e Integración Continua en .NET
+
+## ¿Qué es DevOps?
+DevOps es la combinación de prácticas y herramientas para entregar software de calidad de forma continua y automatizada.
+
+### Herramientas Populares
+- GitHub Actions
+- Azure DevOps Pipelines
+- GitLab CI/CD
+- Jenkins
+
+### Ejemplo de Pipeline YAML (GitHub Actions)
+```yaml
+name: .NET CI
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+```
+
+### Buenas Prácticas
+- Automatizar builds y tests
+- Desplegar en entornos de prueba
+- Usar versionado semántico
+- Monitorear despliegues
+
+### Recursos
+- [Azure DevOps](https://azure.microsoft.com/services/devops/)
+- [GitHub Actions](https://docs.github.com/actions)

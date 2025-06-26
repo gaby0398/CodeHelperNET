@@ -1,0 +1,501 @@
+# C# CHEATSHEET - Referencia Rápida
+
+## SINTAXIS BÁSICA
+
+### Variables
+```csharp
+int numero = 42;                    // Entero
+double decimal = 3.14;              // Decimal
+string texto = "Hola";              // Texto
+bool verdadero = true;              // Booleano
+var automatico = "Tipo inferido";   // Inferencia de tipo
+```
+
+### Constantes
+```csharp
+const double PI = 3.14159;
+const string APP_NAME = "MiApp";
+```
+
+### Arrays
+```csharp
+int[] numeros = {1, 2, 3, 4, 5};
+string[] nombres = new string[3];
+int[,] matriz = new int[2, 3];      // Matriz 2D
+```
+
+### Listas
+```csharp
+List<string> lista = new List<string>();
+lista.Add("item");
+lista.Remove("item");
+lista.Count;                        // Tamaño
+```
+
+### Diccionarios
+```csharp
+Dictionary<string, int> dict = new Dictionary<string, int>();
+dict["clave"] = 42;
+dict.ContainsKey("clave");          // Verificar existencia
+```
+
+## ESTRUCTURAS DE CONTROL
+
+### If-Else
+```csharp
+if (condicion) {
+    // código
+} else if (otraCondicion) {
+    // código
+} else {
+    // código
+}
+```
+
+### Switch
+```csharp
+switch (valor) {
+    case 1:
+        // código
+        break;
+    case 2:
+        // código
+        break;
+    default:
+        // código
+        break;
+}
+```
+
+### Bucles
+```csharp
+// For
+for (int i = 0; i < 10; i++) {
+    // código
+}
+
+// While
+while (condicion) {
+    // código
+}
+
+// Foreach
+foreach (var item in coleccion) {
+    // código
+}
+
+// Do-While
+do {
+    // código
+} while (condicion);
+```
+
+## MÉTODOS
+
+### Definición
+```csharp
+public int Sumar(int a, int b) {
+    return a + b;
+}
+
+public void Imprimir(string mensaje) {
+    Console.WriteLine(mensaje);
+}
+
+public async Task<string> ObtenerDatosAsync() {
+    // código asíncrono
+    return "datos";
+}
+```
+
+### Parámetros Opcionales
+```csharp
+public void Configurar(string nombre, int edad = 18) {
+    // código
+}
+```
+
+### Parámetros por Referencia
+```csharp
+public void Modificar(ref int valor) {
+    valor = 42;
+}
+```
+
+## CLASES
+
+### Definición Básica
+```csharp
+public class Persona {
+    // Propiedades
+    public string Nombre { get; set; }
+    public int Edad { get; set; }
+    
+    // Constructor
+    public Persona(string nombre, int edad) {
+        Nombre = nombre;
+        Edad = edad;
+    }
+    
+    // Método
+    public void Saludar() {
+        Console.WriteLine($"Hola, soy {Nombre}");
+    }
+}
+```
+
+### Propiedades
+```csharp
+public class Ejemplo {
+    // Auto-property
+    public string Nombre { get; set; }
+    
+    // Property con lógica
+    private int _edad;
+    public int Edad {
+        get { return _edad; }
+        set { 
+            if (value >= 0) _edad = value; 
+        }
+    }
+    
+    // Property de solo lectura
+    public string Info => $"{Nombre} tiene {Edad} años";
+}
+```
+
+### Herencia
+```csharp
+public class Empleado : Persona {
+    public string Cargo { get; set; }
+    
+    public Empleado(string nombre, int edad, string cargo) 
+        : base(nombre, edad) {
+        Cargo = cargo;
+    }
+}
+```
+
+### Interfaces
+```csharp
+public interface IVehiculo {
+    void Conducir();
+    int VelocidadMaxima { get; }
+}
+
+public class Coche : IVehiculo {
+    public void Conducir() {
+        Console.WriteLine("Conduciendo coche");
+    }
+    
+    public int VelocidadMaxima => 200;
+}
+```
+
+## LINQ
+
+### Consultas Básicas
+```csharp
+var numeros = new List<int> {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+// Filtrar
+var pares = numeros.Where(n => n % 2 == 0);
+
+// Ordenar
+var ordenados = numeros.OrderBy(n => n);
+var descendente = numeros.OrderByDescending(n => n);
+
+// Proyección
+var cuadrados = numeros.Select(n => n * n);
+
+// Agregación
+var suma = numeros.Sum();
+var promedio = numeros.Average();
+var maximo = numeros.Max();
+var minimo = numeros.Min();
+var cantidad = numeros.Count();
+
+// Combinar
+var resultado = numeros
+    .Where(n => n > 5)
+    .OrderBy(n => n)
+    .Select(n => n * 2);
+```
+
+### Consultas con Objetos
+```csharp
+var personas = new List<Persona> {
+    new Persona("Juan", 25),
+    new Persona("María", 30),
+    new Persona("Pedro", 28)
+};
+
+var adultos = personas.Where(p => p.Edad >= 18);
+var nombres = personas.Select(p => p.Nombre);
+var porEdad = personas.OrderBy(p => p.Edad);
+```
+
+## MANEJO DE EXCEPCIONES
+
+### Try-Catch
+```csharp
+try {
+    // código que puede fallar
+    int resultado = 10 / 0;
+} catch (DivideByZeroException ex) {
+    Console.WriteLine($"Error de división: {ex.Message}");
+} catch (Exception ex) {
+    Console.WriteLine($"Error general: {ex.Message}");
+} finally {
+    // código que siempre se ejecuta
+    Console.WriteLine("Finalizado");
+}
+```
+
+### Lanzar Excepciones
+```csharp
+public void ValidarEdad(int edad) {
+    if (edad < 0) {
+        throw new ArgumentException("La edad no puede ser negativa");
+    }
+}
+```
+
+## ASINCRONÍA
+
+### Async/Await
+```csharp
+public async Task<string> ObtenerDatosAsync() {
+    using (var client = new HttpClient()) {
+        return await client.GetStringAsync("https://api.ejemplo.com");
+    }
+}
+
+public async Task ProcesarAsync() {
+    var datos = await ObtenerDatosAsync();
+    Console.WriteLine(datos);
+}
+```
+
+### Task.Run
+```csharp
+var resultado = await Task.Run(() => {
+    // trabajo pesado
+    return "resultado";
+});
+```
+
+## SERIALIZACIÓN
+
+### JSON
+```csharp
+using System.Text.Json;
+
+// Serializar
+var persona = new Persona("Juan", 25);
+string json = JsonSerializer.Serialize(persona);
+
+// Deserializar
+var personaDeserializada = JsonSerializer.Deserialize<Persona>(json);
+```
+
+### XML
+```csharp
+using System.Xml.Serialization;
+
+var serializer = new XmlSerializer(typeof(Persona));
+using (var writer = new StringWriter()) {
+    serializer.Serialize(writer, persona);
+    string xml = writer.ToString();
+}
+```
+
+## REFLEXIÓN
+
+### Obtener Información de Tipos
+```csharp
+Type tipo = typeof(Persona);
+var propiedades = tipo.GetProperties();
+var metodos = tipo.GetMethods();
+var constructores = tipo.GetConstructors();
+```
+
+### Crear Instancias Dinámicamente
+```csharp
+var tipo = typeof(Persona);
+var instancia = Activator.CreateInstance(tipo, "Juan", 25);
+```
+
+## ATRIBUTOS
+
+### Definir Atributos
+```csharp
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class MiAtributo : Attribute {
+    public string Descripcion { get; set; }
+    
+    public MiAtributo(string descripcion) {
+        Descripcion = descripcion;
+    }
+}
+```
+
+### Usar Atributos
+```csharp
+[MiAtributo("Esta es una clase de ejemplo")]
+public class Ejemplo {
+    [Obsolete("Usar NuevoMetodo en su lugar")]
+    public void MetodoViejo() {
+        // código
+    }
+}
+```
+
+## DELEGADOS Y EVENTOS
+
+### Delegados
+```csharp
+public delegate int Operacion(int a, int b);
+
+public class Calculadora {
+    public int Sumar(int a, int b) => a + b;
+    public int Restar(int a, int b) => a - b;
+}
+
+// Uso
+Operacion op = new Calculadora().Sumar;
+int resultado = op(5, 3);
+```
+
+### Eventos
+```csharp
+public class MiClase {
+    public event EventHandler MiEvento;
+    
+    public void DispararEvento() {
+        MiEvento?.Invoke(this, EventArgs.Empty);
+    }
+}
+
+// Suscribirse
+var instancia = new MiClase();
+instancia.MiEvento += (sender, e) => Console.WriteLine("Evento disparado");
+```
+
+## PATRONES DE DISEÑO
+
+### Singleton
+```csharp
+public class Singleton {
+    private static Singleton instance;
+    private static readonly object lockObject = new object();
+    
+    private Singleton() { }
+    
+    public static Singleton Instance {
+        get {
+            if (instance == null) {
+                lock (lockObject) {
+                    if (instance == null) {
+                        instance = new Singleton();
+                    }
+                }
+            }
+            return instance;
+        }
+    }
+}
+```
+
+### Factory
+```csharp
+public interface IProducto {
+    void Operacion();
+}
+
+public class ProductoA : IProducto {
+    public void Operacion() => Console.WriteLine("Producto A");
+}
+
+public class ProductoB : IProducto {
+    public void Operacion() => Console.WriteLine("Producto B");
+}
+
+public class Factory {
+    public static IProducto CrearProducto(string tipo) {
+        return tipo switch {
+            "A" => new ProductoA(),
+            "B" => new ProductoB(),
+            _ => throw new ArgumentException("Tipo no válido")
+        };
+    }
+}
+```
+
+## MEJORES PRÁCTICAS
+
+### Nomenclatura
+- Clases: PascalCase (MiClase)
+- Métodos: PascalCase (MiMetodo)
+- Propiedades: PascalCase (MiPropiedad)
+- Variables: camelCase (miVariable)
+- Constantes: UPPER_CASE (MI_CONSTANTE)
+- Privados: _camelCase (_miVariable)
+
+### Usings Importantes
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Text.Json;
+using System.Xml.Serialization;
+using System.Reflection;
+```
+
+### Null Checking
+```csharp
+// Null-conditional operator
+string nombre = persona?.Nombre;
+
+// Null-coalescing operator
+string valor = texto ?? "valor por defecto";
+
+// Null-forgiving operator
+string noNull = texto!;
+```
+
+### Pattern Matching
+```csharp
+// Switch expression
+string resultado = valor switch {
+    1 => "uno",
+    2 => "dos",
+    _ => "otro"
+};
+
+// Type pattern
+if (objeto is Persona persona) {
+    Console.WriteLine(persona.Nombre);
+}
+```
+
+### Records (C# 9+)
+```csharp
+public record Persona(string Nombre, int Edad);
+
+// Con métodos
+public record Persona(string Nombre, int Edad) {
+    public string Info => $"{Nombre} tiene {Edad} años";
+}
+```
+
+### Top-level Statements (C# 9+)
+```csharp
+// Program.cs
+Console.WriteLine("Hola Mundo");
+await Task.Delay(1000);
+Console.WriteLine("Adiós");
+```
+
+Esta referencia rápida cubre los conceptos más importantes de C# para desarrollo diario. 

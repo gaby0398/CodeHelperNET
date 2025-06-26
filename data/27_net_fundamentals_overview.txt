@@ -1,0 +1,535 @@
+# Fundamentos de .NET: Visión General Completa
+
+## Introducción a .NET
+
+.NET es una plataforma de desarrollo gratuita, de código abierto y multiplataforma creada por Microsoft para construir muchos tipos de aplicaciones. Es la evolución de .NET Framework y representa un cambio fundamental en la forma en que Microsoft aborda el desarrollo de software.
+
+### ¿Qué es .NET?
+
+**Definición**: .NET es una plataforma de desarrollo unificada que permite crear aplicaciones para Windows, macOS, Linux, Android, iOS, tvOS, watchOS, WebAssembly y más.
+
+**Características Principales**:
+- **Multiplataforma**: Funciona en múltiples sistemas operativos
+- **Open Source**: Código fuente disponible en GitHub
+- **Unificado**: Una plataforma para todos los tipos de aplicaciones
+- **Moderno**: Soporte para las últimas tecnologías y patrones
+- **Eficiente**: Alto rendimiento y optimización
+
+### Arquitectura de .NET
+
+#### 1. Common Language Runtime (CLR)
+
+**Definición**: El CLR es el motor de ejecución que proporciona servicios como gestión de memoria, seguridad de tipos, manejo de excepciones y gestión de threads.
+
+**Funciones del CLR**:
+- **Gestión de Memoria**: Asignación y liberación automática de memoria
+- **Seguridad de Tipos**: Verificación de tipos en tiempo de ejecución
+- **Manejo de Excepciones**: Sistema unificado de manejo de errores
+- **Gestión de Threads**: Concurrencia y paralelismo
+- **JIT Compilation**: Compilación justo a tiempo
+
+**Componentes del CLR**:
+```csharp
+// El CLR maneja automáticamente:
+// - Garbage Collection
+// - Type Safety
+// - Exception Handling
+// - Thread Management
+
+public class CLRExample
+{
+    public void DemonstrateCLRFeatures()
+    {
+        // Gestión automática de memoria
+        var list = new List<string>();
+        list.Add("Item 1");
+        list.Add("Item 2");
+        // El CLR libera la memoria automáticamente
+        
+        // Seguridad de tipos
+        object obj = "Hello";
+        if (obj is string str)
+        {
+            Console.WriteLine(str.Length); // Type-safe
+        }
+        
+        // Manejo de excepciones
+        try
+        {
+            int result = 10 / 0;
+        }
+        catch (DivideByZeroException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+}
+```
+
+#### 2. Base Class Library (BCL)
+
+**Definición**: La BCL es una biblioteca de clases que proporciona funcionalidades fundamentales para el desarrollo de aplicaciones.
+
+**Categorías Principales**:
+- **System**: Tipos fundamentales (String, Int32, DateTime)
+- **System.Collections**: Estructuras de datos (List, Dictionary, Queue)
+- **System.IO**: Operaciones de entrada/salida
+- **System.Net**: Funcionalidades de red
+- **System.Threading**: Concurrencia y sincronización
+
+**Ejemplos de Uso**:
+```csharp
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+public class BCLExamples
+{
+    // System - Tipos fundamentales
+    public void DemonstrateSystemTypes()
+    {
+        string text = "Hello .NET";
+        int number = 42;
+        DateTime now = DateTime.Now;
+        Guid id = Guid.NewGuid();
+        
+        Console.WriteLine($"Text: {text}, Number: {number}");
+        Console.WriteLine($"Now: {now}, ID: {id}");
+    }
+    
+    // System.Collections - Colecciones
+    public void DemonstrateCollections()
+    {
+        var list = new List<string> { "Item1", "Item2", "Item3" };
+        var dict = new Dictionary<string, int>
+        {
+            ["One"] = 1,
+            ["Two"] = 2,
+            ["Three"] = 3
+        };
+        
+        foreach (var item in list)
+        {
+            Console.WriteLine(item);
+        }
+        
+        foreach (var kvp in dict)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+        }
+    }
+    
+    // System.IO - Operaciones de archivo
+    public async Task DemonstrateFileOperations()
+    {
+        string path = "test.txt";
+        
+        // Escribir archivo
+        await File.WriteAllTextAsync(path, "Hello .NET World!");
+        
+        // Leer archivo
+        string content = await File.ReadAllTextAsync(path);
+        Console.WriteLine(content);
+        
+        // Verificar si existe
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+    
+    // System.Net - Operaciones de red
+    public async Task DemonstrateNetworkOperations()
+    {
+        using var client = new HttpClient();
+        string response = await client.GetStringAsync("https://httpbin.org/get");
+        Console.WriteLine($"Response length: {response.Length}");
+    }
+}
+```
+
+### Common Type System (CTS)
+
+**Definición**: El CTS define cómo se declaran, usan y gestionan los tipos en el runtime.
+
+**Tipos de CTS**:
+- **Value Types**: Tipos que se almacenan directamente en la stack
+- **Reference Types**: Tipos que se almacenan en el heap
+- **Interface Types**: Contratos que definen comportamiento
+- **Delegate Types**: Referencias a métodos
+
+**Ejemplos de CTS**:
+```csharp
+public class CTSExamples
+{
+    // Value Types
+    public void DemonstrateValueTypes()
+    {
+        int number = 42;           // System.Int32
+        double price = 19.99;      // System.Double
+        bool isValid = true;       // System.Boolean
+        DateTime date = DateTime.Now; // System.DateTime
+        decimal amount = 100.50m;  // System.Decimal
+        
+        // Structs personalizados
+        Point point = new Point(10, 20);
+        Console.WriteLine($"Point: ({point.X}, {point.Y})");
+    }
+    
+    // Reference Types
+    public void DemonstrateReferenceTypes()
+    {
+        string text = "Hello";     // System.String
+        object obj = new object(); // System.Object
+        List<int> numbers = new List<int>(); // System.Collections.Generic.List<T>
+        
+        // Clases personalizadas
+        Person person = new Person("John", 30);
+        Console.WriteLine($"Person: {person.Name}, Age: {person.Age}");
+    }
+    
+    // Interface Types
+    public void DemonstrateInterfaces()
+    {
+        ILogger logger = new ConsoleLogger();
+        logger.Log("Hello from interface!");
+    }
+    
+    // Delegate Types
+    public void DemonstrateDelegates()
+    {
+        Action<string> printAction = Console.WriteLine;
+        Func<int, int> squareFunc = x => x * x;
+        
+        printAction("Hello from delegate!");
+        Console.WriteLine($"Square of 5: {squareFunc(5)}");
+    }
+}
+
+// Struct personalizado (Value Type)
+public struct Point
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    
+    public Point(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+}
+
+// Clase personalizada (Reference Type)
+public class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    
+    public Person(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+}
+
+// Interfaz
+public interface ILogger
+{
+    void Log(string message);
+}
+
+public class ConsoleLogger : ILogger
+{
+    public void Log(string message)
+    {
+        Console.WriteLine($"[LOG] {message}");
+    }
+}
+```
+
+### Common Language Specification (CLS)
+
+**Definición**: La CLS define un conjunto de reglas que los lenguajes .NET deben seguir para garantizar interoperabilidad.
+
+**Reglas CLS Principales**:
+- **Naming Conventions**: Convenciones para nombrar identificadores
+- **Type Usage**: Reglas para el uso de tipos en APIs públicas
+- **Method Signatures**: Reglas para firmas de métodos
+- **Exception Handling**: Reglas para el manejo de excepciones
+
+**Ejemplo de CLS Compliance**:
+```csharp
+// CLS Compliant
+[assembly: CLSCompliant(true)]
+
+public class CLSCompliantExample
+{
+    // ✅ CLS Compliant
+    public string GetName() => "John";
+    public int GetAge() => 30;
+    public void ProcessData(string data) { }
+    
+    // ❌ No CLS Compliant (usando tipos no CLS)
+    // public uint GetUnsignedInt() => 42u; // uint no es CLS compliant
+    // public UInt32 GetUInt32() => 42u;    // UInt32 no es CLS compliant
+    
+    // ✅ CLS Compliant (usando tipos CLS)
+    public long GetLongValue() => 42L;
+    public Int64 GetInt64Value() => 42L;
+}
+```
+
+### Assemblies y Metadata
+
+**Definición**: Un assembly es la unidad fundamental de despliegue en .NET que contiene código compilado, metadata y recursos.
+
+**Tipos de Assemblies**:
+- **Private Assembly**: Se usa solo por una aplicación específica
+- **Shared Assembly**: Se comparte entre múltiples aplicaciones
+- **Satellite Assembly**: Contiene recursos localizados
+
+**Componentes de un Assembly**:
+```csharp
+// Assembly manifest (automático)
+[assembly: AssemblyTitle("MyApplication")]
+[assembly: AssemblyDescription("A sample .NET application")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+public class AssemblyExample
+{
+    public void DemonstrateAssemblyInfo()
+    {
+        // Obtener información del assembly actual
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        
+        Console.WriteLine($"Assembly Name: {assembly.GetName().Name}");
+        Console.WriteLine($"Assembly Version: {assembly.GetName().Version}");
+        Console.WriteLine($"Assembly Location: {assembly.Location}");
+        
+        // Obtener todos los tipos en el assembly
+        var types = assembly.GetTypes();
+        Console.WriteLine($"Types in assembly: {types.Length}");
+    }
+}
+```
+
+### Garbage Collection
+
+**Definición**: El garbage collector es un componente del CLR que libera automáticamente memoria no utilizada.
+
+**Generaciones del GC**:
+- **Generation 0**: Objetos recién creados
+- **Generation 1**: Objetos que sobrevivieron una colección
+- **Generation 2**: Objetos de larga duración
+
+**Ejemplo de Gestión de Memoria**:
+```csharp
+public class GarbageCollectionExample
+{
+    public void DemonstrateGC()
+    {
+        // Crear objetos
+        var list = new List<string>();
+        for (int i = 0; i < 1000; i++)
+        {
+            list.Add($"Item {i}");
+        }
+        
+        // Forzar garbage collection (no recomendado en producción)
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        
+        // Obtener información de memoria
+        var totalMemory = GC.GetTotalMemory(false);
+        Console.WriteLine($"Total memory: {totalMemory} bytes");
+        
+        // Suscribirse a eventos del GC
+        GC.RegisterForFullGCNotification(10, 10);
+    }
+    
+    // Finalizer (destructor)
+    ~GarbageCollectionExample()
+    {
+        // Cleanup code
+        Console.WriteLine("Finalizer called");
+    }
+}
+```
+
+### Threading y Concurrencia
+
+**Definición**: .NET proporciona capacidades de concurrencia y paralelismo a través del modelo de threading.
+
+**Componentes de Threading**:
+```csharp
+using System.Threading;
+using System.Threading.Tasks;
+
+public class ThreadingExample
+{
+    public void DemonstrateThreading()
+    {
+        // Thread tradicional
+        var thread = new Thread(() =>
+        {
+            Console.WriteLine($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+            Thread.Sleep(1000);
+        });
+        thread.Start();
+        
+        // Task (recomendado)
+        var task = Task.Run(async () =>
+        {
+            Console.WriteLine($"Task running on thread: {Thread.CurrentThread.ManagedThreadId}");
+            await Task.Delay(1000);
+        });
+        
+        // Parallel.For
+        Parallel.For(0, 10, i =>
+        {
+            Console.WriteLine($"Parallel iteration {i} on thread {Thread.CurrentThread.ManagedThreadId}");
+        });
+        
+        // ThreadPool
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            Console.WriteLine($"ThreadPool work item on thread {Thread.CurrentThread.ManagedThreadId}");
+        });
+    }
+    
+    public async Task DemonstrateAsyncAwait()
+    {
+        Console.WriteLine($"Starting on thread: {Thread.CurrentThread.ManagedThreadId}");
+        
+        await Task.Delay(1000); // Operación asíncrona
+        
+        Console.WriteLine($"Continuing on thread: {Thread.CurrentThread.ManagedThreadId}");
+    }
+}
+```
+
+### Seguridad en .NET
+
+**Definición**: .NET proporciona un sistema de seguridad robusto que incluye seguridad de tipos, seguridad de acceso a código y criptografía.
+
+**Aspectos de Seguridad**:
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+
+public class SecurityExample
+{
+    public void DemonstrateSecurity()
+    {
+        // Hashing de contraseñas
+        string password = "MyPassword123";
+        string hashedPassword = HashPassword(password);
+        Console.WriteLine($"Hashed password: {hashedPassword}");
+        
+        // Generación de números aleatorios criptográficamente seguros
+        using var rng = RandomNumberGenerator.Create();
+        byte[] randomBytes = new byte[32];
+        rng.GetBytes(randomBytes);
+        
+        // Encriptación simétrica
+        string originalText = "Secret message";
+        string encrypted = EncryptText(originalText);
+        string decrypted = DecryptText(encrypted);
+        
+        Console.WriteLine($"Original: {originalText}");
+        Console.WriteLine($"Encrypted: {encrypted}");
+        Console.WriteLine($"Decrypted: {decrypted}");
+    }
+    
+    private string HashPassword(string password)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(password);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+    
+    private string EncryptText(string text)
+    {
+        // Implementación simplificada de encriptación
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
+    }
+    
+    private string DecryptText(string encryptedText)
+    {
+        // Implementación simplificada de desencriptación
+        var bytes = Convert.FromBase64String(encryptedText);
+        return Encoding.UTF8.GetString(bytes);
+    }
+}
+```
+
+### Interoperabilidad
+
+**Definición**: .NET proporciona capacidades de interoperabilidad con código nativo y otros lenguajes.
+
+**Tipos de Interoperabilidad**:
+```csharp
+using System.Runtime.InteropServices;
+
+public class InteropExample
+{
+    // P/Invoke para llamar funciones de Windows API
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr GetCurrentProcess();
+    
+    [DllImport("user32.dll")]
+    public static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+    
+    public void DemonstrateInterop()
+    {
+        // Llamar a Windows API
+        var processHandle = GetCurrentProcess();
+        Console.WriteLine($"Current process handle: {processHandle}");
+        
+        // Mostrar message box
+        MessageBox(IntPtr.Zero, "Hello from .NET!", "Interop Example", 0);
+    }
+    
+    // COM Interop
+    public void DemonstrateComInterop()
+    {
+        // Ejemplo con Excel (requiere referencia a Microsoft.Office.Interop.Excel)
+        // var excel = new Microsoft.Office.Interop.Excel.Application();
+        // excel.Visible = true;
+        // var workbook = excel.Workbooks.Add();
+        // workbook.Close();
+        // excel.Quit();
+    }
+}
+```
+
+### Conclusión
+
+.NET es una plataforma de desarrollo moderna y poderosa que proporciona:
+
+**Ventajas Principales**:
+- **Multiplataforma**: Desarrolla una vez, ejecuta en cualquier lugar
+- **Alto Rendimiento**: Optimizado para velocidad y eficiencia
+- **Productividad**: Herramientas y bibliotecas ricas
+- **Seguridad**: Sistema de seguridad robusto integrado
+- **Interoperabilidad**: Funciona con sistemas existentes
+- **Comunidad Activa**: Gran ecosistema de desarrolladores
+
+**Casos de Uso**:
+- **Aplicaciones Web**: ASP.NET Core
+- **Aplicaciones de Escritorio**: WPF, Windows Forms
+- **Aplicaciones Móviles**: Xamarin, .NET MAUI
+- **Microservicios**: Contenedores Docker
+- **Machine Learning**: ML.NET
+- **Cloud Computing**: Azure Functions, AWS Lambda
+
+**Próximos Pasos**:
+- Explorar ASP.NET Core para desarrollo web
+- Aprender sobre Entity Framework Core
+- Experimentar con Blazor para aplicaciones web
+- Investigar .NET MAUI para aplicaciones multiplataforma
+- Profundizar en patrones de diseño y arquitectura

@@ -1,0 +1,142 @@
+# Patrones de Diseño en C#: Guía Completa
+
+## Introducción a los Patrones de Diseño
+
+Los patrones de diseño son soluciones reutilizables para problemas comunes en el desarrollo de software. En C#, los patrones de diseño ayudan a crear código más mantenible, escalable y flexible.
+
+### Beneficios de los Patrones de Diseño
+- **Reutilización de código**: Soluciones probadas y validadas
+- **Mantenibilidad**: Código más organizado y fácil de entender
+- **Escalabilidad**: Arquitectura que crece con el proyecto
+- **Comunicación**: Lenguaje común entre desarrolladores
+
+## Patrones Creacionales
+
+### 1. Singleton Pattern
+El patrón Singleton garantiza que una clase tenga solo una instancia.
+
+```csharp
+public class Singleton
+{
+    private static Singleton _instance;
+    private static readonly object _lock = new object();
+    
+    private Singleton() { }
+    
+    public static Singleton Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                    {
+                        _instance = new Singleton();
+                    }
+                }
+            }
+            return _instance;
+        }
+    }
+}
+```
+
+### 2. Factory Pattern
+El patrón Factory proporciona una interfaz para crear objetos.
+
+```csharp
+public interface IProduct
+{
+    string Operation();
+}
+
+public abstract class Creator
+{
+    public abstract IProduct FactoryMethod();
+    
+    public string SomeOperation()
+    {
+        var product = FactoryMethod();
+        return $"Creator: {product.Operation()}";
+    }
+}
+```
+
+### 3. Builder Pattern
+El patrón Builder permite construir objetos complejos paso a paso.
+
+```csharp
+public class Product
+{
+    public string PartA { get; set; }
+    public string PartB { get; set; }
+    public string PartC { get; set; }
+}
+
+public interface IBuilder
+{
+    void BuildPartA();
+    void BuildPartB();
+    void BuildPartC();
+    Product GetResult();
+}
+```
+
+## Patrones Estructurales
+
+### 1. Adapter Pattern
+El patrón Adapter permite que interfaces incompatibles trabajen juntas.
+
+### 2. Decorator Pattern
+El patrón Decorator permite agregar comportamientos dinámicamente.
+
+### 3. Facade Pattern
+El patrón Facade proporciona una interfaz simplificada a un subsistema complejo.
+
+## Patrones Comportamentales
+
+### 1. Observer Pattern
+El patrón Observer define una dependencia uno-a-muchos entre objetos.
+
+### 2. Strategy Pattern
+El patrón Strategy permite definir una familia de algoritmos intercambiables.
+
+### 3. Command Pattern
+El patrón Command encapsula una solicitud como un objeto.
+
+## Patrones Específicos de C# y .NET
+
+### 1. Repository Pattern
+El patrón Repository abstrae la lógica de acceso a datos.
+
+### 2. Unit of Work Pattern
+El patrón Unit of Work coordina múltiples repositorios en una sola transacción.
+
+### 3. Dependency Injection Pattern
+El patrón Dependency Injection permite la inyección de dependencias.
+
+## Mejores Prácticas
+
+### Cuándo Usar Cada Patrón
+- **Singleton**: Configuración de aplicación, Logging, Conexiones a BD
+- **Factory**: Creación compleja de objetos, Testing con mocks
+- **Observer**: Eventos de UI, Monitoreo de cambios
+- **Strategy**: Algoritmos intercambiables, Métodos de pago
+
+### Anti-patrones a Evitar
+- **God Object**: Clase que hace demasiadas cosas
+- **Spaghetti Code**: Código sin estructura clara
+- **Copy-Paste Programming**: Duplicación de código
+
+## Conclusión
+
+Los patrones de diseño en C# proporcionan soluciones probadas para problemas comunes. La elección del patrón correcto depende del problema específico que estés resolviendo.
+
+Patrones modernos incluyen:
+- CQRS (Command Query Responsibility Segregation)
+- Event Sourcing
+- Microservices Patterns
+- Clean Architecture
+- Domain-Driven Design (DDD)

@@ -1,0 +1,1177 @@
+# Ejercicios Prácticos de C# Avanzados
+
+## Introducción a los Ejercicios Avanzados
+
+Esta guía contiene ejercicios prácticos de nivel avanzado en C#. Los ejercicios están diseñados para desarrolladores experimentados que quieren profundizar en características avanzadas del lenguaje, patrones de diseño y técnicas de optimización.
+
+### Ejercicios de Patrones de Diseño
+
+#### Ejercicio 1: Implementación de Repository Pattern con Unit of Work
+**Objetivo**: Practicar patrones de diseño empresariales y gestión de datos.
+
+```csharp
+// Interfaces
+public interface IRepository<T> where T : class
+{
+    Task<T> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+}
+
+public interface IUnitOfWork : IDisposable
+{
+    IRepository<Cliente> Clientes { get; }
+    IRepository<Pedido> Pedidos { get; }
+    IRepository<Producto> Productos { get; }
+    Task<int> SaveChangesAsync();
+}
+
+// Entidades
+public class Cliente
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public string Email { get; set; }
+    public DateTime FechaRegistro { get; set; }
+    public bool Activo { get; set; }
+    public virtual ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();
+}
+
+public class Producto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; }
+    public decimal Precio { get; set; }
+    public int Stock { get; set; }
+    public string Categoria { get; set; }
+    public virtual ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();
+}
+
+public class Pedido
+{
+    public int Id { get; set; }
+    public int ClienteId { get; set; }
+    public DateTime FechaPedido { get; set; }
+    public decimal Total { get; set; }
+    public string Estado { get; set; }
+    public virtual Cliente Cliente { get; set; }
+    public virtual ICollection<Producto> Productos { get; set; } = new List<Producto>();
+}
+
+// Implementación del Repository
+public class Repository<T> : IRepository<T> where T : class
+{
+    protected readonly List<T> _context;
+    
+    public Repository(List<T> context)
+    {
+        _context = context;
+    }
+    
+    public async Task<T> GetByIdAsync(int id)
+    {
+        // Simulación de operación asíncrona
+        await Task.Delay(10);
+        
+        // En una implementación real, esto sería una consulta a la base de datos
+        var entity = _context.FirstOrDefault(e => GetIdValue(e) == id);
+        return entity;
+    }
+    
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        await Task.Delay(10);
+        return _context.ToList();
+    }
+    
+    public async Task<T> AddAsync(T entity)
+    {
+        await Task.Delay(10);
+        _context.Add(entity);
+        return entity;
+    }
+    
+    public async Task UpdateAsync(T entity)
+    {
+        await Task.Delay(10);
+        var existingEntity = await GetByIdAsync(GetIdValue(entity));
+        if (existingEntity != null)
+        {
+            var index = _context.IndexOf(existingEntity);
+            _context[index] = entity;
+        }
+    }
+    
+    public async Task DeleteAsync(int id)
+    {
+        await Task.Delay(10);
+        var entity = await GetByIdAsync(id);
+        if (entity != null)
+        {
+            _context.Remove(entity);
+        }
+    }
+    
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        await Task.Delay(10);
+        return _context.AsQueryable().Where(predicate).ToList();
+    }
+    
+    private int GetIdValue(T entity)
+    {
+        // Simulación de obtención del ID
+        var property = typeof(T).GetProperty("Id");
+        return (int)property.GetValue(entity);
+    }
+}
+
+// Implementación del Unit of Work
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly List<Cliente> _clientes;
+    private readonly List<Pedido> _pedidos;
+    private readonly List<Producto> _productos;
+    
+    public UnitOfWork()
+    {
+        _clientes = new List<Cliente>();
+        _pedidos = new List<Pedido>();
+        _productos = new List<Producto>();
+        
+        // Datos de ejemplo
+        SeedData();
+    }
+    
+    public IRepository<Cliente> Clientes => new Repository<Cliente>(_clientes);
+    public IRepository<Pedido> Pedidos => new Repository<Pedido>(_pedidos);
+    public IRepository<Producto> Productos => new Repository<Producto>(_productos);
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        // Simulación de guardado en base de datos
+        await Task.Delay(100);
+        return _clientes.Count + _pedidos.Count + _productos.Count;
+    }
+    
+    public void Dispose()
+    {
+        // Limpieza de recursos
+    }
+    
+    private void SeedData()
+    {
+        _clientes.AddRange(new[]
+        {
+            new Cliente { Id = 1, Nombre = "Juan Pérez", Email = "juan@test.com", FechaRegistro = DateTime.Now.AddDays(-30), Activo = true },
+            new Cliente { Id = 2, Nombre = "María García", Email = "maria@test.com", FechaRegistro = DateTime.Now.AddDays(-15), Activo = true },
+            new Cliente { Id = 3, Nombre = "Carlos López", Email = "carlos@test.com", FechaRegistro = DateTime.Now.AddDays(-7), Activo = false }
+        });
+        
+        _productos.AddRange(new[]
+        {
+            new Producto { Id = 1, Nombre = "Laptop", Precio = 999.99m, Stock = 10, Categoria = "Electrónicos" },
+            new Producto { Id = 2, Nombre = "Mouse", Precio = 25.50m, Stock = 50, Categoria = "Accesorios" },
+            new Producto { Id = 3, Nombre = "Teclado", Precio = 75.00m, Stock = 25, Categoria = "Accesorios" }
+        });
+    }
+}
+
+// Servicio de negocio
+public class ServicioPedidos
+{
+    private readonly IUnitOfWork _unitOfWork;
+    
+    public ServicioPedidos(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+    
+    public async Task<Pedido> CrearPedidoAsync(int clienteId, List<int> productoIds)
+    {
+        using var transaction = new TransactionScope();
+        
+        try
+        {
+            // Verificar cliente
+            var cliente = await _unitOfWork.Clientes.GetByIdAsync(clienteId);
+            if (cliente == null)
+                throw new ArgumentException("Cliente no encontrado");
+            
+            // Verificar productos y calcular total
+            var productos = new List<Producto>();
+            decimal total = 0;
+            
+            foreach (var productoId in productoIds)
+            {
+                var producto = await _unitOfWork.Productos.GetByIdAsync(productoId);
+                if (producto == null)
+                    throw new ArgumentException($"Producto {productoId} no encontrado");
+                
+                if (producto.Stock <= 0)
+                    throw new InvalidOperationException($"Producto {producto.Nombre} sin stock");
+                
+                productos.Add(producto);
+                total += producto.Precio;
+                
+                // Actualizar stock
+                producto.Stock--;
+                await _unitOfWork.Productos.UpdateAsync(producto);
+            }
+            
+            // Crear pedido
+            var pedido = new Pedido
+            {
+                Id = await ObtenerNuevoIdPedido(),
+                ClienteId = clienteId,
+                FechaPedido = DateTime.Now,
+                Total = total,
+                Estado = "Pendiente",
+                Productos = productos
+            };
+            
+            await _unitOfWork.Pedidos.AddAsync(pedido);
+            await _unitOfWork.SaveChangesAsync();
+            
+            transaction.Complete();
+            return pedido;
+        }
+        catch
+        {
+            // La transacción se revierte automáticamente
+            throw;
+        }
+    }
+    
+    private async Task<int> ObtenerNuevoIdPedido()
+    {
+        var pedidos = await _unitOfWork.Pedidos.GetAllAsync();
+        return pedidos.Count() + 1;
+    }
+}
+
+// Clase para simular transacciones
+public class TransactionScope : IDisposable
+{
+    public void Complete() { }
+    public void Dispose() { }
+}
+
+// Programa principal
+async Task EjecutarRepositoryPattern()
+{
+    var unitOfWork = new UnitOfWork();
+    var servicioPedidos = new ServicioPedidos(unitOfWork);
+    
+    Console.WriteLine("=== Repository Pattern con Unit of Work ===");
+    
+    // Crear un pedido
+    try
+    {
+        var pedido = await servicioPedidos.CrearPedidoAsync(1, new List<int> { 1, 2 });
+        Console.WriteLine($"Pedido creado: ID {pedido.Id}, Total: ${pedido.Total:F2}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error al crear pedido: {ex.Message}");
+    }
+    
+    // Mostrar clientes activos
+    var clientesActivos = await unitOfWork.Clientes.FindAsync(c => c.Activo);
+    Console.WriteLine("\nClientes activos:");
+    foreach (var cliente in clientesActivos)
+    {
+        Console.WriteLine($"- {cliente.Nombre} ({cliente.Email})");
+    }
+    
+    // Mostrar productos con stock
+    var productosConStock = await unitOfWork.Productos.FindAsync(p => p.Stock > 0);
+    Console.WriteLine("\nProductos con stock:");
+    foreach (var producto in productosConStock)
+    {
+        Console.WriteLine($"- {producto.Nombre}: ${producto.Precio:F2} (Stock: {producto.Stock})");
+    }
+}
+
+await EjecutarRepositoryPattern();
+```
+
+#### Ejercicio 2: Implementación de Observer Pattern con Eventos
+**Objetivo**: Practicar el patrón Observer y gestión de eventos complejos.
+
+```csharp
+// Interfaces
+public interface IObserver
+{
+    void Update(string message);
+}
+
+public interface ISubject
+{
+    void Attach(IObserver observer);
+    void Detach(IObserver observer);
+    void Notify(string message);
+}
+
+// Implementación del Subject
+public class SistemaNotificaciones : ISubject
+{
+    private readonly List<IObserver> _observers;
+    private readonly Dictionary<string, List<string>> _mensajesPorTipo;
+    
+    public SistemaNotificaciones()
+    {
+        _observers = new List<IObserver>();
+        _mensajesPorTipo = new Dictionary<string, List<string>>();
+    }
+    
+    public void Attach(IObserver observer)
+    {
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+            Console.WriteLine($"Observer {observer.GetType().Name} agregado");
+        }
+    }
+    
+    public void Detach(IObserver observer)
+    {
+        _observers.Remove(observer);
+        Console.WriteLine($"Observer {observer.GetType().Name} removido");
+    }
+    
+    public void Notify(string message)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.Update(message);
+        }
+        
+        // Registrar mensaje por tipo
+        var tipo = ObtenerTipoMensaje(message);
+        if (!_mensajesPorTipo.ContainsKey(tipo))
+        {
+            _mensajesPorTipo[tipo] = new List<string>();
+        }
+        _mensajesPorTipo[tipo].Add(message);
+    }
+    
+    public void EnviarNotificacion(string tipo, string contenido)
+    {
+        var mensaje = $"[{tipo.ToUpper()}] {contenido} - {DateTime.Now:HH:mm:ss}";
+        Notify(mensaje);
+    }
+    
+    public void MostrarEstadisticas()
+    {
+        Console.WriteLine("\n=== Estadísticas de Notificaciones ===");
+        foreach (var kvp in _mensajesPorTipo)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value.Count} mensajes");
+        }
+    }
+    
+    private string ObtenerTipoMensaje(string mensaje)
+    {
+        if (mensaje.Contains("[ERROR]")) return "Error";
+        if (mensaje.Contains("[WARNING]")) return "Warning";
+        if (mensaje.Contains("[INFO]")) return "Info";
+        return "Otro";
+    }
+}
+
+// Implementaciones de Observers
+public class LoggerObserver : IObserver
+{
+    private readonly List<string> _log;
+    
+    public LoggerObserver()
+    {
+        _log = new List<string>();
+    }
+    
+    public void Update(string message)
+    {
+        _log.Add($"[LOG] {message}");
+        Console.WriteLine($"Logger: {message}");
+    }
+    
+    public void MostrarLog()
+    {
+        Console.WriteLine("\n=== Log Completo ===");
+        foreach (var entry in _log)
+        {
+            Console.WriteLine(entry);
+        }
+    }
+}
+
+public class EmailObserver : IObserver
+{
+    public void Update(string message)
+    {
+        if (message.Contains("[ERROR]"))
+        {
+            Console.WriteLine($"Email enviado (Error): {message}");
+        }
+    }
+}
+
+public class DashboardObserver : IObserver
+{
+    private readonly Dictionary<string, int> _contadores;
+    
+    public DashboardObserver()
+    {
+        _contadores = new Dictionary<string, int>();
+    }
+    
+    public void Update(string message)
+    {
+        var tipo = ObtenerTipoMensaje(message);
+        if (!_contadores.ContainsKey(tipo))
+        {
+            _contadores[tipo] = 0;
+        }
+        _contadores[tipo]++;
+        
+        Console.WriteLine($"Dashboard actualizado: {tipo} = {_contadores[tipo]}");
+    }
+    
+    public void MostrarDashboard()
+    {
+        Console.WriteLine("\n=== Dashboard ===");
+        foreach (var kvp in _contadores)
+        {
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+        }
+    }
+    
+    private string ObtenerTipoMensaje(string mensaje)
+    {
+        if (mensaje.Contains("[ERROR]")) return "Errores";
+        if (mensaje.Contains("[WARNING]")) return "Advertencias";
+        if (mensaje.Contains("[INFO]")) return "Información";
+        return "Otros";
+    }
+}
+
+// Programa principal
+void EjecutarObserverPattern()
+{
+    var sistema = new SistemaNotificaciones();
+    var logger = new LoggerObserver();
+    var email = new EmailObserver();
+    var dashboard = new DashboardObserver();
+    
+    // Suscribir observers
+    sistema.Attach(logger);
+    sistema.Attach(email);
+    sistema.Attach(dashboard);
+    
+    Console.WriteLine("=== Observer Pattern ===");
+    
+    // Enviar notificaciones
+    sistema.EnviarNotificacion("info", "Sistema iniciado correctamente");
+    sistema.EnviarNotificacion("warning", "Memoria baja detectada");
+    sistema.EnviarNotificacion("error", "Error de conexión a base de datos");
+    sistema.EnviarNotificacion("info", "Backup completado");
+    sistema.EnviarNotificacion("error", "Timeout en operación");
+    
+    // Mostrar estadísticas
+    sistema.MostrarEstadisticas();
+    dashboard.MostrarDashboard();
+    logger.MostrarLog();
+    
+    // Desuscribir observer
+    sistema.Detach(email);
+    sistema.EnviarNotificacion("info", "Observer removido");
+}
+
+EjecutarObserverPattern();
+```
+
+### Ejercicios de Reflection y Metaprogramación
+
+#### Ejercicio 3: Sistema de Validación Dinámica con Reflection
+**Objetivo**: Practicar reflection para crear validaciones dinámicas.
+
+```csharp
+// Atributos de validación
+[AttributeUsage(AttributeTargets.Property)]
+public class RequiredAttribute : Attribute
+{
+    public string ErrorMessage { get; set; } = "El campo es requerido";
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class MinLengthAttribute : Attribute
+{
+    public int MinLength { get; }
+    
+    public MinLengthAttribute(int minLength)
+    {
+        MinLength = minLength;
+    }
+    
+    public string ErrorMessage { get; set; } = "La longitud mínima no se cumple";
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class RangeAttribute : Attribute
+{
+    public int Min { get; }
+    public int Max { get; }
+    
+    public RangeAttribute(int min, int max)
+    {
+        Min = min;
+        Max = max;
+    }
+    
+    public string ErrorMessage { get; set; } = "El valor está fuera del rango permitido";
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class EmailAttribute : Attribute
+{
+    public string ErrorMessage { get; set; } = "El formato de email no es válido";
+}
+
+// Clase de validación dinámica
+public class ValidadorDinamico
+{
+    public ValidationResult Validar<T>(T objeto)
+    {
+        var resultado = new ValidationResult();
+        var tipo = typeof(T);
+        var propiedades = tipo.GetProperties();
+        
+        foreach (var propiedad in propiedades)
+        {
+            var valor = propiedad.GetValue(objeto);
+            var atributos = propiedad.GetCustomAttributes(true);
+            
+            foreach (var atributo in atributos)
+            {
+                var error = ValidarAtributo(atributo, valor, propiedad.Name);
+                if (!string.IsNullOrEmpty(error))
+                {
+                    resultado.Errores.Add(error);
+                }
+            }
+        }
+        
+        return resultado;
+    }
+    
+    private string ValidarAtributo(object atributo, object valor, string nombrePropiedad)
+    {
+        switch (atributo)
+        {
+            case RequiredAttribute required:
+                if (valor == null || (valor is string str && string.IsNullOrWhiteSpace(str)))
+                {
+                    return $"{nombrePropiedad}: {required.ErrorMessage}";
+                }
+                break;
+                
+            case MinLengthAttribute minLength:
+                if (valor is string strValue && strValue.Length < minLength.MinLength)
+                {
+                    return $"{nombrePropiedad}: {minLength.ErrorMessage}";
+                }
+                break;
+                
+            case RangeAttribute range:
+                if (valor is int intValue && (intValue < range.Min || intValue > range.Max))
+                {
+                    return $"{nombrePropiedad}: {range.ErrorMessage}";
+                }
+                break;
+                
+            case EmailAttribute email:
+                if (valor is string emailValue && !EsEmailValido(emailValue))
+                {
+                    return $"{nombrePropiedad}: {email.ErrorMessage}";
+                }
+                break;
+        }
+        
+        return null;
+    }
+    
+    private bool EsEmailValido(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public class ValidationResult
+{
+    public List<string> Errores { get; set; } = new List<string>();
+    public bool EsValido => Errores.Count == 0;
+}
+
+// Clases de ejemplo con atributos de validación
+public class Usuario
+{
+    [Required(ErrorMessage = "El nombre es obligatorio")]
+    [MinLength(2, ErrorMessage = "El nombre debe tener al menos 2 caracteres")]
+    public string Nombre { get; set; }
+    
+    [Required]
+    [Email(ErrorMessage = "El formato de email no es correcto")]
+    public string Email { get; set; }
+    
+    [Required]
+    [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
+    public string Password { get; set; }
+    
+    [Range(13, 120, ErrorMessage = "La edad debe estar entre 13 y 120 años")]
+    public int Edad { get; set; }
+    
+    public string Telefono { get; set; }
+}
+
+public class Producto
+{
+    [Required]
+    [MinLength(3)]
+    public string Nombre { get; set; }
+    
+    [Range(0, 10000, ErrorMessage = "El precio debe estar entre 0 y 10000")]
+    public decimal Precio { get; set; }
+    
+    [Range(0, 1000)]
+    public int Stock { get; set; }
+    
+    [Required]
+    [Email]
+    public string EmailProveedor { get; set; }
+}
+
+// Programa principal
+void EjecutarValidacionDinamica()
+{
+    var validador = new ValidadorDinamico();
+    
+    Console.WriteLine("=== Validación Dinámica con Reflection ===");
+    
+    // Validar usuario válido
+    var usuarioValido = new Usuario
+    {
+        Nombre = "Juan Pérez",
+        Email = "juan@test.com",
+        Password = "password123",
+        Edad = 25
+    };
+    
+    var resultadoValido = validador.Validar(usuarioValido);
+    Console.WriteLine("Usuario válido:");
+    if (resultadoValido.EsValido)
+    {
+        Console.WriteLine("✓ Validación exitosa");
+    }
+    else
+    {
+        foreach (var error in resultadoValido.Errores)
+        {
+            Console.WriteLine($"✗ {error}");
+        }
+    }
+    
+    // Validar usuario inválido
+    var usuarioInvalido = new Usuario
+    {
+        Nombre = "J",
+        Email = "email-invalido",
+        Password = "123",
+        Edad = 5
+    };
+    
+    var resultadoInvalido = validador.Validar(usuarioInvalido);
+    Console.WriteLine("\nUsuario inválido:");
+    if (resultadoInvalido.EsValido)
+    {
+        Console.WriteLine("✓ Validación exitosa");
+    }
+    else
+    {
+        foreach (var error in resultadoInvalido.Errores)
+        {
+            Console.WriteLine($"✗ {error}");
+        }
+    }
+    
+    // Validar producto
+    var producto = new Producto
+    {
+        Nombre = "Laptop",
+        Precio = 15000,
+        Stock = 5,
+        EmailProveedor = "proveedor@test.com"
+    };
+    
+    var resultadoProducto = validador.Validar(producto);
+    Console.WriteLine("\nProducto:");
+    if (resultadoProducto.EsValido)
+    {
+        Console.WriteLine("✓ Validación exitosa");
+    }
+    else
+    {
+        foreach (var error in resultadoProducto.Errores)
+        {
+            Console.WriteLine($"✗ {error}");
+        }
+    }
+}
+
+EjecutarValidacionDinamica();
+```
+
+### Ejercicios de Optimización de Rendimiento
+
+#### Ejercicio 4: Pool de Objetos y Optimización de Memoria
+**Objetivo**: Practicar técnicas de optimización de memoria y rendimiento.
+
+```csharp
+// Pool de objetos genérico
+public class ObjectPool<T> where T : class, new()
+{
+    private readonly ConcurrentQueue<T> _pool;
+    private readonly int _maxSize;
+    private int _currentSize;
+    
+    public ObjectPool(int maxSize = 100)
+    {
+        _pool = new ConcurrentQueue<T>();
+        _maxSize = maxSize;
+        _currentSize = 0;
+    }
+    
+    public T Get()
+    {
+        if (_pool.TryDequeue(out T item))
+        {
+            return item;
+        }
+        
+        if (_currentSize < _maxSize)
+        {
+            Interlocked.Increment(ref _currentSize);
+            return new T();
+        }
+        
+        // Si el pool está lleno, crear temporalmente
+        return new T();
+    }
+    
+    public void Return(T item)
+    {
+        if (item == null) return;
+        
+        // Reset del objeto (si implementa IResettable)
+        if (item is IResettable resettable)
+        {
+            resettable.Reset();
+        }
+        
+        if (_pool.Count < _maxSize)
+        {
+            _pool.Enqueue(item);
+        }
+    }
+    
+    public int PoolSize => _pool.Count;
+    public int CurrentSize => _currentSize;
+}
+
+public interface IResettable
+{
+    void Reset();
+}
+
+// Clase optimizada para el pool
+public class BufferOptimizado : IResettable
+{
+    public byte[] Data { get; private set; }
+    public int Length { get; set; }
+    
+    public BufferOptimizado(int size = 1024)
+    {
+        Data = new byte[size];
+        Length = 0;
+    }
+    
+    public void Reset()
+    {
+        Length = 0;
+        // No limpiar el array para evitar overhead
+    }
+    
+    public void EnsureCapacity(int requiredSize)
+    {
+        if (Data.Length < requiredSize)
+        {
+            Data = new byte[requiredSize];
+        }
+    }
+}
+
+// Procesador de datos optimizado
+public class ProcesadorDatosOptimizado
+{
+    private readonly ObjectPool<BufferOptimizado> _bufferPool;
+    private readonly ConcurrentQueue<byte[]> _dataQueue;
+    
+    public ProcesadorDatosOptimizado()
+    {
+        _bufferPool = new ObjectPool<BufferOptimizado>(50);
+        _dataQueue = new ConcurrentQueue<byte[]>();
+    }
+    
+    public async Task ProcesarDatosAsync(byte[] datos)
+    {
+        var buffer = _bufferPool.Get();
+        
+        try
+        {
+            // Simular procesamiento
+            await Task.Delay(10);
+            
+            buffer.EnsureCapacity(datos.Length);
+            Array.Copy(datos, buffer.Data, datos.Length);
+            buffer.Length = datos.Length;
+            
+            // Procesar datos
+            var resultado = ProcesarBuffer(buffer);
+            _dataQueue.Enqueue(resultado);
+        }
+        finally
+        {
+            _bufferPool.Return(buffer);
+        }
+    }
+    
+    private byte[] ProcesarBuffer(BufferOptimizado buffer)
+    {
+        // Simular procesamiento de datos
+        var resultado = new byte[buffer.Length];
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            resultado[i] = (byte)(buffer.Data[i] ^ 0xFF); // Operación XOR
+        }
+        return resultado;
+    }
+    
+    public void MostrarEstadisticas()
+    {
+        Console.WriteLine($"Pool size: {_bufferPool.PoolSize}");
+        Console.WriteLine($"Current size: {_bufferPool.CurrentSize}");
+        Console.WriteLine($"Data queue count: {_dataQueue.Count}");
+    }
+}
+
+// Benchmark de rendimiento
+public class Benchmark
+{
+    public static async Task EjecutarBenchmark()
+    {
+        Console.WriteLine("=== Benchmark de Optimización ===");
+        
+        var procesador = new ProcesadorDatosOptimizado();
+        var datos = new byte[1024];
+        new Random().NextBytes(datos);
+        
+        var stopwatch = Stopwatch.StartNew();
+        
+        // Procesar múltiples datos en paralelo
+        var tareas = Enumerable.Range(1, 1000).Select(async i =>
+        {
+            var datosCopia = new byte[datos.Length];
+            Array.Copy(datos, datosCopia, datos.Length);
+            await procesador.ProcesarDatosAsync(datosCopia);
+        });
+        
+        await Task.WhenAll(tareas);
+        
+        stopwatch.Stop();
+        
+        Console.WriteLine($"Tiempo total: {stopwatch.ElapsedMilliseconds}ms");
+        procesador.MostrarEstadisticas();
+    }
+}
+
+// Programa principal
+async Task EjecutarOptimizacion()
+{
+    await Benchmark.EjecutarBenchmark();
+}
+
+await EjecutarOptimizacion();
+```
+
+### Ejercicios de Testing Avanzado
+
+#### Ejercicio 5: Testing con Mocking y Dependency Injection
+**Objetivo**: Practicar testing unitario avanzado con mocking.
+
+```csharp
+// Interfaces para testing
+public interface IEmailService
+{
+    Task<bool> EnviarEmailAsync(string destinatario, string asunto, string contenido);
+}
+
+public interface ILogger
+{
+    void LogInfo(string mensaje);
+    void LogError(string mensaje);
+    void LogWarning(string mensaje);
+}
+
+public interface IRepositorioUsuarios
+{
+    Task<Usuario> ObtenerPorIdAsync(int id);
+    Task<Usuario> ObtenerPorEmailAsync(string email);
+    Task<bool> GuardarAsync(Usuario usuario);
+    Task<bool> ExisteAsync(string email);
+}
+
+// Implementación del servicio
+public class ServicioUsuarios
+{
+    private readonly IRepositorioUsuarios _repositorio;
+    private readonly IEmailService _emailService;
+    private readonly ILogger _logger;
+    
+    public ServicioUsuarios(
+        IRepositorioUsuarios repositorio,
+        IEmailService emailService,
+        ILogger logger)
+    {
+        _repositorio = repositorio;
+        _emailService = emailService;
+        _logger = logger;
+    }
+    
+    public async Task<bool> RegistrarUsuarioAsync(Usuario usuario)
+    {
+        try
+        {
+            _logger.LogInfo($"Intentando registrar usuario: {usuario.Email}");
+            
+            // Verificar si el usuario ya existe
+            if (await _repositorio.ExisteAsync(usuario.Email))
+            {
+                _logger.LogWarning($"Usuario ya existe: {usuario.Email}");
+                return false;
+            }
+            
+            // Guardar usuario
+            var guardado = await _repositorio.GuardarAsync(usuario);
+            if (!guardado)
+            {
+                _logger.LogError($"Error al guardar usuario: {usuario.Email}");
+                return false;
+            }
+            
+            // Enviar email de bienvenida
+            var emailEnviado = await _emailService.EnviarEmailAsync(
+                usuario.Email,
+                "Bienvenido",
+                $"Hola {usuario.Nombre}, tu cuenta ha sido creada exitosamente.");
+            
+            if (!emailEnviado)
+            {
+                _logger.LogWarning($"No se pudo enviar email de bienvenida a: {usuario.Email}");
+            }
+            
+            _logger.LogInfo($"Usuario registrado exitosamente: {usuario.Email}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Excepción al registrar usuario: {ex.Message}");
+            return false;
+        }
+    }
+    
+    public async Task<Usuario> ObtenerUsuarioAsync(int id)
+    {
+        _logger.LogInfo($"Obteniendo usuario con ID: {id}");
+        
+        var usuario = await _repositorio.ObtenerPorIdAsync(id);
+        if (usuario == null)
+        {
+            _logger.LogWarning($"Usuario no encontrado con ID: {id}");
+        }
+        
+        return usuario;
+    }
+}
+
+// Tests unitarios (usando NUnit y Moq como ejemplo)
+[TestFixture]
+public class ServicioUsuariosTests
+{
+    private Mock<IRepositorioUsuarios> _mockRepositorio;
+    private Mock<IEmailService> _mockEmailService;
+    private Mock<ILogger> _mockLogger;
+    private ServicioUsuarios _servicio;
+    
+    [SetUp]
+    public void Setup()
+    {
+        _mockRepositorio = new Mock<IRepositorioUsuarios>();
+        _mockEmailService = new Mock<IEmailService>();
+        _mockLogger = new Mock<ILogger>();
+        
+        _servicio = new ServicioUsuarios(
+            _mockRepositorio.Object,
+            _mockEmailService.Object,
+            _mockLogger.Object);
+    }
+    
+    [Test]
+    public async Task RegistrarUsuario_UsuarioNuevo_DeberiaRegistrarExitosamente()
+    {
+        // Arrange
+        var usuario = new Usuario
+        {
+            Nombre = "Test User",
+            Email = "test@test.com",
+            Password = "password123",
+            Edad = 25
+        };
+        
+        _mockRepositorio.Setup(r => r.ExisteAsync(usuario.Email))
+                       .ReturnsAsync(false);
+        
+        _mockRepositorio.Setup(r => r.GuardarAsync(usuario))
+                       .ReturnsAsync(true);
+        
+        _mockEmailService.Setup(e => e.EnviarEmailAsync(
+            usuario.Email, "Bienvenido", It.IsAny<string>()))
+            .ReturnsAsync(true);
+        
+        // Act
+        var resultado = await _servicio.RegistrarUsuarioAsync(usuario);
+        
+        // Assert
+        Assert.IsTrue(resultado);
+        
+        _mockRepositorio.Verify(r => r.ExisteAsync(usuario.Email), Times.Once);
+        _mockRepositorio.Verify(r => r.GuardarAsync(usuario), Times.Once);
+        _mockEmailService.Verify(e => e.EnviarEmailAsync(
+            usuario.Email, "Bienvenido", It.IsAny<string>()), Times.Once);
+        _mockLogger.Verify(l => l.LogInfo(It.IsAny<string>()), Times.AtLeast(1));
+    }
+    
+    [Test]
+    public async Task RegistrarUsuario_UsuarioExistente_DeberiaFallar()
+    {
+        // Arrange
+        var usuario = new Usuario
+        {
+            Nombre = "Test User",
+            Email = "existing@test.com",
+            Password = "password123",
+            Edad = 25
+        };
+        
+        _mockRepositorio.Setup(r => r.ExisteAsync(usuario.Email))
+                       .ReturnsAsync(true);
+        
+        // Act
+        var resultado = await _servicio.RegistrarUsuarioAsync(usuario);
+        
+        // Assert
+        Assert.IsFalse(resultado);
+        
+        _mockRepositorio.Verify(r => r.ExisteAsync(usuario.Email), Times.Once);
+        _mockRepositorio.Verify(r => r.GuardarAsync(It.IsAny<Usuario>()), Times.Never);
+        _mockEmailService.Verify(e => e.EnviarEmailAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+    
+    [Test]
+    public async Task ObtenerUsuario_UsuarioExistente_DeberiaRetornarUsuario()
+    {
+        // Arrange
+        var usuario = new Usuario
+        {
+            Id = 1,
+            Nombre = "Test User",
+            Email = "test@test.com"
+        };
+        
+        _mockRepositorio.Setup(r => r.ObtenerPorIdAsync(1))
+                       .ReturnsAsync(usuario);
+        
+        // Act
+        var resultado = await _servicio.ObtenerUsuarioAsync(1);
+        
+        // Assert
+        Assert.IsNotNull(resultado);
+        Assert.AreEqual(usuario.Id, resultado.Id);
+        Assert.AreEqual(usuario.Nombre, resultado.Nombre);
+        
+        _mockRepositorio.Verify(r => r.ObtenerPorIdAsync(1), Times.Once);
+    }
+    
+    [Test]
+    public async Task ObtenerUsuario_UsuarioNoExistente_DeberiaRetornarNull()
+    {
+        // Arrange
+        _mockRepositorio.Setup(r => r.ObtenerPorIdAsync(999))
+                       .ReturnsAsync((Usuario)null);
+        
+        // Act
+        var resultado = await _servicio.ObtenerUsuarioAsync(999);
+        
+        // Assert
+        Assert.IsNull(resultado);
+        
+        _mockRepositorio.Verify(r => r.ObtenerPorIdAsync(999), Times.Once);
+        _mockLogger.Verify(l => l.LogWarning(It.IsAny<string>()), Times.Once);
+    }
+}
+
+// Programa principal (simulación de tests)
+void EjecutarTests()
+{
+    Console.WriteLine("=== Testing Avanzado ===");
+    Console.WriteLine("Nota: Este es un ejemplo de estructura de tests.");
+    Console.WriteLine("Para ejecutar tests reales, necesitarías NUnit y Moq.");
+}
+
+EjecutarTests();
+```
+
+### Conclusión
+
+Estos ejercicios avanzados cubren características sofisticadas de C# como patrones de diseño empresariales, reflection, optimización de rendimiento y testing avanzado. Son fundamentales para desarrolladores que quieren crear aplicaciones robustas y mantenibles.
+
+**Áreas para continuar desarrollando**:
+- Arquitectura de microservicios
+- Programación funcional avanzada
+- Expresiones lambda complejas
+- Optimización de algoritmos
+- Seguridad avanzada
+- Integración con bases de datos
+- APIs RESTful avanzadas
+- Aplicaciones web con ASP.NET Core

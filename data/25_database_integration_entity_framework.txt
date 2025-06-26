@@ -1,0 +1,1035 @@
+# Integración con Bases de Datos y Entity Framework Core
+
+## Introducción a Entity Framework Core
+
+Entity Framework Core es un ORM (Object-Relational Mapping) moderno y ligero para .NET. Permite a los desarrolladores trabajar con bases de datos usando objetos .NET en lugar de escribir SQL directamente, proporcionando una capa de abstracción que simplifica el acceso a datos.
+
+### Fundamentos de Entity Framework Core
+
+#### 1. Conceptos Básicos
+
+**DbContext**:
+- **Definición**: Clase principal que representa una sesión con la base de datos.
+- **Funciones**: Gestiona entidades, tracking de cambios, y transacciones.
+- **Configuración**: Define el modelo de datos y las relaciones.
+
+**Entidades**:
+- **Definición**: Clases POCO (Plain Old CLR Objects) que representan tablas.
+- **Características**: Propiedades que mapean a columnas de la base de datos.
+- **Relaciones**: Navegación entre entidades relacionadas.
+
+**DbSet**:
+- **Definición**: Representa una colección de entidades de un tipo específico.
+- **Funciones**: Permite consultar, agregar, modificar y eliminar entidades.
+- **Tracking**: Mantiene el estado de las entidades para cambios.
+
+#### 2. Configuración del DbContext
+
+**DbContext Básico**:
+```csharp
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+    
+    public DbSet<User> Users { get; set; }
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<Product> Products { get; set; }
+    public DbSet<Category> Categories { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Configuración del modelo
+        ConfigureUserEntity(modelBuilder);
+        ConfigureOrderEntity(modelBuilder);
+        ConfigureProductEntity(modelBuilder);
+        ConfigureCategoryEntity(modelBuilder);
+    }
+    
+    private void ConfigureUserEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+    }
+    
+    private void ConfigureOrderEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OrderDate).HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            
+            entity.HasOne(e => e.User)
+                  .WithMany(e => e.Orders)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+    
+    private void ConfigureProductEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Stock).HasDefaultValue(0);
+            
+            entity.HasOne(e => e.Category)
+                  .WithMany(e => e.Products)
+                  .HasForeignKey(e => e.CategoryId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+    
+    private void ConfigureCategoryEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+    }
+}
+```
+
+**Entidades del Modelo**:
+```csharp
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string PasswordHash { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
+    
+    // Propiedades de navegación
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+}
+
+public class Order
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public DateTime OrderDate { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+    
+    // Propiedades de navegación
+    public virtual User User { get; set; }
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+}
+
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+    public int CategoryId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
+    
+    // Propiedades de navegación
+    public virtual Category Category { get; set; }
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+}
+
+public class Category
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    
+    // Propiedades de navegación
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+}
+
+public class OrderItem
+{
+    public int Id { get; set; }
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    
+    // Propiedades de navegación
+    public virtual Order Order { get; set; }
+    public virtual Product Product { get; set; }
+}
+```
+
+### Operaciones CRUD con Entity Framework
+
+#### 1. Operaciones Básicas
+
+**Crear (Create)**:
+```csharp
+public class UserService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public UserService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<User> CreateUserAsync(CreateUserDto dto)
+    {
+        var user = new User
+        {
+            Name = dto.Name,
+            Email = dto.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        
+        return user;
+    }
+    
+    public async Task<Product> CreateProductAsync(CreateProductDto dto)
+    {
+        var product = new Product
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            Price = dto.Price,
+            Stock = dto.Stock,
+            CategoryId = dto.CategoryId,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
+        
+        return product;
+    }
+}
+```
+
+**Leer (Read)**:
+```csharp
+public class UserService
+{
+    // Obtener usuario por ID
+    public async Task<User> GetUserByIdAsync(int id)
+    {
+        return await _context.Users
+            .Include(u => u.Orders)
+            .FirstOrDefaultAsync(u => u.Id == id);
+    }
+    
+    // Obtener todos los usuarios activos
+    public async Task<IEnumerable<User>> GetActiveUsersAsync()
+    {
+        return await _context.Users
+            .Where(u => u.IsActive)
+            .OrderBy(u => u.Name)
+            .ToListAsync();
+    }
+    
+    // Obtener usuario por email
+    public async Task<User> GetUserByEmailAsync(string email)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
+    }
+    
+    // Búsqueda de usuarios
+    public async Task<IEnumerable<User>> SearchUsersAsync(string searchTerm)
+    {
+        return await _context.Users
+            .Where(u => u.IsActive && 
+                       (u.Name.Contains(searchTerm) || u.Email.Contains(searchTerm)))
+            .OrderBy(u => u.Name)
+            .ToListAsync();
+    }
+}
+```
+
+**Actualizar (Update)**:
+```csharp
+public class UserService
+{
+    public async Task<bool> UpdateUserAsync(int id, UpdateUserDto dto)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+            return false;
+        
+        user.Name = dto.Name;
+        user.Email = dto.Email;
+        
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    
+    public async Task<bool> UpdateProductStockAsync(int productId, int newStock)
+    {
+        var product = await _context.Products.FindAsync(productId);
+        if (product == null)
+            return false;
+        
+        product.Stock = newStock;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    
+    public async Task<bool> DeactivateUserAsync(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+            return false;
+        
+        user.IsActive = false;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+}
+```
+
+**Eliminar (Delete)**:
+```csharp
+public class UserService
+{
+    public async Task<bool> DeleteUserAsync(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+            return false;
+        
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    
+    public async Task<bool> DeleteProductAsync(int id)
+    {
+        var product = await _context.Products.FindAsync(id);
+        if (product == null)
+            return false;
+        
+        // Verificar si el producto tiene órdenes
+        var hasOrders = await _context.OrderItems
+            .AnyAsync(oi => oi.ProductId == id);
+        
+        if (hasOrders)
+        {
+            // Soft delete en lugar de eliminar físicamente
+            product.IsActive = false;
+        }
+        else
+        {
+            _context.Products.Remove(product);
+        }
+        
+        await _context.SaveChangesAsync();
+        return true;
+    }
+}
+```
+
+#### 2. Consultas Avanzadas con LINQ
+
+**Consultas con Joins**:
+```csharp
+public class OrderService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public OrderService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    // Obtener órdenes con información del usuario y productos
+    public async Task<IEnumerable<OrderDto>> GetOrdersWithDetailsAsync()
+    {
+        return await _context.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .Select(o => new OrderDto
+            {
+                Id = o.Id,
+                UserName = o.User.Name,
+                UserEmail = o.User.Email,
+                OrderDate = o.OrderDate,
+                Total = o.Total,
+                Status = o.Status,
+                Items = o.OrderItems.Select(oi => new OrderItemDto
+                {
+                    ProductName = oi.Product.Name,
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice,
+                    Total = oi.Quantity * oi.UnitPrice
+                }).ToList()
+            })
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync();
+    }
+    
+    // Obtener productos con información de categoría
+    public async Task<IEnumerable<ProductDto>> GetProductsWithCategoryAsync()
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.IsActive)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock,
+                CategoryName = p.Category.Name,
+                CategoryDescription = p.Category.Description
+            })
+            .OrderBy(p => p.CategoryName)
+            .ThenBy(p => p.Name)
+            .ToListAsync();
+    }
+}
+```
+
+**Consultas con Agregación**:
+```csharp
+public class ReportService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public ReportService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    // Ventas por categoría
+    public async Task<IEnumerable<CategorySalesDto>> GetSalesByCategoryAsync()
+    {
+        return await _context.OrderItems
+            .Include(oi => oi.Product)
+                .ThenInclude(p => p.Category)
+            .GroupBy(oi => oi.Product.Category.Name)
+            .Select(g => new CategorySalesDto
+            {
+                CategoryName = g.Key,
+                TotalSales = g.Sum(oi => oi.Quantity * oi.UnitPrice),
+                TotalQuantity = g.Sum(oi => oi.Quantity),
+                OrderCount = g.Select(oi => oi.OrderId).Distinct().Count()
+            })
+            .OrderByDescending(c => c.TotalSales)
+            .ToListAsync();
+    }
+    
+    // Top productos más vendidos
+    public async Task<IEnumerable<TopProductDto>> GetTopProductsAsync(int top = 10)
+    {
+        return await _context.OrderItems
+            .Include(oi => oi.Product)
+            .GroupBy(oi => new { oi.ProductId, oi.Product.Name })
+            .Select(g => new TopProductDto
+            {
+                ProductId = g.Key.ProductId,
+                ProductName = g.Key.Name,
+                TotalQuantity = g.Sum(oi => oi.Quantity),
+                TotalRevenue = g.Sum(oi => oi.Quantity * oi.UnitPrice),
+                AveragePrice = g.Average(oi => oi.UnitPrice)
+            })
+            .OrderByDescending(p => p.TotalQuantity)
+            .Take(top)
+            .ToListAsync();
+    }
+    
+    // Estadísticas de usuarios
+    public async Task<UserStatsDto> GetUserStatsAsync()
+    {
+        var totalUsers = await _context.Users.CountAsync();
+        var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
+        var usersWithOrders = await _context.Users
+            .CountAsync(u => u.Orders.Any());
+        
+        var averageOrdersPerUser = await _context.Users
+            .Where(u => u.Orders.Any())
+            .AverageAsync(u => u.Orders.Count);
+        
+        return new UserStatsDto
+        {
+            TotalUsers = totalUsers,
+            ActiveUsers = activeUsers,
+            UsersWithOrders = usersWithOrders,
+            AverageOrdersPerUser = averageOrdersPerUser
+        };
+    }
+}
+```
+
+### Migraciones y Configuración de Base de Datos
+
+#### 1. Migraciones
+
+**Crear Migración**:
+```bash
+# Crear migración inicial
+dotnet ef migrations add InitialCreate
+
+# Crear migración para cambios específicos
+dotnet ef migrations add AddUserTable
+dotnet ef migrations add AddProductTable
+dotnet ef migrations add AddOrderTable
+
+# Aplicar migraciones
+dotnet ef database update
+
+# Revertir migración
+dotnet ef database update PreviousMigrationName
+
+# Generar script SQL
+dotnet ef migrations script
+```
+
+**Migración Personalizada**:
+```csharp
+public partial class AddUserTable : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.CreateTable(
+            name: "Users",
+            columns: table => new
+            {
+                Id = table.Column<int>(type: "int", nullable: false)
+                    .Annotation("SqlServer:Identity", "1, 1"),
+                Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                PasswordHash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETDATE()"),
+                IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_Users", x => x.Id);
+            });
+
+        migrationBuilder.CreateIndex(
+            name: "IX_Users_Email",
+            table: "Users",
+            column: "Email",
+            unique: true);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropTable(
+            name: "Users");
+    }
+}
+```
+
+#### 2. Configuración de Conexión
+
+**appsettings.json**:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=ECommerceDb;Trusted_Connection=true;MultipleActiveResultSets=true",
+    "SqliteConnection": "Data Source=ECommerce.db",
+    "PostgresConnection": "Host=localhost;Database=ECommerceDb;Username=postgres;Password=password"
+  }
+}
+```
+
+**Program.cs**:
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Configurar Entity Framework
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    
+    // SQL Server
+    options.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
+    });
+    
+    // SQLite (alternativa)
+    // options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection"));
+    
+    // PostgreSQL (alternativa)
+    // options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"));
+});
+
+// Configurar servicios
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+```
+
+### Transacciones y Concurrencia
+
+#### 1. Transacciones
+
+**Transacciones Básicas**:
+```csharp
+public class OrderService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public OrderService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<bool> CreateOrderAsync(CreateOrderDto dto)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        
+        try
+        {
+            // Crear la orden
+            var order = new Order
+            {
+                UserId = dto.UserId,
+                OrderDate = DateTime.UtcNow,
+                Status = "Pending",
+                Total = 0
+            };
+            
+            _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+            
+            decimal total = 0;
+            
+            // Agregar items de la orden
+            foreach (var item in dto.Items)
+            {
+                var product = await _context.Products.FindAsync(item.ProductId);
+                if (product == null || product.Stock < item.Quantity)
+                {
+                    throw new InvalidOperationException($"Producto {item.ProductId} no disponible");
+                }
+                
+                var orderItem = new OrderItem
+                {
+                    OrderId = order.Id,
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitPrice = product.Price
+                };
+                
+                _context.OrderItems.Add(orderItem);
+                
+                // Actualizar stock
+                product.Stock -= item.Quantity;
+                _context.Products.Update(product);
+                
+                total += item.Quantity * product.Price;
+            }
+            
+            // Actualizar total de la orden
+            order.Total = total;
+            _context.Orders.Update(order);
+            
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+}
+```
+
+**Transacciones Distribuidas**:
+```csharp
+public class DistributedTransactionService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IEmailService _emailService;
+    
+    public DistributedTransactionService(ApplicationDbContext context, IEmailService emailService)
+    {
+        _context = context;
+        _emailService = emailService;
+    }
+    
+    public async Task<bool> ProcessOrderWithEmailAsync(CreateOrderDto dto)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        
+        try
+        {
+            // Procesar orden en base de datos
+            var order = await CreateOrderAsync(dto);
+            
+            // Enviar email de confirmación
+            await _emailService.SendOrderConfirmationAsync(order);
+            
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+}
+```
+
+#### 2. Control de Concurrencia
+
+**Optimistic Concurrency**:
+```csharp
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+    
+    // Timestamp para control de concurrencia
+    public byte[] RowVersion { get; set; }
+}
+
+public class ProductService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public ProductService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<bool> UpdateProductAsync(UpdateProductDto dto)
+    {
+        var product = await _context.Products.FindAsync(dto.Id);
+        if (product == null)
+            return false;
+        
+        product.Name = dto.Name;
+        product.Price = dto.Price;
+        product.Stock = dto.Stock;
+        
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // Manejar conflicto de concurrencia
+            var entry = ex.Entries.Single();
+            var databaseValues = await entry.GetDatabaseValuesAsync();
+            var clientValues = entry.CurrentValues;
+            
+            // Resolver conflicto (ejemplo: usar valores del cliente)
+            entry.OriginalValues.SetValues(databaseValues);
+            await _context.SaveChangesAsync();
+            
+            return true;
+        }
+    }
+}
+```
+
+### Performance y Optimización
+
+#### 1. Consultas Optimizadas
+
+**Eager Loading**:
+```csharp
+public class OptimizedQueryService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public OptimizedQueryService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    // Cargar datos relacionados de forma eficiente
+    public async Task<IEnumerable<Order>> GetOrdersWithDetailsAsync()
+    {
+        return await _context.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(p => p.Category)
+            .AsNoTracking() // Para consultas de solo lectura
+            .ToListAsync();
+    }
+    
+    // Proyección para reducir datos transferidos
+    public async Task<IEnumerable<OrderSummaryDto>> GetOrderSummariesAsync()
+    {
+        return await _context.Orders
+            .Select(o => new OrderSummaryDto
+            {
+                Id = o.Id,
+                UserName = o.User.Name,
+                OrderDate = o.OrderDate,
+                Total = o.Total,
+                ItemCount = o.OrderItems.Count
+            })
+            .AsNoTracking()
+            .ToListAsync();
+    }
+}
+```
+
+**Lazy Loading**:
+```csharp
+public class ApplicationDbContext : DbContext
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseLazyLoadingProxies();
+    }
+}
+
+// Uso de lazy loading
+public async Task<User> GetUserWithOrdersAsync(int userId)
+{
+    var user = await _context.Users.FindAsync(userId);
+    
+    // Las órdenes se cargan automáticamente cuando se accede
+    var orderCount = user.Orders.Count;
+    
+    return user;
+}
+```
+
+#### 2. Paginación
+
+**Paginación Eficiente**:
+```csharp
+public class PaginationService
+{
+    private readonly ApplicationDbContext _context;
+    
+    public PaginationService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<PagedResult<Product>> GetProductsPagedAsync(int page, int pageSize)
+    {
+        var totalCount = await _context.Products.CountAsync();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        
+        var products = await _context.Products
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync();
+        
+        return new PagedResult<Product>
+        {
+            Items = products,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = totalPages,
+            HasNextPage = page < totalPages,
+            HasPreviousPage = page > 1
+        };
+    }
+}
+
+public class PagedResult<T>
+{
+    public IEnumerable<T> Items { get; set; }
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+    public bool HasNextPage { get; set; }
+    public bool HasPreviousPage { get; set; }
+}
+```
+
+### Testing de Entity Framework
+
+#### 1. Testing con In-Memory Database
+
+```csharp
+[TestFixture]
+public class UserServiceTests
+{
+    private DbContextOptions<ApplicationDbContext> _options;
+    private ApplicationDbContext _context;
+    private UserService _userService;
+    
+    [SetUp]
+    public void Setup()
+    {
+        _options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        
+        _context = new ApplicationDbContext(_options);
+        _userService = new UserService(_context);
+    }
+    
+    [TearDown]
+    public void TearDown()
+    {
+        _context.Dispose();
+    }
+    
+    [Test]
+    public async Task CreateUser_ValidData_ShouldCreateUser()
+    {
+        // Arrange
+        var createUserDto = new CreateUserDto
+        {
+            Name = "Test User",
+            Email = "test@test.com",
+            Password = "password123"
+        };
+        
+        // Act
+        var user = await _userService.CreateUserAsync(createUserDto);
+        
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(createUserDto.Name, user.Name);
+        Assert.AreEqual(createUserDto.Email, user.Email);
+        
+        var savedUser = await _context.Users.FindAsync(user.Id);
+        Assert.IsNotNull(savedUser);
+    }
+    
+    [Test]
+    public async Task GetUserById_ExistingUser_ShouldReturnUser()
+    {
+        // Arrange
+        var user = new User
+        {
+            Name = "Test User",
+            Email = "test@test.com",
+            PasswordHash = "hash",
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        
+        // Act
+        var result = await _userService.GetUserByIdAsync(user.Id);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(user.Name, result.Name);
+        Assert.AreEqual(user.Email, result.Email);
+    }
+}
+```
+
+#### 2. Testing de Integración
+
+```csharp
+[TestFixture]
+public class UserControllerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    
+    public UserControllerIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                var descriptor = services.SingleOrDefault(
+                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
+                
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
+                
+                services.AddDbContext<ApplicationDbContext>(options =>
+                {
+                    options.UseInMemoryDatabase("TestDb");
+                });
+            });
+        });
+    }
+    
+    [Test]
+    public async Task GetUsers_ReturnsSuccessStatusCode()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        
+        // Act
+        var response = await client.GetAsync("/api/users");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+    }
+}
+```
+
+### Conclusión
+
+Entity Framework Core proporciona una capa de abstracción poderosa para el acceso a datos en aplicaciones .NET. Sus características principales incluyen:
+
+**Ventajas**:
+- **Productividad**: Reduce el tiempo de desarrollo al eliminar la necesidad de escribir SQL manual.
+- **Type Safety**: Proporciona verificación de tipos en tiempo de compilación.
+- **Flexibilidad**: Soporta múltiples proveedores de base de datos.
+- **Performance**: Incluye optimizaciones como lazy loading y eager loading.
+- **Testing**: Facilita el testing con bases de datos en memoria.
+
+**Mejores Prácticas**:
+- **Separación de Responsabilidades**: Usar repositorios y servicios.
+- **Optimización de Consultas**: Usar Include y AsNoTracking apropiadamente.
+- **Manejo de Transacciones**: Implementar transacciones para operaciones complejas.
+- **Migraciones**: Mantener migraciones actualizadas y versionadas.
+- **Testing**: Escribir tests unitarios e integración.
+
+**Consideraciones de Performance**:
+- **N+1 Queries**: Evitar consultas N+1 usando Include.
+- **Paginación**: Implementar paginación para grandes conjuntos de datos.
+- **Indexing**: Crear índices apropiados en la base de datos.
+- **Caching**: Usar caching para datos frecuentemente accedidos.
+
+**Próximos Pasos**:
+- **Advanced Querying**: Consultas complejas con LINQ.
+- **Stored Procedures**: Integración con procedimientos almacenados.
+- **Database Views**: Uso de vistas de base de datos.
+- **Performance Monitoring**: Monitoreo de performance de consultas.
+- **Database Design**: Diseño optimizado de esquemas de base de datos.
